@@ -675,11 +675,11 @@ function cardImportJson(obj){
   if(d.scenario)parts.push('【场景】'+cf(d.scenario));
   if(d.first_mes)parts.push('【初见】'+cf(d.first_mes).slice(0,600));
   var content=('此人乃外来角色卡人物「'+name+'」，正文提及时按以下设定演绎，并使其言行融入本朝背景：\n'+parts.join('\n')).slice(0,4000);
-  ULORE.push({title:('角色·'+name).slice(0,40),keys:[name],content:content,constant:false,on:true,order:50});
+  ULORE.push({title:('角色·'+name).slice(0,40),keys:[name],content:content,constant:false,on:true,order:50,card:name});
   var extra=0;
   try{
     var bk=d.character_book;
-    if(bk&&bk.entries){var es=uloreParse(JSON.stringify({entries:bk.entries}));es.forEach(function(en){en.title=(name+'·'+en.title).slice(0,40);});ULORE=ULORE.concat(es);extra=es.length;}
+    if(bk&&bk.entries){var es=uloreParse(JSON.stringify({entries:bk.entries}));es.forEach(function(en){en.title=(name+'·'+en.title).slice(0,40);en.card=name;});ULORE=ULORE.concat(es);extra=es.length;}
   }catch(e){}
   uloreSave();
   S.loreMsg='已导入角色卡「'+name+'」'+(extra?('，附带世界书 '+extra+' 条'):'')+'。正文提及其名即自动登场。';
@@ -996,7 +996,7 @@ function memWorldIdx(j){var c=-1;for(var i=0;i<S.mem.length;i++){if(!S.mem[i].ma
 function memEntryOf(worldMsg,actText){
   var p=worldMsg.panel||parseMvu(worldMsg.text);
   var line=(p&&p.char&&p.char['史笔'])||'';
-  if(!line)line=stripCoT(stripMvu(worldMsg.text)).replace(/\s+/g,' ').slice(0,70);
+  if(!line)line=applyRegex(stripCoT(stripMvu(worldMsg.text)),'prompt').replace(/\s+/g,' ').slice(0,70);
   return {e:p&&p.world?(p.world['纪年']||''):'',d:p&&p.world?(p.world['时地']||''):'',
     a:String(actText||'').replace(/\s+/g,' ').slice(0,40),s:String(line).replace(/\s+/g,' ').slice(0,90),fp:memFp(worldMsg.text)};
 }
@@ -2264,8 +2264,7 @@ function lorePane(){
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:30px 0 12px">上传世界书</div>'
    +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
    +'<label class="btn glass" style="padding:9px 22px;cursor:pointer;color:var(--gold2);font-size:13.5px;letter-spacing:.1em">选择世界书文件<input id="zjLoreFile" type="file" accept=".json,.txt,application/json,text/plain" style="display:none"></label>'
-   +'<label class="btn glass" style="padding:9px 22px;cursor:pointer;color:var(--gold2);font-size:13.5px;letter-spacing:.1em">导入角色卡 PNG / JSON<input id="zjCardFile" type="file" accept=".png,.json,image/png,application/json" style="display:none"></label>'
-   +'<span style="font-size:12px;color:var(--mut)">世界书：ST 世界书 JSON / 本页备份　·　角色卡：ST 导出的 V2/V3 卡，导入后成为可触发的世界书人物</span></div>'
+   +'<span style="font-size:12px;color:var(--mut)">支持 SillyTavern 世界书 JSON / 本页导出的备份；角色卡请到「卡 · 角色卡」页签导入</span></div>'
    +msg+listBlock
    +'</div></div>';
 }
@@ -2352,11 +2351,43 @@ function voicePane(){
    +'<div style="display:flex;gap:14px;align-items:center;margin-top:22px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mut2);cursor:pointer"><input id="zjTtsAuto" type="checkbox" style="accent-color:#c9a063"'+(TTS.auto?' checked':'')+'>新的一幕自动朗读</label><div class="grow"></div><button data-act="ttsTest" class="obtn btn" style="font-size:13px;letter-spacing:.15em;padding:9px 20px">'+(TTSP.playing&&TTSP.idx===-1?'■ 停止':'试 听')+'</button></div>'
    +'</div></div>';
 }
+function cardPane(){
+  var msg=S.loreMsg?'<div style="font-size:12.5px;color:var(--gold3);margin-top:12px">'+esc(S.loreMsg)+'</div>':'';
+  var groups={},order=[];
+  ULORE.forEach(function(en,i){
+    var cn=en.card||(en.title&&en.title.indexOf('角色·')===0?en.title.slice(3):null);
+    if(!cn)return;
+    if(!groups[cn]){groups[cn]={n:0,on:0,main:null};order.push(cn);}
+    var g=groups[cn];g.n++;if(en.on!==false)g.on++;
+    if(!g.main&&en.title.indexOf('角色·')===0)g.main=en;
+  });
+  var rows=order.map(function(cn){
+    var g=groups[cn];var allOn=g.on>0;
+    var del=S.cardDel===cn
+      ?'<button data-carddel="'+esc(cn)+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:rgba(166,59,38,.25);border:1px solid rgba(166,59,38,.6);border-radius:8px;color:#e0a493">确认移除</button>'
+      :'<button data-carddel="'+esc(cn)+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:transparent;border:1px solid rgba(166,59,38,.35);border-radius:8px;color:#b06a55">移除</button>';
+    return '<div style="display:flex;align-items:center;gap:11px;border:1px solid rgba(255,238,205,.16);border-radius:12px;background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.04));box-shadow:inset 0 1px 0 rgba(255,242,214,.18);padding:11px 13px;margin-bottom:7px">'
+      +'<div class="btn" data-cardtog="'+esc(cn)+'" title="启用/停用整卡" style="cursor:pointer;flex:none;width:34px;height:18px;border-radius:9px;background:'+(allOn?'rgba(122,168,143,.45)':'rgba(255,255,255,.08)')+';position:relative"><div style="position:absolute;top:2px;'+(allOn?'right:2px':'left:2px')+';width:14px;height:14px;border-radius:50%;background:'+(allOn?'#a9cbb8':'#6f6148')+'"></div></div>'
+      +'<div class="grow" style="min-width:0"><div class="kai" style="font-size:15.5px;color:'+(allOn?'var(--gold2)':'var(--mut)')+'">'+esc(cn)+'</div>'
+      +'<div style="font-size:11.5px;color:#8a7a5e;margin-top:2px">'+g.n+' 条设定'+(g.main&&g.main.keys&&g.main.keys.length?(' · 正文提到「'+esc(g.main.keys[0])+'」即登场'):'')+'</div></div>'
+      +del+'</div>';
+  }).join('');
+  var listBlock=order.length
+    ?'<div style="display:flex;align-items:center;gap:12px;margin:26px 0 12px"><div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em">已请入之人</div><span style="font-size:12px;color:var(--mut)">'+order.length+' 位 · 细则可在「书 · 世界书」逐条编辑</span></div>'+rows
+    :'<div style="text-align:center;padding:30px 0 8px;font-size:13px;letter-spacing:.25em;color:#6f6148">尚未请入外来角色</div>';
+  return '<div class="grow bambooV" style="overflow-y:auto;padding:22px 28px"><div style="max-width:680px">'
+   +'<div style="font-size:12.5px;line-height:1.85;color:#8a7a5e;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 14px">把 <b style="color:var(--gold2)">SillyTavern 角色卡</b>请进周纪的天下：支持卡片 <b style="color:var(--gold2)">PNG</b>（内嵌数据）与 <b style="color:var(--gold2)">V2/V3 JSON</b>。导入后人物成为世界书条目——正文提到其名，AI 即按卡中设定演绎其言行并融入当朝背景；卡内自带的世界书一并生效。</div>'
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:22px 0 12px">请入角色</div>'
+   +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
+   +'<label class="btn glass" style="padding:10px 24px;cursor:pointer;color:var(--gold2);font-size:14px;letter-spacing:.1em">选择角色卡 PNG / JSON<input id="zjCardFile" type="file" accept=".png,.json,image/png,application/json" style="display:none"></label>'
+   +'<span style="font-size:12px;color:var(--mut)">酒馆 → 角色管理 → 导出的卡</span></div>'
+   +msg+listBlock+'</div></div>';
+}
 function setBody(){
-  var tabs=[['font','显 · 显示'],['voice','声 · 语音'],['lore','书 · 世界书'],['rx','则 · 正则'],['js','脚 · 助手脚本'],['api','链 · AI 接口']].map(function(t){var on=S.setTab===t[0];return '<div class="btn" data-settab="'+t[0]+'" style="position:relative;z-index:1;cursor:pointer;white-space:nowrap;padding:9px 15px;font-family:var(--kai);font-size:15px;letter-spacing:.18em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('');
+  var tabs=[['font','显 · 显示'],['voice','声 · 语音'],['card','卡 · 角色卡'],['lore','书 · 世界书'],['rx','则 · 正则'],['js','脚 · 助手脚本'],['api','链 · AI 接口']].map(function(t){var on=S.setTab===t[0];return '<div class="btn" data-settab="'+t[0]+'" style="position:relative;z-index:1;cursor:pointer;white-space:nowrap;padding:9px 15px;font-family:var(--kai);font-size:15px;letter-spacing:.18em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('');
   return '<div class="col grow" style="min-height:0">'
    +'<div id="zjSetBar" style="position:relative;flex:none;display:flex;gap:6px;padding:12px 18px;border-bottom:1px solid rgba(201,160,99,.18);overflow-x:auto;scrollbar-width:none">'+tabs+'</div>'
-   +'<div class="col grow" style="min-height:0">'+(S.setTab==='api'?apiBody():S.setTab==='lore'?lorePane():S.setTab==='rx'?rxPane():S.setTab==='js'?jsPane():S.setTab==='voice'?voicePane():fontPane())+'</div></div>';
+   +'<div class="col grow" style="min-height:0">'+(S.setTab==='api'?apiBody():S.setTab==='card'?cardPane():S.setTab==='lore'?lorePane():S.setTab==='rx'?rxPane():S.setTab==='js'?jsPane():S.setTab==='voice'?voicePane():fontPane())+'</div></div>';
 }
 function setPills(){
   if(S.overlay!=='set')return;
@@ -2744,6 +2775,14 @@ root.addEventListener('click',function(e){
         var ovTmp=document.createElement('div');ovTmp.innerHTML=overlayView();
         if(ovTmp.firstChild)root.appendChild(ovTmp.firstChild);
         morphOpen('zjOvBox','[data-ov="'+ovK+'"]');codexPills();setPills();return;}
+      if(t.getAttribute('data-cardtog')){var ctn9=t.getAttribute('data-cardtog');var con9=false;
+        ULORE.forEach(function(en){var cn9=en.card||(en.title&&en.title.indexOf('角色·')===0?en.title.slice(3):null);if(cn9===ctn9&&en.on!==false)con9=true;});
+        ULORE.forEach(function(en){var cn9=en.card||(en.title&&en.title.indexOf('角色·')===0?en.title.slice(3):null);if(cn9===ctn9)en.on=!con9;});
+        uloreSave();renderOverlay();return;}
+      if(t.getAttribute('data-carddel')){var cdn9=t.getAttribute('data-carddel');
+        if(S.cardDel===cdn9){for(var cz9=ULORE.length-1;cz9>=0;cz9--){var en9=ULORE[cz9];var cn8=en9.card||(en9.title&&en9.title.indexOf('角色·')===0?en9.title.slice(3):null);if(cn8===cdn9)ULORE.splice(cz9,1);}uloreSave();S.cardDel=null;S.loreMsg='已移除角色「'+cdn9+'」及其全部设定';}
+        else S.cardDel=cdn9;
+        renderOverlay();return;}
       if(t.getAttribute('data-apiprof')){var pfi=parseInt(t.getAttribute('data-apiprof'),10)-1;var pf0=PROFILES[pfi];
         if(pf0&&pf0.data){try{localStorage.setItem(APIK,JSON.stringify(pf0.data));}catch(e9){}API=loadApi();S.apiModels=null;S.profDelIx=null;S.apiMsg={t:'已切换到档案「'+pf0.name+'」。',c:'var(--grn2)'};renderOverlay();}
         return;}
