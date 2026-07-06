@@ -61,6 +61,14 @@ textarea:focus,button:focus,input:focus{outline:none}
 .gbtn:hover{filter:brightness(1.14)}
 .obtn{cursor:pointer;background:transparent;border:1px solid rgba(201,160,99,.3);color:var(--gold);transition:all .2s}
 .obtn:hover{border-color:rgba(224,190,130,.75);color:var(--gold2);background:rgba(201,160,99,.08)}
+/* ── 封面无框键：弥散暖雾，悬停/按住浮现流光金线 ── */
+.zjCoverBtn{position:relative;z-index:0;border:none;background:transparent;font-family:var(--kai);cursor:pointer;text-shadow:0 0 14px rgba(224,190,130,.5),0 1px 2px rgba(0,0,0,.85);transition:transform .3s cubic-bezier(.3,1.3,.4,1),filter .3s}
+.zjCoverBtn::before{content:'';position:absolute;z-index:-1;left:-30%;right:-30%;top:-70%;bottom:-70%;pointer-events:none;background:radial-gradient(ellipse 50% 42% at 50% 50%,rgba(224,180,110,.16),rgba(200,150,90,.05) 55%,transparent 78%);-webkit-backdrop-filter:blur(5px) saturate(150%);backdrop-filter:blur(5px) saturate(150%);-webkit-mask-image:radial-gradient(ellipse 46% 40% at 50% 50%,#000 8%,transparent 72%);mask-image:radial-gradient(ellipse 46% 40% at 50% 50%,#000 8%,transparent 72%)}
+.zjCoverBtn::after{content:'';position:absolute;left:14%;right:14%;bottom:7px;height:1px;opacity:0;transition:opacity .35s;background:linear-gradient(90deg,transparent,rgba(232,200,140,.85) 30%,rgba(255,240,210,.95) 50%,rgba(232,200,140,.85) 70%,transparent);background-size:220% 100%;animation:zjFlow 3.8s linear infinite;filter:drop-shadow(0 0 6px rgba(224,190,130,.6))}
+.zjCoverBtn:hover{filter:brightness(1.25);transform:translateY(-2px)}
+.zjCoverBtn:active{transform:scale(.96)}
+.zjCoverBtn:hover::after,.zjCoverBtn:active::after{opacity:1}
+@keyframes zjFlow{0%{background-position:120% 0}100%{background-position:-120% 0}}
 /* ── 液态玻璃主题：D配方（A质感 × C透明度 × 16px） ── */
 .btn{border-radius:10px}
 .gbtn{border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,240,200,.45),0 4px 12px rgba(0,0,0,.35)}
@@ -1374,7 +1382,7 @@ function titleView(){
   var claudeOK = TH.available || (window.claude&&window.claude.complete);
   var badge = TH.available?'已连接酒馆 · 真实生成驱动':apiReady()?'独立模式 · 已接入 '+API_DEF[API.provider].name+' · '+apiCur().model:(window.claude&&window.claude.complete)?'独立模式 · AI 就绪':'独立模式 · 尚未接入 AI · 点「链 · 接入」配置后即可正式游玩';
   var dotc = (TH.available||apiReady())?'var(--grn)':((window.claude&&window.claude.complete)?'var(--grn)':'var(--red2)');
-  var cont = (S.history.length||(!TH.available&&pref.history&&pref.history.length))?'<button data-act="continue" class="btn glass glassHover kai" style="color:var(--gold);font-size:19px;letter-spacing:.3em;width:clamp(150px,42vw,230px);height:54px;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1;cursor:pointer">续 前 缘</button>':'';
+  var cont = (S.history.length||(!TH.available&&pref.history&&pref.history.length))?'<button data-act="continue" class="btn zjCoverBtn" style="color:var(--gold);font-size:21px;letter-spacing:.3em;width:clamp(150px,42vw,230px);height:54px;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1">续 前 缘</button>':'';
   var bgmBtn='<button data-act="bgm" class="obtn btn kai" title="编钟雅乐" style="position:absolute;top:16px;right:64px;width:38px;height:38px;font-size:17px;color:'+(BGM.playing?'var(--gold2)':'var(--mut)')+';border-color:'+(S.bgmOpen?'rgba(201,160,99,.55)':'rgba(201,160,99,.25)')+'">乐</button>'
     +'<button data-ov="set" class="obtn btn" title="设置" style="position:absolute;top:16px;right:16px;width:38px;height:38px;color:var(--mut)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="3.1"/><path d="M19.3 12c0-.5-.05-.99-.15-1.46l2-1.56-1.8-3.12-2.37.95a7.4 7.4 0 0 0-2.52-1.46L14.1 2.8h-4.2l-.36 2.55a7.4 7.4 0 0 0-2.52 1.46l-2.37-.95-1.8 3.12 2 1.56c-.1.47-.15.96-.15 1.46s.05.99.15 1.46l-2 1.56 1.8 3.12 2.37-.95c.75.65 1.6 1.15 2.52 1.46l.36 2.55h4.2l.36-2.55a7.4 7.4 0 0 0 2.52-1.46l2.37.95 1.8-3.12-2-1.56c.1-.47.15-.96.15-1.46z"/></svg></button>';
   return '<div class="col center" style="position:relative;text-align:center;padding-bottom:11vh">'+bgmBtn
@@ -1385,8 +1393,8 @@ function titleView(){
     +'<div class="slip" style="position:relative;width:320px;max-width:74vw;margin:18px auto 12px"></div>'
     +'<div style="position:relative;font-size:13px;letter-spacing:.34em;color:var(--mut);padding:0 20px">永生周天子 · 你即姬瑶 · 天下由 AI 扮演</div>'
     +'<div style="position:relative;display:flex;gap:16px;margin-top:44px;flex-wrap:wrap;justify-content:center">'
-    +'<button data-act="toselect" class="btn glass glassHover kai" style="font-size:19px;letter-spacing:.3em;width:clamp(150px,42vw,230px);height:54px;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1;color:var(--gold2);border-color:rgba(224,190,130,.55);cursor:pointer">启 新 局</button>'+cont
-    +'<button data-ov="api" class="btn glass glassHover kai" style="font-size:19px;letter-spacing:.3em;width:clamp(150px,42vw,230px);height:54px;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1;color:var(--gold);cursor:pointer">链 · 接入</button></div>'
+    +'<button data-act="toselect" class="btn zjCoverBtn" style="font-size:21px;letter-spacing:.3em;width:clamp(150px,42vw,230px);height:54px;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1;color:var(--gold2)">启 新 局</button>'+cont
+    +'<button data-ov="api" class="btn zjCoverBtn" style="font-size:21px;letter-spacing:.3em;width:clamp(150px,42vw,230px);height:54px;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1;color:#c3aa7e">链 · 接入</button></div>'
     +'<div class="btn" data-ov="api" style="cursor:pointer;position:absolute;bottom:34px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;letter-spacing:.2em;color:var(--mut)"><span class="dot" style="background:'+dotc+'"></span>'+esc(badge)+'</div>'
     +'</div>';
 }
