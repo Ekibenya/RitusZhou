@@ -397,6 +397,76 @@ function scanLore(recent,budget){
   return out;
 }
 function fill(s){return String(s||'').split('{{user}}').join('姬瑶（由玩家扮演）').split('{{char}}').join('你');}
+/* ---------------- 语音朗读（浏览器内置 / 自带TTS接口，密钥仅存本机） ---------------- */
+var TTSKEY='zhouji_tts_v1';
+var TTS={src:'web',scope:'all',voice:'',rate:1,auto:false,url:'',key:'',model:''};
+try{Object.assign(TTS,JSON.parse(localStorage.getItem(TTSKEY)||'{}')||{});}catch(e){}
+function ttsSave(){try{localStorage.setItem(TTSKEY,JSON.stringify(TTS));}catch(e){}}
+function ttsApiReady(){return !!(TTS.key&&TTS.model);}
+function ttsAvailable(){return TTS.src==='api'?ttsApiReady():!!window.speechSynthesis;}
+var DLG_RE=/「([^」]*)」|『([^』]*)』|“([^”]*)”|"([^"]*)"|【([^】]*)】|\[([^\]]*)\]/g;
+function ttsText(t){
+  t=applyRegex(extractCoT(stripMvu(String(t||''))).text,'display').replace(/^【[^】]*】/,'').trim();
+  if(TTS.scope==='dialog'){var outs=[];DLG_RE.lastIndex=0;var m;
+    while((m=DLG_RE.exec(t))){for(var gi=1;gi<7;gi++)if(m[gi]!=null){if(m[gi].trim())outs.push(m[gi].trim());break;}}
+    return outs.join('。').replace(/。{2,}/g,'。');}
+  if(TTS.scope==='narr'){DLG_RE.lastIndex=0;return t.replace(DLG_RE,'').replace(/[ \t]+/g,' ').trim();}
+  return t;
+}
+function ttsChunks(t,n){
+  var parts=String(t).split(/([。！？!?；;\n])/);var segs=[];
+  for(var pi=0;pi<parts.length;pi+=2){segs.push(parts[pi]+(parts[pi+1]||''));}
+  var out=[],cur='';
+  for(var i=0;i<segs.length;i++){if((cur+segs[i]).length>n&&cur){out.push(cur);cur='';}cur+=segs[i];}
+  if(cur.trim())out.push(cur);
+  return out.filter(function(x){return x.trim();});
+}
+var TTSP={playing:false,idx:null,seq:0,audio:null};
+function ttsDuck(on){try{if(BGM.el)BGM.el.volume=on?0.18:0.75;}catch(e){}}
+function ttsStop(soft){
+  TTSP.seq++;TTSP.playing=false;TTSP.idx=null;
+  try{if(window.speechSynthesis)speechSynthesis.cancel();}catch(e){}
+  if(TTSP.audio){try{TTSP.audio.pause();}catch(e){}TTSP.audio=null;}
+  ttsDuck(false);
+  if(!soft)renderSoft();
+}
+function ttsSpeak(i,sampleText){
+  if(TTSP.playing)ttsStop(true);
+  var txt=sampleText!=null?sampleText:(S.history[i]&&S.history[i].role==='world'?ttsText(S.history[i].text):'');
+  if(!txt.trim())return;
+  TTSP.playing=true;TTSP.idx=sampleText!=null?-1:i;
+  var my=++TTSP.seq;
+  ttsDuck(true);renderSoft();
+  function done(){if(TTSP.seq!==my)return;ttsStop();}
+  if(TTS.src==='api'&&ttsApiReady()){
+    var chunks=ttsChunks(txt,800),ci=0;
+    (function next(){
+      if(TTSP.seq!==my)return;
+      if(ci>=chunks.length)return done();
+      var base=String(TTS.url||'https://api.openai.com/v1').trim().replace(/\/+$/,'');
+      fetch(base+'/audio/speech',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TTS.key},body:JSON.stringify({model:TTS.model,voice:TTS.voice||'alloy',input:chunks[ci++],speed:Number(TTS.rate)||1})})
+        .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
+        .then(function(b){
+          if(TTSP.seq!==my)return;
+          var u=URL.createObjectURL(b);var a=new Audio(u);TTSP.audio=a;
+          a.onended=function(){URL.revokeObjectURL(u);next();};
+          a.onerror=function(){URL.revokeObjectURL(u);done();};
+          a.play()['catch'](done);
+        })['catch'](function(){if(TTSP.seq===my){S.cmdHint='朗读失败：TTS 接口不可用或跨域受限';done();}});
+    })();
+  }else if(window.speechSynthesis){
+    var chunks2=ttsChunks(txt,180),cj=0;
+    (function next2(){
+      if(TTSP.seq!==my)return;
+      if(cj>=chunks2.length)return done();
+      var u2=new SpeechSynthesisUtterance(chunks2[cj++]);
+      u2.lang='zh-CN';u2.rate=Number(TTS.rate)||1;
+      if(TTS.voice){var vs=speechSynthesis.getVoices();for(var vi=0;vi<vs.length;vi++){if(vs[vi].name.indexOf(TTS.voice)>=0){u2.voice=vs[vi];break;}}}
+      u2.onend=next2;u2.onerror=done;
+      speechSynthesis.speak(u2);
+    })();
+  }else done();
+}
 /* ---------------- 插画图库（IndexedDB 存图，存档只记编号；双层瘦身防卡防爆） ---------------- */
 var IDB=null;
 function idbOpen(cb){if(IDB)return cb(IDB);if(!window.indexedDB)return cb(null);
@@ -1326,6 +1396,7 @@ function storyPane(){
     else{ paras='<div>'+worldParas(text)+'</div>'; }
     var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;gap:9px;align-items:center;margin-top:2px;flex-wrap:wrap"><div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div>'
       +(imgReady()&&!h.img?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">✦ 绘此幕</div>'):'')
+      +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停 诵</div>':'<div class="btn obtn" data-act="ttsScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">♪ 诵此幕</div>'):'')
       +(S.imgErr?'<div style="font-size:11.5px;color:#d9a06a">'+esc(S.imgErr)+'</div>':'')+'</div>':'';
     return '<div class="fade" style="margin-bottom:24px">'+chap+illu+cotHtml+paras+retry+'</div>';
   }).join('');
@@ -1772,11 +1843,32 @@ function jsPane(){
    +msg+listBlock
    +'</div></div>';
 }
+function voicePane(){
+  var inp='style="width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);padding:9px 12px;font-size:13.5px" autocomplete="off" spellcheck="false"';
+  function seg(items,attr,cur){return '<div style="display:flex;border:1px solid rgba(255,238,205,.2);border-radius:10px;overflow:hidden;width:max-content;max-width:100%">'+items.map(function(it){var on=cur===it[0];return '<div class="btn" '+attr+'="'+it[0]+'" style="cursor:pointer;padding:8px 16px;font-size:13px;letter-spacing:.08em;white-space:nowrap;color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'rgba(201,160,99,.12)':'transparent')+'">'+it[1]+'</div>';}).join('')+'</div>';}
+  return '<div class="grow bambooV" style="overflow-y:auto;padding:22px 28px"><div style="max-width:680px">'
+   +'<div style="font-size:12.5px;line-height:1.85;color:#8a7a5e;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 14px">把正文读出来。<b style="color:var(--gold2)">浏览器内置</b>零配置免费（系统自带音色）；<b style="color:var(--gold2)">自带接口</b>走 OpenAI 兼容 /audio/speech（tts-1、gpt-4o-mini-tts 及各中转），密钥只存本机。每幕正文下有「♪ 诵此幕」。</div>'
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:22px 0 12px">语音来源</div>'
+   +seg([['web','浏览器内置'],['api','自带 TTS 接口']],'data-ttssrc',TTS.src)
+   +(TTS.src==='api'
+     ?'<div style="margin-top:12px"><input id="zjTtsUrl" '+inp+' value="'+esc(TTS.url)+'" placeholder="接口地址：https://api.openai.com/v1（或中转）"></div>'
+      +'<div style="margin-top:9px"><input id="zjTtsKey" type="password" '+inp+' value="'+esc(TTS.key)+'" placeholder="TTS 密钥 sk-…"></div>'
+      +'<div style="margin-top:9px"><input id="zjTtsModel" '+inp+' value="'+esc(TTS.model)+'" placeholder="模型：如 tts-1 / gpt-4o-mini-tts"></div>'
+     :'')
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:26px 0 12px">朗读范围</div>'
+   +seg([['all','全 读'],['dialog','仅对话'],['narr','仅旁白']],'data-ttsscope',TTS.scope)
+   +'<div style="font-size:12px;color:var(--mut);margin-top:8px;line-height:1.8">仅对话＝只读「」『』“”【】等引号内的台词；仅旁白＝跳过全部台词只读叙述。状态栏与思维链一律不读。</div>'
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:26px 0 12px">音色与语速</div>'
+   +'<div><input id="zjTtsVoice" '+inp+' value="'+esc(TTS.voice)+'" placeholder="'+(TTS.src==='api'?'音色名：如 alloy / nova / shimmer':'留空用系统默认；或填系统音色名关键字（如 Tingting）')+'"></div>'
+   +'<div style="display:flex;align-items:center;gap:14px;margin-top:12px"><span style="font-size:13px;color:var(--mut)">语速</span><input id="zjTtsRate" type="range" min="0.5" max="2" step="0.1" value="'+(Number(TTS.rate)||1)+'" style="flex:1;accent-color:#c9a063;border:none;background:transparent;padding:0"><span id="zjTtsRateV" style="width:44px;text-align:right;font-size:14px;color:var(--gold3)">'+(Number(TTS.rate)||1).toFixed(1)+'x</span></div>'
+   +'<div style="display:flex;gap:14px;align-items:center;margin-top:22px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mut2);cursor:pointer"><input id="zjTtsAuto" type="checkbox" style="accent-color:#c9a063"'+(TTS.auto?' checked':'')+'>新的一幕自动朗读</label><div class="grow"></div><button data-act="ttsTest" class="obtn btn" style="font-size:13px;letter-spacing:.15em;padding:9px 20px">'+(TTSP.playing&&TTSP.idx===-1?'■ 停止':'试 听')+'</button></div>'
+   +'</div></div>';
+}
 function setBody(){
-  var tabs=[['font','显 · 显示'],['lore','书 · 世界书'],['rx','则 · 正则'],['js','脚 · 助手脚本'],['api','链 · AI 接口']].map(function(t){var on=S.setTab===t[0];return '<div class="btn" data-settab="'+t[0]+'" style="position:relative;z-index:1;cursor:pointer;white-space:nowrap;padding:9px 15px;font-family:var(--kai);font-size:15px;letter-spacing:.18em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('');
+  var tabs=[['font','显 · 显示'],['voice','声 · 语音'],['lore','书 · 世界书'],['rx','则 · 正则'],['js','脚 · 助手脚本'],['api','链 · AI 接口']].map(function(t){var on=S.setTab===t[0];return '<div class="btn" data-settab="'+t[0]+'" style="position:relative;z-index:1;cursor:pointer;white-space:nowrap;padding:9px 15px;font-family:var(--kai);font-size:15px;letter-spacing:.18em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('');
   return '<div class="col grow" style="min-height:0">'
    +'<div id="zjSetBar" style="position:relative;flex:none;display:flex;gap:6px;padding:12px 18px;border-bottom:1px solid rgba(201,160,99,.18);overflow-x:auto;scrollbar-width:none">'+tabs+'</div>'
-   +'<div class="col grow" style="min-height:0">'+(S.setTab==='api'?apiBody():S.setTab==='lore'?lorePane():S.setTab==='rx'?rxPane():S.setTab==='js'?jsPane():fontPane())+'</div></div>';
+   +'<div class="col grow" style="min-height:0">'+(S.setTab==='api'?apiBody():S.setTab==='lore'?lorePane():S.setTab==='rx'?rxPane():S.setTab==='js'?jsPane():S.setTab==='voice'?voicePane():fontPane())+'</div></div>';
 }
 function setPills(){
   if(S.overlay!=='set')return;
@@ -1877,7 +1969,7 @@ function render(){
     else if(!S.thinking&&SBX.thinking){SBX.thinking=false;}
     var _wc=0;for(var _wi=0;_wi<S.history.length;_wi++)if(S.history[_wi].role==='world')_wc++;
     if(SBX.wc==null)SBX.wc=_wc;
-    else if(_wc>SBX.wc){SBX.wc=_wc;var _lid=S.history.length-1;sbxEmit('MESSAGE_RECEIVED',_lid);sbxEmit('GENERATION_ENDED',S.history[_lid]?S.history[_lid].text:'');}
+    else if(_wc>SBX.wc){SBX.wc=_wc;var _lid=S.history.length-1;sbxEmit('MESSAGE_RECEIVED',_lid);sbxEmit('GENERATION_ENDED',S.history[_lid]?S.history[_lid].text:'');if(TTS.auto&&ttsAvailable()&&S.history[_lid]&&S.history[_lid].role==='world'){try{ttsSpeak(_lid);}catch(e5){}}}
     else if(_wc<SBX.wc){SBX.wc=_wc;}
   }catch(e){}
   ensureTyping();
@@ -1993,6 +2085,11 @@ root.addEventListener('input',function(e){
   if(!e.target)return;
   if(e.target.id==='zjInput'){S.input=e.target.value;return;}
   if(e.target.id==='zjWzYear'){if(S.wiz)S.wiz.customYear=e.target.value;return;}
+  if(e.target.id==='zjTtsVoice'){TTS.voice=e.target.value.trim();ttsSave();return;}
+  if(e.target.id==='zjTtsUrl'){TTS.url=e.target.value.trim();ttsSave();return;}
+  if(e.target.id==='zjTtsKey'){TTS.key=e.target.value.trim();ttsSave();return;}
+  if(e.target.id==='zjTtsModel'){TTS.model=e.target.value.trim();ttsSave();return;}
+  if(e.target.id==='zjTtsRate'){TTS.rate=parseFloat(e.target.value)||1;ttsSave();var trv=document.getElementById('zjTtsRateV');if(trv)trv.textContent=TTS.rate.toFixed(1)+'x';return;}
   if(e.target.id==='zjFsRange'){var fv=Math.max(85,Math.min(160,parseInt(e.target.value,10)||100));FS=fv/100;try{localStorage.setItem('zhouji_fs',String(FS));}catch(er){}
     var fl=document.getElementById('zjFsVal');if(fl)fl.textContent=fv+'%';
     var zzs=document.querySelectorAll('[data-zjzoom]');for(var zzi=0;zzi<zzs.length;zzi++)zzs[zzi].style.zoom=FS;
@@ -2064,6 +2161,7 @@ function dragEnd(e,commit){
 root.addEventListener('pointerup',function(e){dragEnd(e,true);});
 root.addEventListener('pointercancel',function(e){dragEnd(e,false);});
 root.addEventListener('change',function(e){
+  if(e.target&&e.target.id==='zjTtsAuto'){TTS.auto=!!e.target.checked;ttsSave();return;}
   if(e.target&&e.target.id==='zjJsFile'&&e.target.files&&e.target.files.length){
     [].forEach.call(e.target.files,function(jf){var jr=new FileReader();jr.onload=function(){USCRIPTS.push({name:jf.name.replace(/\.[^.]+$/,'').slice(0,40),code:String(jr.result||''),on:true});uscriptsSave();sbxStartAll();S.jsMsg='已导入「'+jf.name+'」';if(S.overlay)renderOverlay();};jr.readAsText(jf);});
     return;
@@ -2132,6 +2230,8 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-load')){var id=+t.getAttribute('data-load');var r=S.saves.filter(function(x){return x.id===id;})[0];if(r)loadSave(r);return;}
       if(t.getAttribute('data-del')){delSave(+t.getAttribute('data-del'));return;}
       if(t.getAttribute('data-bgm')){bgmPlay(parseInt(t.getAttribute('data-bgm'),10));render();return;}
+      if(t.getAttribute('data-ttssrc')){TTS.src=t.getAttribute('data-ttssrc');ttsSave();renderOverlay();return;}
+      if(t.getAttribute('data-ttsscope')){TTS.scope=t.getAttribute('data-ttsscope');ttsSave();renderOverlay();return;}
       if(t.getAttribute('data-imgload')){var mlid=t.getAttribute('data-imgload');var mlWrap=t.parentNode;
         mlWrap.innerHTML='<div style="padding:26px 0;text-align:center;font-size:12px;letter-spacing:.2em;color:var(--mut)">插画载入中…</div>';
         imgURL(mlid,function(u){if(!mlWrap.isConnected)return;
@@ -2220,6 +2320,9 @@ root.addEventListener('click',function(e){
             zi1.animate([{transform:'translate('+(zwR.left+zwR.width/2-(zr1.left+zr1.width/2))+'px,'+(zwR.top+zwR.height/2-(zr1.top+zr1.height/2))+'px) scale('+Math.max(.05,zwR.width/zr1.width)+','+Math.max(.05,zwR.height/zr1.height)+')',opacity:.3},{transform:'translateZ(0)',opacity:1}],{duration:440,easing:'cubic-bezier(.3,1.06,.32,1)'});}
         }
         return;}
+      else if(a==='ttsScene'){var tli=-1;for(var tj=S.history.length-1;tj>=0;tj--){if(S.history[tj].role==='world'){tli=tj;break;}}if(tli>=0)ttsSpeak(tli);return;}
+      else if(a==='ttsStop'){ttsStop();return;}
+      else if(a==='ttsTest'){if(TTSP.playing&&TTSP.idx===-1){ttsStop(true);}else{ttsSpeak(null,'「撑过三年。」单穆公白着头发对你叩首时这么说。殿外朔风吞雪，灯影摇晃。');}renderOverlay();return;}
       else if(a==='drawScene'){
         if(S.imgBusy!=null||!imgReady())return;
         var dli=-1;for(var dj=S.history.length-1;dj>=0;dj--){if(S.history[dj].role==='world'){dli=dj;break;}}
