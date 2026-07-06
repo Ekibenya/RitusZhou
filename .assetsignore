@@ -1,0 +1,14 @@
+.git
+.github
+docs
+node_modules
+dist
+cf-worker.js
+wrangler.jsonc
+vercel.json
+.gitignore
+.assetsignore
+*.md
+LICENSE
+*.zip
+*.svg
