@@ -1180,10 +1180,11 @@ function storyPane(){
   var hide3d=!window.__ZJ3D_OFF__&&HIDE3D;
   var sceneH=(window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mob):((window.__ZJ3D_OFF__&&SVGF)?34:(mob?140:186));
   var barH=S.zen?46:(mob?96:58);
-  var scene='<div id="zjSceneIsle" class="zjHl" style="position:absolute;top:'+barH+'px;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';height:'+sceneH+'px;z-index:4;transform:translateZ(0);-webkit-transform:translateZ(0);border-radius:16px;overflow:hidden;background:#0b0906;border:1px solid rgba(255,238,205,.16);box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,242,214,.14)">'+(window.THREE?'<div id="zjScene3D" style="position:absolute;inset:0"></div>':sceneSvg(m))+(window.__ZJ3D_OFF__?('<div data-act="svgfold" class="btn" style="position:absolute;top:6px;right:10px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">'+(SVGF?'展开':'收起')+'</div>'+(SVGF?'':'<div data-act="on3d" class="btn" style="position:absolute;top:6px;right:66px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">启 · 三维</div>')):'')
+  var scene='<div id="zjSceneIsle" class="zjHl" style="position:absolute;'+(S.worldFull?'inset:0;border-radius:0;z-index:6;':'top:'+barH+'px;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';height:'+sceneH+'px;border-radius:16px;z-index:4;')+'transform:translateZ(0);-webkit-transform:translateZ(0);overflow:hidden;background:#0b0906;border:1px solid rgba(255,238,205,.16);box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,242,214,.14)">'+(window.THREE?'<div id="zjScene3D" style="position:absolute;inset:0"></div>':sceneSvg(m))+(window.__ZJ3D_OFF__?('<div data-act="svgfold" class="btn" style="position:absolute;top:6px;right:10px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">'+(SVGF?'展开':'收起')+'</div>'+(SVGF?'':'<div data-act="on3d" class="btn" style="position:absolute;top:6px;right:66px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">启 · 三维</div>')):'')
     +'<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">'+particlesHtml(m)+'</div>'
     +(m.place?'<div class="kai" style="position:absolute;top:48px;right:16px;writing-mode:vertical-rl;font-size:17px;letter-spacing:.3em;color:rgba(232,217,176,.92);text-shadow:0 0 16px rgba(0,0,0,.9)">'+esc(m.place)+'</div>':'')
     +(m.wx?'<div style="position:absolute;left:14px;bottom:'+((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded)?30:10)+'px;font-size:11px;letter-spacing:.2em;color:rgba(157,140,107,.9);background:rgba(13,10,8,.55);padding:4px 10px;border:1px solid rgba(201,160,99,.2);border-radius:8px">'+esc(m.wx)+'</div>':'')
+    +((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded&&!S.worldFull)?'<div data-act="worldFull" class="btn zjHl" title="三维画面全屏" style="position:absolute;top:8px;left:50%;margin-left:-31px;z-index:7;cursor:pointer;padding:3px 13px;border-radius:99px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em">全屏</div>':'')
     +'</div>';
   var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['look','观 · 察看'],['free','书 · 自由'],['world','令 · 天下']];
   var chips=MODES.map(function(md){var on=md[0]===S.mode;return '<div class="btn zjHl" data-mode="'+md[0]+'" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(on?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)')+';color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?md[1].replace(/\s/g,''):md[1])+'</div>';}).join('');
@@ -1193,7 +1194,8 @@ function storyPane(){
     +'<div class="glass" style="pointer-events:auto;padding:'+(mob?'7px 9px 8px':'8px 12px 9px')+';border-radius:20px">'
     +'<div style="display:flex;gap:8px;align-items:stretch"><textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'" style="flex:1;resize:none;background:rgba(20,15,11,.28);border:1px solid rgba(201,160,99,.28);border-radius:12px;color:var(--gold3);font-size:16px;line-height:1.7;padding:'+(mob?'6px 10px':'6px 12px')+'">'+esc(S.input)+'</textarea>'
     +'<button data-act="send" class="btn glass kai" style="flex:none;width:'+(mob?'44px':'56px')+';font-size:14px;letter-spacing:.15em;writing-mode:vertical-rl;color:var(--gold2);border-color:rgba(224,190,130,.5);border-radius:12px;cursor:pointer;opacity:'+(S.thinking?.5:1)+'">递呈</button></div>'+(S.cmdHint?'<div id="zjCmdHint" style="margin-top:7px;font-size:12.5px;line-height:1.6;color:#d9a06a">令未行：'+esc(S.cmdHint)+'</div>':'')+'</div></div></div>';
-  if(S.zen){
+  if(S.worldFull){input='';}
+  else if(S.zen){
     input=S.zenInput
       ?'<div id="zjInWrap" style="position:absolute;left:12px;right:12px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:5;pointer-events:none"><div style="pointer-events:auto;max-width:680px;margin:0 auto;display:flex"><textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'（回车递呈）" style="flex:1;resize:none;background:transparent;border:none;outline:none;color:var(--gold3);font-size:16px;line-height:1.8;padding:4px 6px;text-align:center;text-shadow:0 1px 8px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.9);caret-color:var(--gold2)">'+esc(S.input)+'</textarea></div></div>'
       :'<div data-act="zenInput" class="btn" title="书写" style="position:absolute;left:50%;margin-left:-24px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:5;width:48px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="width:9px;height:9px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span></div>';
@@ -1259,6 +1261,10 @@ function gameView(){
     top='<div style="position:absolute;top:'+(mob?'10px':'12px')+';right:12px;z-index:8;display:flex;gap:8px;align-items:stretch">'
       +'<div data-act="zenWorld" class="btn zjHl" title="'+(S.zenWorld?'收起天下画面':'展开天下画面')+'" style="cursor:pointer;padding:0 13px;border-radius:99px;background:'+(S.zenWorld?'rgba(201,160,99,.22)':'rgba(10,8,6,.9)')+';border:1px solid rgba(224,190,130,'+(S.zenWorld?'.8':'.4')+');box-shadow:inset 0 1px 0 rgba(255,242,214,.25);display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span><span style="font-size:11px;letter-spacing:.18em;color:var(--gold2);font-family:var(--kai)">天下</span></div>'
       +'<button data-act="zen" class="obtn btn" title="退出全屏" style="font-size:12px;letter-spacing:.14em;padding:7px 14px">退出全屏</button></div>';
+    body=mob?'<div class="grow zjPane" style="position:relative;min-height:0">'+storyPane()+'</div>':'<div class="row grow">'+storyPane()+'</div>';
+  }
+  if(S.worldFull){
+    top='<button data-act="worldFull" class="obtn btn" title="退出三维全屏" style="position:absolute;left:50%;margin-left:-48px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:8;font-size:12px;letter-spacing:.14em;padding:7px 18px">退出全屏</button>';
     body=mob?'<div class="grow zjPane" style="position:relative;min-height:0">'+storyPane()+'</div>':'<div class="row grow">'+storyPane()+'</div>';
   }
   return '<div class="col" style="position:relative">'+top+body+'</div>'+(S.bgmOpen?bgmPanel():'')+(S.overlay?overlayView():'');
@@ -1886,20 +1892,37 @@ root.addEventListener('click',function(e){
         else{zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)'});});
           setTimeout(function(){S.zen=true;S.zenWorld=false;render();},295);}
         return;}
+      else if(a==='worldFull'){
+        var wfI=document.getElementById('zjSceneIsle');var wfR=wfI&&wfI.getBoundingClientRect();
+        S.worldFull=!S.worldFull;render();
+        var wfI2=document.getElementById('zjSceneIsle');
+        if(wfI2&&wfI2.animate&&wfR&&!reducedMotion()){var wfr2=wfI2.getBoundingClientRect();
+          wfI2.animate([{transform:'translate('+(wfR.left+wfR.width/2-(wfr2.left+wfr2.width/2))+'px,'+(wfR.top+wfR.height/2-(wfr2.top+wfr2.height/2))+'px) scale('+Math.max(.05,wfR.width/wfr2.width)+','+Math.max(.05,wfR.height/wfr2.height)+')'},{transform:'translateZ(0)'}],{duration:420,easing:'cubic-bezier(.3,1.05,.32,1)'});}
+        return;}
       else if(a==='zenInput'){S.zenInput=true;render();var zt=document.getElementById('zjInput');if(zt)zt.focus();return;}
       else if(a==='zenWorld'){
         var zwBtn=document.querySelector('[data-act="zenWorld"]');var zwR=zwBtn&&zwBtn.getBoundingClientRect();
+        var zwOff=((window.ZJ3D&&ZJ3D.paneH)?ZJ3D.paneH(isMobile()):150)+8;
+        function zwCollapse(){if(!S.zenWorld)return;
+          var se0=document.getElementById('zjStory');var st0=se0?se0.scrollTop:0;
+          S.zenWorld=false;render();
+          var se1=document.getElementById('zjStory');if(!se1)return;
+          if(st0>zwOff){se1.scrollTop=st0-zwOff;}
+          else{se1.scrollTop=0;var inn=se1.firstElementChild;
+            if(inn&&inn.animate&&!reducedMotion())inn.animate([{transform:'translateY('+(zwOff-st0)+'px)'},{transform:'none'}],{duration:320,easing:'cubic-bezier(.3,1,.35,1)'});}}
         if(S.zenWorld){
           var zi0=document.getElementById('zjSceneIsle');
           if(zi0&&zi0.animate&&zwR&&!reducedMotion()){var zr0=zi0.getBoundingClientRect();
             var zan=zi0.animate([{transform:'translateZ(0)',opacity:1},{transform:'translate('+(zwR.left+zwR.width/2-(zr0.left+zr0.width/2))+'px,'+(zwR.top+zwR.height/2-(zr0.top+zr0.height/2))+'px) scale('+Math.max(.05,zwR.width/zr0.width)+','+Math.max(.05,zwR.height/zr0.height)+')',opacity:.25}],{duration:330,easing:'cubic-bezier(.5,0,.7,.4)'});
-            zan.onfinish=function(){if(S.zenWorld){S.zenWorld=false;render();}};
-            setTimeout(function(){if(S.zenWorld){S.zenWorld=false;render();}},700);
-          }else{S.zenWorld=false;render();}
+            zan.onfinish=zwCollapse;
+            setTimeout(zwCollapse,700);
+          }else{zwCollapse();}
         }else{
           try{localStorage.removeItem('zj3d_hide');}catch(e){}
           if(SVGF){SVGF=false;try{localStorage.setItem('zj_svgfold','0');}catch(e){}}
+          var se2=document.getElementById('zjStory');var st2=se2?se2.scrollTop:0;
           S.zenWorld=true;render();
+          var se3=document.getElementById('zjStory');if(se3)se3.scrollTop=st2+zwOff;
           var zi1=document.getElementById('zjSceneIsle');
           if(zi1&&zi1.animate&&zwR&&!reducedMotion()){var zr1=zi1.getBoundingClientRect();
             zi1.animate([{transform:'translate('+(zwR.left+zwR.width/2-(zr1.left+zr1.width/2))+'px,'+(zwR.top+zwR.height/2-(zr1.top+zr1.height/2))+'px) scale('+Math.max(.05,zwR.width/zr1.width)+','+Math.max(.05,zwR.height/zr1.height)+')',opacity:.3},{transform:'translateZ(0)',opacity:1}],{duration:440,easing:'cubic-bezier(.3,1.06,.32,1)'});}
