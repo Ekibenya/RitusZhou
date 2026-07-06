@@ -767,7 +767,7 @@ function buildSystem(history,userInput){
     '【世界书·激活条目】\n'+lore.map(function(e){return '『'+e.title+'』'+e.content;}).join('\n'),
     '【对话示例】\n'+fill(G.mes_example),
     '【输出格式·铁则】正文用现代白话轻小说笔法(2-6段)，停在需要天子表态处。末尾必须输出<mvu_panel>状态栏：<sec_char>含◆衣冠/持物/御体/观瞻/神格(0-100)/史笔；<sec_npc>每在场NPC一行◈名字|状态|好感(0-100)|心声；<sec_world>含◇纪年/时地/天气/安稳(0-100)/大势/将临。禁止<UpdateVariable>。若且仅若本轮叙事中天下有实际变动——天子下令兴建并落成、屋舍焚毁坍塌、人物来到或离去——则在<sec_world>之后增写<sec_deed>，每类一行：▣兴作|名目×数、▣毁损|名目×数、▣来者|人物、▣去者|人物；多项以、分隔。兴作与毁损名目仅限：马厩、酒楼、客栈、茶棚、书肆、药铺、布庄、铁匠铺、兵器铺、金铺、珠玉行、陶坊、铸坊、肉铺、杂货铺、粮行、货栈、官仓、官署、神祠、民居、宫室、凉亭、草棚、戏台、宝塔、石桥、牌楼、石雕、常青树、樱树、金枫、红枫、苍松、竹丛、花圃、灯柱、芦苇、露岩、假山、池塘、石板道、御道、夯土官道；人物仅限：士人、农人、匠人、商贾、官吏、将军、方士、乐师、史官、巫祝、游侠、儒生、墨者、说客、医者、卜者、渔父、樵夫。每轮兴作至多3件、毁损至多2件；只记实际发生者，无变动则不得输出<sec_deed>。',
-    S.chatOnly?'【仅对话模式·最高优先级】本轮进入贴身对谈：正文只写对话，不写旁白、场景、动作与心理描写。由当前在场的 NPC 直接开口，每句独立一行，格式严格为：名字：「台词」。可以多句往来，也可由一人连说，但除对话行外不得有任何其他正文文字。玩家的输入就是其原话，直接回应。<mvu_panel>状态栏仍须照常完整输出。':'',
+    S.chatOnly?'【聊天模式·最高优先级·覆盖一切输出格式要求】玩家要的是即时通讯般的快聊：只输出对话本身，格式严格为「名字：「台词」」，每句独立一行。台词须口语、简短，每句不超过30字，一回合至多3行，严禁长篇大论，严禁旁白、场景、动作、心理描写。本回合不要输出<mvu_panel>状态栏，不要<sec_deed>，不要思维链。玩家的输入就是其原话，像回消息一样直接回应。':'',
     S.dice?'【天命明骰】玩家言行末尾若附〔天命明骰 X／100 · 等级〕，此为本回合行动成效的既定天数，严格按等级裁定叙事，不得逆天改命：大凶(≤5)灾难性失败且有恶果；不利(≤35)事与愿违；平平(≤65)成败参半进展有限；顺遂(≤94)如愿达成；大吉(≥95)超乎所求另有意外之喜。骰记本身不是玩家说出的话，不要复述。':'',
     '【自查】'+fill(G.post_history_instructions)
   );
@@ -890,6 +890,7 @@ function apiHttp(url,opt){
 function callCustomAI(system,messages){
   var c=apiCur(),base=apiBase();
   var gT=genNum(API.gen&&API.gen.temp),gP=genNum(API.gen&&API.gen.topp),gM=genMax();
+  if(S.chatOnly)gM=Math.min(gM,600); /* 聊天模式求快 */
   function gtune(b){if(gT!=null)b.temperature=gT;if(gP!=null)b.top_p=gP;return b;}
   PV={at:new Date().toLocaleTimeString(),provider:API.provider,model:c.model,system:system,messages:messages};
   if(API.provider==='claude'){
@@ -909,6 +910,7 @@ function callCustomAI(system,messages){
 function callCustomAIStream(system,messages,onDelta){
   var c=apiCur(),base=apiBase();
   var gT=genNum(API.gen&&API.gen.temp),gP=genNum(API.gen&&API.gen.topp),gM=genMax();
+  if(S.chatOnly)gM=Math.min(gM,600); /* 聊天模式求快 */
   function gtune(b){if(gT!=null)b.temperature=gT;if(gP!=null)b.top_p=gP;return b;}
   PV={at:new Date().toLocaleTimeString(),provider:API.provider,model:c.model,system:system,messages:messages};
   function sse(url,opt,extract){
@@ -1739,16 +1741,15 @@ function storyPane(){
   var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['look','观 · 察看'],['free','书 · 自由'],['world','令 · 天下']];
   var chips=MODES.map(function(md){var on=md[0]===S.mode;return '<div class="btn zjHl" data-mode="'+md[0]+'" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(on?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)')+';color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?md[1].replace(/\s/g,''):md[1])+'</div>';}).join('');
   var con=!!S.chatOnly;
-  chips+='<div class="btn zjHl" data-act="chatTog" title="仅对话：AI 不写旁白剧情，只与在场之人像聊天软件一样对谈" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(con?'rgba(157,184,216,.75)':'rgba(255,238,205,.22)')+';color:'+(con?'#9db8d8':'var(--mut)')+';background:'+(con?'linear-gradient(135deg,rgba(157,184,216,.16),rgba(90,110,140,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?'话':'话 · 仅对话')+'</div>';
+  chips+='<div class="btn zjHl" data-act="chatTog" title="聊天模式：不写旁白剧情，与在场之人像聊天软件一样快速对谈" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(con?'rgba(157,184,216,.75)':'rgba(255,238,205,.22)')+';color:'+(con?'#9db8d8':'var(--mut)')+';background:'+(con?'linear-gradient(135deg,rgba(157,184,216,.16),rgba(90,110,140,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">聊天模式</div>';
   var don=!!S.dice;
   chips+='<div class="btn zjHl" data-act="diceTog" title="天命明骰：曰／行／书递呈时掷骰定成败" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(don?'rgba(217,160,106,.8)':'rgba(255,238,205,.22)')+';color:'+(don?'#e8b77d':'var(--mut)')+';background:'+(don?'linear-gradient(135deg,rgba(233,180,110,.18),rgba(201,140,80,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?'骰':'骰 · 天命')+'</div>';
   var son=S.sugg!==false;
   chips+='<div class="btn zjHl" data-act="suggTog" title="懒人四策：每幕后由 AI 拟四条可点选的下一步" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(son?'rgba(126,168,146,.7)':'rgba(255,238,205,.22)')+';color:'+(son?'#a9cbb8':'var(--mut)')+';background:'+(son?'linear-gradient(135deg,rgba(150,200,170,.14),rgba(80,120,95,.07))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?'策':'策 · 四策')+'</div>';
   var ph=MODE_PH[S.mode];
-  var sugOn=(S.suggList&&S.suggList.length&&!S.thinking)?1:0;
   var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(66px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none"><div style="max-width:860px;margin:0 auto">'
     +((S.suggList&&S.suggList.length&&!S.thinking)?'<div id="zjSuggRow" style="pointer-events:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'+S.suggList.map(function(sg,si){return '<div class="btn zjHl" data-sugg="'+si+'" style="cursor:pointer;font-size:'+(mob?'11px':'12px')+';line-height:1.5;letter-spacing:.02em;padding:'+(mob?'6px 10px':'6px 12px')+';border-radius:12px;color:#c8b48e;border:1px solid rgba(255,238,205,.18);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.03));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);box-shadow:inset 0 1px 0 rgba(255,242,214,.18),0 2px 8px rgba(0,0,0,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sg)+'</div>';}).join('')+'</div>':'')
-    +'<div id="zjChipsRow" style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:8px;padding:2px 2px 3px;'+(mob?'overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch':'flex-wrap:wrap')+'">'+chips+'</div>'
+    +'<div id="zjChipsRow" style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:8px;padding:2px 2px 3px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch">'+chips+'</div>'
     +'<div class="glass" style="pointer-events:auto;padding:'+(mob?'7px 9px 8px':'8px 12px 9px')+';border-radius:20px">'
     +'<div style="display:flex;gap:8px;align-items:stretch"><textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'" style="flex:1;resize:none;background:rgba(20,15,11,.28);border:1px solid rgba(201,160,99,.28);border-radius:12px;color:var(--gold3);font-size:16px;line-height:1.7;padding:'+(mob?'6px 10px':'6px 12px')+'">'+esc(S.input)+'</textarea>'
     +((sttOK()&&(S.micOn===true||(S.micOn==null&&!mob)))?'<button id="zjMicBtn" data-act="micTog" class="btn glass" title="语音输入（说完自动停）" style="flex:none;width:'+(mob?'38px':'44px')+';font-size:15px;color:'+(S.rec?'#e06a50':'var(--mut2)')+';border-color:'+(S.rec?'rgba(224,106,80,.65)':'rgba(255,238,205,.25)')+';border-radius:12px;cursor:pointer">'+(S.rec?'●':'声')+'</button>':'')
@@ -1766,7 +1767,7 @@ function storyPane(){
       +'<span style="font-size:11px;letter-spacing:.22em;color:var(--gold2);font-family:var(--kai)">天下</span></div>';
     sceneH=16;
   }
-  return '<div class="col grow" style="position:relative">'+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?('calc('+(sugOn?294:210)+'px + env(safe-area-inset-bottom))'):(sugOn?'238px':'160px')))+';background:rgba(23,18,12,.95)'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
+  return '<div class="col grow" style="position:relative">'+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?'calc(210px + env(safe-area-inset-bottom))':'160px'))+';background:rgba(23,18,12,.95)'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
 }
 function gameView(){
   var mob=isMobile();var m=mood();
@@ -2535,6 +2536,15 @@ function presetBody(){
 
 /* ---------------- RENDER + EVENTS ---------------- */
 var root=document.getElementById('zj');
+function fitStoryPad(){
+  if(S.zen||S.screen!=='game')return;
+  var iw=document.getElementById('zjInWrap'),st=document.getElementById('zjStory');
+  if(!iw||!st)return;
+  var ir=iw.getBoundingClientRect(),sr=st.getBoundingClientRect();
+  if(!ir.height)return;
+  var need=Math.max(120,Math.round(sr.bottom-ir.top+26));
+  st.style.paddingBottom=need+'px';
+}
 function render(){
   try{if(S.screen==='game')memSync();}catch(e){}
   try{edictSync();}catch(e){}
@@ -2549,6 +2559,7 @@ function render(){
   if(noF)root.classList.add('zjNoFade');
   root.innerHTML=view();
   if(noF)setTimeout(function(){root.classList.remove('zjNoFade');},80);
+  try{fitStoryPad();}catch(e){}
   var story=document.getElementById('zjStory');
   if(story){if(S._stayTop)story.scrollTop=0;else if(keepPos!=null)story.scrollTop=keepPos;else story.scrollTop=story.scrollHeight;S._stayTop=false;}
   if(chipsL){var chipsEl2=document.getElementById('zjChipsRow');if(chipsEl2)chipsEl2.scrollLeft=chipsL;}
@@ -3022,7 +3033,7 @@ root.addEventListener('click',function(e){
       else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;savePref();
         var sch=document.querySelector('[data-act="suggTog"]');
         if(sch){var son2=S.sugg!==false;sch.style.border='1px solid '+(son2?'rgba(126,168,146,.7)':'rgba(255,238,205,.22)');sch.style.color=son2?'#a9cbb8':'var(--mut)';sch.style.background=son2?'linear-gradient(135deg,rgba(150,200,170,.14),rgba(80,120,95,.07))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}
-        if(S.sugg===false){S.suggList=null;var srw=document.getElementById('zjSuggRow');if(srw&&srw.parentNode)srw.parentNode.removeChild(srw);}
+        if(S.sugg===false){S.suggList=null;var srw=document.getElementById('zjSuggRow');if(srw&&srw.parentNode)srw.parentNode.removeChild(srw);try{fitStoryPad();}catch(e8){}}
         else genSuggestions();
         if(!sch){S._noFade=true;render();}}
       else if(a==='apiProfSave'){readApiForm();saveApi();
