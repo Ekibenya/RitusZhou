@@ -144,8 +144,21 @@ var clamp = function(n){return Math.max(0,Math.min(100,parseInt(n,10)||0));};
 /* ---------------- FX: typewriter / three.js / audio ---------------- */
 var typedSet = (typeof WeakSet!=='undefined')?new WeakSet():{has:function(){return true;},add:function(){},delete:function(){}};
 var TYPE = {msg:null,full:'',pos:0,timer:null};
-var DLGC='#9fc0d8';try{DLGC=localStorage.getItem('zhouji_dlgc')||'#9fc0d8';}catch(e){}
-function dlgSpan(html){if(DLGC==='off')return html;return String(html).replace(/(「[^」]{0,400}」|『[^』]{0,400}』|“[^”]{0,400}”|【[^】]{0,200}】|&quot;[^&]{0,400}?&quot;)/g,'<span style="color:'+DLGC+'">$1</span>');}
+var DLGC='#e0be82';try{DLGC=localStorage.getItem('zhouji_dlgc')||'#e0be82';}catch(e){}
+function dlgSpan(html){if(DLGC==='off')return html;return String(html).replace(/(「[^」]{0,400}」|『[^』]{0,400}』|“[^”]{0,400}”|【[^】]{0,200}】|&quot;[^&]{0,400}?&quot;)/g,'<span class="zjDlg" style="color:'+DLGC+'">$1</span>');}
+/* 切换对话字色：就地改色不重渲染（自关闭态开启才需一次重绘补 span） */
+function dlgApply(prev){
+  try{localStorage.setItem('zhouji_dlgc',DLGC);}catch(e){}
+  if(prev==='off'&&DLGC!=='off'){S._noFade=true;render();return;}
+  var c=DLGC==='off'?'':DLGC;
+  [].forEach.call(document.querySelectorAll('.zjDlg'),function(el){el.style.color=c;});
+  var pv=document.getElementById('zjDlgPrev');if(pv)pv.style.color=c||'inherit';
+  [].forEach.call(document.querySelectorAll('[data-dlgc]'),function(el){
+    var on=el.getAttribute('data-dlgc')===DLGC;
+    el.style.border='1px solid '+(on?'rgba(224,190,130,.7)':'rgba(201,160,99,.25)');
+    el.style.color=on?'var(--gold2)':'var(--mut2)';
+  });
+}
 function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return t.split(/\n+/).filter(Boolean).map(function(p){return '<p style="margin:0 0 14px;font-size:16px;line-height:2.05;color:var(--ink);text-align:justify;text-wrap:pretty">'+dlgSpan(esc(p))+'</p>';}).join('');}
 function ensureTyping(){
   if(!TYPE.msg||typedSet.has(TYPE.msg)){return;}
@@ -2270,10 +2283,10 @@ function fontPane(){
    +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptSugg" type="checkbox" style="accent-color:#c9a063"'+(S.sugg!==false?' checked':'')+'>懒人四策：每幕后 AI 拟四条可点选项（每轮多一次杂务调用）</label>'
    +'<div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-top:4px">四策也可用输入栏上的「策」钮随时开关，两处同步。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">对话字色</div>'
-   +'<div style="font-size:12.5px;color:var(--mut);line-height:1.8">正文里引号内的台词以此色区分。示例：灯花哔剥响了一声。<span style="color:'+(DLGC==='off'?'inherit':DLGC)+'">「王、王上……灯。」</span></div>'
+   +'<div style="font-size:12.5px;color:var(--mut);line-height:1.8">正文里引号内的台词以此色区分。示例：灯花哔剥响了一声。<span id="zjDlgPrev" style="color:'+(DLGC==='off'?'inherit':DLGC)+'">「王、王上……灯。」</span></div>'
    +'<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px">'
    +[['#9fc0d8','青蓝'],['#a9cbb8','竹青'],['#e0be82','鎏金'],['#d8a8c8','藕荷'],['#e8e6da','月白'],['off','不着色']].map(function(sw){var on=DLGC===sw[0];return '<div class="btn" data-dlgc="'+sw[0]+'" style="cursor:pointer;display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:99px;border:1px solid '+(on?'rgba(224,190,130,.7)':'rgba(201,160,99,.25)')+';color:'+(on?'var(--gold2)':'var(--mut2)')+';font-size:12.5px">'+(sw[0]!=='off'?'<span style="width:12px;height:12px;border-radius:50%;background:'+sw[0]+';display:inline-block"></span>':'')+sw[1]+'</div>';}).join('')
-   +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mut2);cursor:pointer">自选<input id="zjDlgPick" type="color" value="'+(DLGC==='off'?'#9fc0d8':DLGC)+'" style="width:36px;height:27px;border:none;background:transparent;padding:0;cursor:pointer"></label>'
+   +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mut2);cursor:pointer">自选<input id="zjDlgPick" type="color" value="'+(DLGC==='off'?'#e0be82':DLGC)+'" style="width:36px;height:27px;border:none;background:transparent;padding:0;cursor:pointer"></label>'
    +'</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">数据备份</div>'
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键导出此浏览器里的全部游戏数据为一个 JSON 文件：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体与接口配置、三维营造记录。换设备或清数据前先备份。</div>'
@@ -2797,7 +2810,7 @@ root.addEventListener('pointerup',function(e){dragEnd(e,true);});
 root.addEventListener('pointercancel',function(e){dragEnd(e,false);});
 root.addEventListener('change',function(e){
   if(e.target&&e.target.id==='zjTtsAuto'){TTS.auto=!!e.target.checked;ttsSave();return;}
-  if(e.target&&e.target.id==='zjDlgPick'){DLGC=e.target.value||'#9fc0d8';try{localStorage.setItem('zhouji_dlgc',DLGC);}catch(e0){}render();return;}
+  if(e.target&&e.target.id==='zjDlgPick'){var pD2=DLGC;DLGC=e.target.value||'#e0be82';dlgApply(pD2);return;}
   if(e.target&&e.target.id==='zjOptMic'){S.micOn=!!e.target.checked;savePref();render();return;}
   if(e.target&&e.target.id==='zjOptSugg'){S.sugg=!!e.target.checked;if(S.sugg===false)S.suggList=null;savePref();render();return;}
   if(e.target&&e.target.id==='zjJsFile'&&e.target.files&&e.target.files.length){
@@ -2846,7 +2859,7 @@ root.addEventListener('click',function(e){
         var mta=document.getElementById('zjInput');if(mta)mta.placeholder=MODE_PH[nmd];
         var mh=document.getElementById('zjCmdHint');if(mh&&mh.parentNode)mh.parentNode.removeChild(mh);
         return;}
-      if(t.getAttribute('data-dlgc')){DLGC=t.getAttribute('data-dlgc');try{localStorage.setItem('zhouji_dlgc',DLGC);}catch(e0){}render();return;}
+      if(t.getAttribute('data-dlgc')){var pD=DLGC;DLGC=t.getAttribute('data-dlgc');dlgApply(pD);return;}
       if(t.getAttribute('data-dev')){S.device=t.getAttribute('data-dev');savePref();render();codexPills();setPills();return;}
       if(t.getAttribute('data-tab')){var ntb=t.getAttribute('data-tab');if(ntb===S.tab)return;var tdir=ntb==='panel'?1:-1;vtRender(ntb==='panel'?'zjTab-f':'zjTab-b',function(){S.tab=ntb;render();});
         if(!reducedMotion()){var pill=document.getElementById('zjTabPill');if(pill&&pill.animate)pill.animate([{transform:'translateX('+(-tdir*103)+'%)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.1,.3,1)'});}
