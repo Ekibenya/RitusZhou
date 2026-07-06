@@ -374,24 +374,37 @@ function panelToText(p){
   var w = Object.keys(p.world).map(function(k){return '◇'+k+'|'+p.world[k];}).join('\n');
   return '<mvu_panel>\n<sec_char>\n'+c+'\n</sec_char>\n<sec_npc>\n'+n+'\n</sec_npc>\n<sec_world>\n'+w+'\n</sec_world>\n</mvu_panel>';
 }
-function scanLore(recent,budget){
+function scanLore(recent,budget,history,userInput){
   budget = budget||9000; var out=[],used=0;
   var op=currentOpening(); var now=(op&&typeof op.year==='number')?op.year:null;
   /* 按开局朝代供电：未来条目硬关断（防剧透防穿越）；本朝条目优先装桶；
-     已成过去的条目降级为「千年记忆」，仅在被提及时排在末位注入 */
+     已成过去的条目降级为「千年记忆」，仅在被提及时排在末位注入。
+     兼容 ST 高级字段：次级关键词(须同时命中)、注入顺序、触发概率、扫描深度、递归扫描 */
   function future(e){return now!==null&&typeof e.from==='number'&&e.from>now;}
   function past(e){return now!==null&&typeof e.to==='number'&&e.to<now;}
-  function push(e){if(used+e.content.length<=budget){out.push(e);used+=e.content.length;}}
+  function push(e){if(out.indexOf(e)>=0)return;if(used+e.content.length<=budget){out.push(e);used+=e.content.length;}}
+  function textAt(e){
+    if(!e.depth||!history)return recent;
+    return history.slice(-e.depth).map(function(h){return h.text;}).join('\n')+'\n'+(userInput||'');
+  }
+  function hitBy(e,txt){
+    if(!(e.keys||[]).some(function(k){return k&&txt.indexOf(k)>=0;}))return false;
+    if(e.keys2&&e.keys2.length&&!e.keys2.some(function(k){return k&&txt.indexOf(k)>=0;}))return false;
+    return true;
+  }
+  function pass(e){return e.prob==null||Math.random()*100<e.prob;}
   var UL=ULORE.filter(function(e){return e.on!==false&&e.content;});
   var L=(G.lorebook||[]).concat(UL).filter(function(e){return !future(e);});
-  L.forEach(function(e){if(e.constant) push(e);});
+  L.forEach(function(e){if(e.constant&&pass(e)) push(e);});
   L.forEach(function(e){ /* 各朝【指南】：命中当前年代即常驻，不靠关键词 */
     if(!e.constant&&e.pin&&now!==null&&typeof e.from==='number'&&e.from<=now&&(typeof e.to!=='number'||now<=e.to)) push(e);
   });
-  var hit=L.filter(function(e){
-    if(e.constant||e.pin||e.cat==='InitVar'||e.cat==='MVU') return false;
-    return (e.keys||[]).some(function(k){return k&&recent.indexOf(k)>=0;});
-  });
+  var cand=L.filter(function(e){return !e.constant&&!e.pin&&e.cat!=='InitVar'&&e.cat!=='MVU';});
+  var hit=cand.filter(function(e){return hitBy(e,textAt(e))&&pass(e);});
+  /* 递归扫描：已激活条目的内容可再点亮其他条目（一层，防环） */
+  var rtxt=out.concat(hit).filter(function(e){return !e.prevR;}).map(function(e){return e.content;}).join('\n');
+  if(rtxt)cand.forEach(function(e){if(hit.indexOf(e)>=0||out.indexOf(e)>=0||e.exclR)return;if(hitBy(e,rtxt)&&pass(e))hit.push(e);});
+  hit.sort(function(a,b){return (a.order==null?100:a.order)-(b.order==null?100:b.order);});
   hit.filter(function(e){return !past(e);}).forEach(push);
   hit.filter(past).forEach(push);
   return out;
@@ -609,7 +622,14 @@ function uloreParse(txt){
     var ks=it.keys||it.key||[];if(typeof ks==='string')ks=ks.split(/[,\uff0c\u3001]/);
     ks=(Array.isArray(ks)?ks:[]).map(function(k){return String(k).trim();}).filter(function(k){return k;});
     var t=String(it.title||it.comment||it.name||ks[0]||('\u6761\u76ee'+(i+1))).trim();
-    out.push({title:t.slice(0,40),keys:ks.slice(0,20),content:c,constant:!!it.constant,on:it.disable?false:(it.on!==false)});
+    var k2=it.keys2||it.keysecondary||it.secondary_keys||[];if(typeof k2==='string')k2=k2.split(/[,\uff0c\u3001]/);
+    k2=(it.selective===false)?[]:(Array.isArray(k2)?k2:[]).map(function(k){return String(k).trim();}).filter(function(k){return k;});
+    var ordN=parseInt(it.order!=null?it.order:it.insertion_order,10);
+    var prN=parseInt(it.prob!=null?it.prob:((it.useProbability||it.use_probability)?it.probability:NaN),10);
+    var dpN=parseInt(it.depth!=null?it.depth:(it.scanDepth!=null?it.scanDepth:it.scan_depth),10);
+    out.push({title:t.slice(0,40),keys:ks.slice(0,20),keys2:k2.slice(0,20),content:c,constant:!!it.constant,on:it.disable?false:(it.on!==false),
+      order:isFinite(ordN)?ordN:100,prob:(isFinite(prN)&&prN>=1&&prN<=99)?prN:null,depth:(isFinite(dpN)&&dpN>0&&dpN<=50)?dpN:null,
+      exclR:!!(it.exclR||it.excludeRecursion||it.exclude_recursion),prevR:!!(it.prevR||it.preventRecursion||it.prevent_recursion)});
   }
   if(obj&&obj.entries){var es=obj.entries;if(Array.isArray(es))es.forEach(norm);else Object.keys(es).forEach(function(k,i){norm(es[k],i);});}
   else if(Array.isArray(obj))obj.forEach(norm);
@@ -670,7 +690,7 @@ function presetParts(pos){
 
 function buildSystem(history,userInput){
   var recent = history.slice(-4).map(function(h){return h.text;}).join('\n')+'\n'+userInput;
-  var lore = scanLore(recent);
+  var lore = scanLore(recent,9000,history,userInput);
   var pre=presetParts('pre'), post=presetParts('post');
   var arr=[];
   if(pre.length)arr.push('【玩家预设】\n'+pre.join('\n\n'));
@@ -765,21 +785,34 @@ var API_DEF={
   gemini:{name:'Gemini 官方',url:'https://generativelanguage.googleapis.com',hint:'Google AI Studio 官方直连，一般无需修改地址'}
 };
 function loadApi(){
-  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}},img:{url:'',key:'',model:''}};
+  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}},img:{url:'',key:'',model:''},aux:{url:'',key:'',model:''},gen:{temp:'',topp:'',maxtok:''}};
   try{
     var s=JSON.parse(localStorage.getItem(APIK)||'{}');
     if(s.provider&&d.cfg[s.provider])d.provider=s.provider;
     if(s.cfg)Object.keys(d.cfg).forEach(function(k){if(s.cfg[k])Object.assign(d.cfg[k],s.cfg[k]);});
     if(s.img)Object.assign(d.img,s.img);
+    if(s.aux)Object.assign(d.aux,s.aux);
+    if(s.gen)Object.assign(d.gen,s.gen);
   }catch(e){}
   return d;
 }
 var API=loadApi();
+var PV=null; /* 上次请求快照 · 提示词透视 */
 function apiCur(){return API.cfg[API.provider];}
 function saveApi(){try{localStorage.setItem(APIK,JSON.stringify(API));}catch(e){}}
 function apiReady(){var c=apiCur();return !!(c.key&&c.model);}
 function imgReady(){return !!(API.img&&API.img.key&&API.img.model);}
 function imgBase(){return String(API.img.url||'https://api.openai.com/v1').trim().replace(/\/+$/,'');}
+function auxReady(){return !!(API.aux&&API.aux.key&&API.aux.model);}
+function auxBase(){return String(API.aux.url||'https://api.openai.com/v1').trim().replace(/\/+$/,'');}
+function genNum(v){var n=parseFloat(v);return isFinite(n)?n:null;}
+function genMax(){var n=parseInt(API.gen&&API.gen.maxtok,10);return (isFinite(n)&&n>0)?Math.min(n,32000):4000;}
+/* 副模型：绘图提示词等杂务走便宜快模型，正文仍由主模型执笔；未配则回落主模型 */
+function callAuxAI(system,messages){
+  if(!auxReady())return callCustomAI(system,messages);
+  return apiHttp(auxBase()+'/chat/completions',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+API.aux.key},body:JSON.stringify({model:API.aux.model,max_tokens:2000,messages:[{role:'system',content:system}].concat(messages)})})
+    .then(function(d){var ch=d.choices&&d.choices[0];return ch&&ch.message?(ch.message.content||''):'';});
+}
 function apiBase(){var c=apiCur();return (c.url||API_DEF[API.provider].url).trim().replace(/\/+$/,'');}
 function apiHttp(url,opt){
   return fetch(url,opt).then(function(r){
@@ -789,17 +822,20 @@ function apiHttp(url,opt){
 }
 function callCustomAI(system,messages){
   var c=apiCur(),base=apiBase();
+  var gT=genNum(API.gen&&API.gen.temp),gP=genNum(API.gen&&API.gen.topp),gM=genMax();
+  function gtune(b){if(gT!=null)b.temperature=gT;if(gP!=null)b.top_p=gP;return b;}
+  PV={at:new Date().toLocaleTimeString(),provider:API.provider,model:c.model,system:system,messages:messages};
   if(API.provider==='claude'){
-    return apiHttp(base+'/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:c.model,max_tokens:4000,system:system,messages:messages})})
+    return apiHttp(base+'/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(gtune({model:c.model,max_tokens:gM,system:system,messages:messages}))})
       .then(function(d){return (d.content||[]).map(function(b){return b.text||'';}).join('');});
   }
   if(API.provider==='gemini'){
     var contents=messages.map(function(m){return {role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]};});
-    return apiHttp(base+'/v1beta/models/'+encodeURIComponent(c.model)+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':c.key},body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:contents,generationConfig:{maxOutputTokens:4000}})})
+    return apiHttp(base+'/v1beta/models/'+encodeURIComponent(c.model)+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':c.key},body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:contents,generationConfig:(function(){var g={maxOutputTokens:gM};if(gT!=null)g.temperature=gT;if(gP!=null)g.topP=gP;return g;})()})})
       .then(function(d){var cd=d.candidates&&d.candidates[0];return (cd&&cd.content&&cd.content.parts||[]).map(function(x){return x.text||'';}).join('');});
   }
   var url=/\/chat\/completions$/.test(base)?base:base+'/chat/completions';
-  return apiHttp(url,{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+c.key},body:JSON.stringify({model:c.model,max_tokens:4000,messages:[{role:'system',content:system}].concat(messages)})})
+  return apiHttp(url,{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+c.key},body:JSON.stringify(gtune({model:c.model,max_tokens:gM,messages:[{role:'system',content:system}].concat(messages)}))})
     .then(function(d){var ch=d.choices&&d.choices[0];return ch&&ch.message?(ch.message.content||''):'';});
 }
 function fetchModels(){
@@ -818,6 +854,10 @@ function readApiForm(){
   if(u)c.url=u.value.trim();if(k)c.key=k.value.trim();if(m)c.model=m.value.trim();
   var iu=document.getElementById('zjImgUrl'),ik=document.getElementById('zjImgKey'),im=document.getElementById('zjImgModel');
   if(iu)API.img.url=iu.value.trim();if(ik)API.img.key=ik.value.trim();if(im)API.img.model=im.value.trim();
+  var au=document.getElementById('zjAuxUrl'),ak=document.getElementById('zjAuxKey'),am=document.getElementById('zjAuxModel');
+  if(au)API.aux.url=au.value.trim();if(ak)API.aux.key=ak.value.trim();if(am)API.aux.model=am.value.trim();
+  var gt=document.getElementById('zjGenTemp'),gp=document.getElementById('zjGenTopP'),gm=document.getElementById('zjGenMax');
+  if(gt)API.gen.temp=gt.value.trim();if(gp)API.gen.topp=gp.value.trim();if(gm)API.gen.maxtok=gm.value.trim();
 }
 function apiTestRun(){
   readApiForm();saveApi();
@@ -1761,23 +1801,29 @@ function lorePane(){
   var rows=ULORE.map(function(en,i){
     var on=en.on!==false;
     var badge=en.constant?'<span style="font-size:10.5px;color:#a9cbb8;border:1px solid rgba(122,168,143,.4);border-radius:6px;padding:2px 8px;margin-left:9px">常驻</span>':'<span style="font-size:10.5px;color:var(--mut);margin-left:9px">'+esc((en.keys||[]).slice(0,4).join(' / ')||'无关键词')+'</span>';
+    var advb=((en.keys2&&en.keys2.length)?'<span style="font-size:10.5px;color:#9db8d8;margin-left:7px">+次级</span>':'')+((en.prob!=null)?'<span style="font-size:10.5px;color:var(--mut);margin-left:7px">'+en.prob+'%</span>':'')+((en.order!=null&&en.order!==100)?'<span style="font-size:10.5px;color:var(--mut);margin-left:7px">序'+en.order+'</span>':'');
     var edt='<button data-ledit="'+(i+1)+'" class="obtn btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;border-radius:8px">编辑</button>';
     var del=S.loreDelIx===i
       ?'<button data-ldel="'+i+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:rgba(166,59,38,.25);border:1px solid rgba(166,59,38,.6);border-radius:8px;color:#e0a493">确认删除</button>'
       :'<button data-ldel="'+i+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:transparent;border:1px solid rgba(166,59,38,.35);border-radius:8px;color:#b06a55">删</button>';
     return '<div style="display:flex;align-items:flex-start;gap:11px;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 13px;margin-bottom:7px;background:rgba(255,255,255,.015)">'
       +'<div class="btn" data-ltog="'+(i+1)+'" title="启用/停用此条" style="cursor:pointer;flex:none;width:34px;height:18px;border-radius:9px;margin-top:2px;background:'+(on?'rgba(122,168,143,.45)':'rgba(255,255,255,.08)')+';position:relative"><div style="position:absolute;top:2px;'+(on?'right:2px':'left:2px')+';width:14px;height:14px;border-radius:50%;background:'+(on?'#a9cbb8':'#6f6148')+'"></div></div>'
-      +'<div class="grow" style="min-width:0"><div style="font-size:13.5px;color:'+(on?'var(--gold3)':'var(--mut)')+'">'+esc(en.title)+badge+'</div>'
+      +'<div class="grow" style="min-width:0"><div style="font-size:13.5px;color:'+(on?'var(--gold3)':'var(--mut)')+'">'+esc(en.title)+badge+advb+'</div>'
       +'<div style="font-size:11.5px;color:#8a7a5e;line-height:1.65;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc(en.content.slice(0,160))+'</div></div>'+edt+del+'</div>';
   }).join('');
   var listBlock=ULORE.length
     ?'<div style="display:flex;align-items:center;gap:12px;margin:30px 0 12px"><div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em">我的条目</div><span style="font-size:12px;color:var(--mut)">'+ULORE.length+' 条 · 也会出现在「典 · 自定义」中</span><div class="grow"></div><button data-act="loreExport" class="obtn btn" style="font-size:12.5px;padding:6px 16px;letter-spacing:.1em">导出备份</button></div>'+rows
     :'<div style="text-align:center;padding:26px 0 4px;font-size:13px;letter-spacing:.25em;color:#6f6148">尚无自定义条目</div>';
   return '<div class="grow bambooV" style="overflow-y:auto;padding:22px 28px"><div style="max-width:680px">'
-   +'<div style="font-size:12.5px;line-height:1.85;color:#8a7a5e;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 14px">你写的世界书条目与本卡自带世界书一同生效：正文近几轮提到<b style="color:var(--gold2)">关键词</b>时自动注入该条设定；勾选常驻则每轮必注入（占用篇幅，慎用）。条目只存于你这台设备的浏览器。</div>'
+   +'<div style="font-size:12.5px;line-height:1.85;color:#8a7a5e;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 14px">你写的世界书条目与本卡自带世界书一同生效：正文近几轮提到<b style="color:var(--gold2)">关键词</b>时自动注入该条设定；勾选常驻则每轮必注入（占用篇幅，慎用）。已支持 ST 高级字段：<b style="color:var(--gold2)">次级关键词</b>（须与主关键词同时命中）、注入<b style="color:var(--gold2)">顺序</b>、触发<b style="color:var(--gold2)">概率</b>，导入的扫描深度与递归设置也自动生效。条目只存于你这台设备的浏览器。</div>'
    +'<div class="kai" style="font-size:19px;color:'+(led?'#a9cbb8':'var(--gold2)')+';letter-spacing:.15em;margin:22px 0 12px">'+(led?'编辑条目「'+esc(led.title)+'」':'新写一条')+'</div>'
    +'<div><input id="zjLoreTitle" '+inp+' value="'+esc(led?led.title:'')+'" placeholder="条目名（如：我的家将·赵铁衣）"></div>'
    +'<div style="margin-top:10px"><input id="zjLoreKeys" '+inp+' value="'+esc(led?(led.keys||[]).join(', '):'')+'" placeholder="触发关键词，逗号分隔（如：赵铁衣, 家将, 铁衣）"></div>'
+   +'<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">'
+   +'<div style="flex:2;min-width:200px"><input id="zjLoreKeys2" '+inp+' value="'+esc(led?(led.keys2||[]).join(', '):'')+'" placeholder="次级关键词（可选：须与主关键词同时命中）"></div>'
+   +'<div style="flex:1;min-width:90px"><input id="zjLoreOrder" '+inp+' value="'+(led&&led.order!=null&&led.order!==100?led.order:'')+'" placeholder="顺序 100" inputmode="numeric"></div>'
+   +'<div style="flex:1;min-width:90px"><input id="zjLoreProb" '+inp+' value="'+(led&&led.prob!=null?led.prob:'')+'" placeholder="概率 %" inputmode="numeric"></div>'
+   +'</div>'
    +'<div style="margin-top:10px"><textarea id="zjLoreText" placeholder="条目内容：设定、来历、性格、秘密……写给 AI 看的背景资料" style="width:100%;min-height:110px;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);font-size:13.5px;line-height:1.8;padding:9px 12px;resize:vertical;font-family:inherit">'+esc(led?led.content:'')+'</textarea></div>'
    +'<div style="display:flex;gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mut2);cursor:pointer"><input id="zjLoreConst" type="checkbox" style="accent-color:#c9a063"'+(led&&led.constant?' checked':'')+'>常驻注入（无视关键词，每轮生效）</label><div class="grow"></div>'+(led?'<button data-act="loreCancel" class="obtn btn" style="font-size:13px;letter-spacing:.15em;padding:9px 18px">取消</button>':'')+'<button data-act="loreAdd" class="gbtn btn" style="font-size:14px;letter-spacing:.2em;padding:9px 26px">'+(led?'保存修改':'添 加')+'</button></div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:30px 0 12px">上传世界书</div>'
@@ -1880,6 +1926,19 @@ function setPills(){
   if(S.overlay!=='set')return;
   zjPill('zjSetBar','zjSetPill','[data-settab="'+S.setTab+'"]',11);
 }
+function pvPanel(){
+  if(!PV)return '<div style="margin-top:18px;border-top:1px solid rgba(201,160,99,.18);padding-top:14px;font-size:12.5px;color:var(--mut);line-height:1.8">尚无请求记录。发一回合正文（或点「测试连接」）之后，这里就能看到实际发送给模型的完整提示词与用量估算。</div>';
+  var msgs=PV.messages||[],totalM=0;
+  msgs.forEach(function(m){totalM+=String(m.content||'').length;});
+  var totalS=String(PV.system||'').length;
+  var det=function(t,n,body){return '<details style="border:1px solid rgba(201,160,99,.18);border-radius:9px;padding:7px 11px;margin-top:6px"><summary style="cursor:pointer;font-size:12.5px;color:var(--gold3)">'+t+' <span style="color:var(--mut);font-size:11px">'+n+'字</span></summary><div style="font-size:11.5px;color:#8a7a5e;line-height:1.75;white-space:pre-wrap;word-break:break-all;margin-top:6px;max-height:220px;overflow-y:auto">'+esc(body)+'</div></details>';};
+  var sh=String(PV.system||'').split(/\n\n(?=【)/).map(function(sc){var t=(sc.match(/^【[^】]{0,24}】/)||['【系统】'])[0];return det(esc(t),sc.length,sc);}).join('');
+  var mh=msgs.map(function(m,i){return det('#'+(i+1)+' '+(m.role==='user'?'玩家':'世界'),String(m.content||'').length,String(m.content||''));}).join('');
+  return '<div style="margin-top:18px;border-top:1px solid rgba(201,160,99,.18);padding-top:14px">'
+    +'<div style="font-size:12px;color:var(--mut2);line-height:1.9">上次请求 · '+esc(PV.at||'')+' · '+esc(PV.provider+' / '+(PV.model||''))+'<br>系统提示 '+totalS+' 字 ＋ 对话 '+totalM+' 字 ＝ '+(totalS+totalM)+' 字 ≈ '+Math.round((totalS+totalM)*0.72)+' tokens（中文粗估）</div>'
+    +'<div style="font-size:12px;letter-spacing:.2em;color:var(--gold);margin:12px 0 2px">系统提示 · 按段折叠</div>'+sh
+    +'<div style="font-size:12px;letter-spacing:.2em;color:var(--gold);margin:14px 0 2px">对话消息 · '+msgs.length+' 条</div>'+mh+'</div>';
+}
 function apiBody(){
   var c=apiCur(),def=API_DEF[API.provider];
   var provs=Object.keys(API_DEF).map(function(k){var on=API.provider===k;return '<div class="btn" data-prov="'+k+'" style="cursor:pointer;padding:9px 20px;font-family:var(--kai);font-size:15px;letter-spacing:.1em;color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'rgba(201,160,99,.12)':'transparent')+';border:1px solid '+(on?'rgba(224,190,130,.6)':'rgba(201,160,99,.25)')+'">'+API_DEF[k].name+'</div>';}).join('');
@@ -1901,11 +1960,23 @@ function apiBody(){
     +lbl('绘图密钥')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(API.img.key)+'" placeholder="sk-…（可与文字接口相同）">'
     +lbl('绘图模型')+'<input id="zjImgModel" '+inp+' value="'+esc(API.img.model)+'" placeholder="如 gpt-image-1 / dall-e-3 / flux-schnell">'
     +'<div style="font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1.7">填好保存后，每幕正文下出现「✦ 绘此幕」。插画只存本机图库（仅保留最近60张自动瘦身），存档只记编号，不撑爆手机内存与存档。</div>'
+    +lbl('副模型 · 杂务分工（可选 · OpenAI 兼容）')+'<input id="zjAuxUrl" '+inp+' value="'+esc(API.aux.url)+'" placeholder="接口地址：https://api.openai.com/v1（或中转）">'
+    +'<div style="margin-top:9px"><input id="zjAuxKey" type="password" '+inp+' value="'+esc(API.aux.key)+'" placeholder="密钥 sk-…（可与主接口相同）"></div>'
+    +'<div style="margin-top:9px"><input id="zjAuxModel" '+inp+' value="'+esc(API.aux.model)+'" placeholder="便宜快模型：如 deepseek-chat / gpt-4o-mini"></div>'
+    +'<div style="font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1.7">配好后，绘图提示词等杂务自动改走副模型，省钱提速；正文仍由上方主模型执笔。留空则全部走主模型。</div>'
+    +lbl('高级采样（可选，留空用接口默认）')
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:130px"><input id="zjGenTemp" '+inp+' value="'+esc(API.gen.temp)+'" placeholder="temperature 0–2" inputmode="decimal"><div style="font-size:11px;color:var(--mut);margin-top:4px">温度：越高越放飞</div></div>'
+    +'<div style="flex:1;min-width:130px"><input id="zjGenTopP" '+inp+' value="'+esc(API.gen.topp)+'" placeholder="top_p 0–1" inputmode="decimal"><div style="font-size:11px;color:var(--mut);margin-top:4px">采样核：一般不与温度同调</div></div>'
+    +'<div style="flex:1;min-width:130px"><input id="zjGenMax" '+inp+' value="'+esc(API.gen.maxtok)+'" placeholder="max_tokens 默认4000" inputmode="numeric"><div style="font-size:11px;color:var(--mut);margin-top:4px">单轮输出上限</div></div>'
+    +'</div>'
     +'<div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;align-items:center">'
     +'<button data-act="apiSave" class="gbtn btn" style="font-size:15px;letter-spacing:.2em;padding:10px 30px">保 存</button>'
     +'<button data-act="apiTest" class="obtn btn" style="font-size:14px;letter-spacing:.15em;padding:10px 24px">测试连接</button>'
+    +'<button data-act="pvToggle" class="obtn btn" style="font-size:14px;letter-spacing:.15em;padding:10px 24px;color:'+(S.pvShow?'var(--gold2)':'var(--mut2)')+'">'+(S.pvShow?'收起透视':'提示词透视')+'</button>'
     +'<button data-act="apiClear" class="btn" style="cursor:pointer;background:transparent;border:1px solid rgba(166,59,38,.4);color:#b06a55;font-size:13px;letter-spacing:.1em;padding:10px 18px">清除本机密钥</button></div>'
     +msg
+    +(S.pvShow?pvPanel():'')
     +'<div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(201,160,99,.18);font-size:12px;line-height:1.9;color:var(--mut)">'+st+'<br>提示：若在 SillyTavern（酒馆）中通过酒馆助手加载本页面，则自动走酒馆的生成通道，无需在此配置。浏览器直连若报跨域（CORS）错误，可改用支持跨域的中转地址。</div>'
     +'</div>';
 }
@@ -2346,7 +2417,7 @@ root.addEventListener('click',function(e){
         S.imgBusy=dli;S.imgErr=null;S._noFade=true;render();
         var dTxt=stripCoT(stripMvu(S.history[dli].text)).slice(0,1200);
         var dP=apiReady()
-          ?callCustomAI('你是绘画提示词工程师。把给定的中国古代场景描写浓缩为一条英文AI绘画提示词：主体人物、环境、光线、氛围，风格 ancient Chinese period illustration, cinematic lighting, highly detailed。只输出提示词，勿加引号与解释，80词以内。',[{role:'user',content:dTxt}]).then(function(t){return String(t||'').trim().slice(0,700)||('ancient Chinese Zhou dynasty scene, cinematic, detailed: '+dTxt.slice(0,140));})
+          ?callAuxAI('你是绘画提示词工程师。把给定的中国古代场景描写浓缩为一条英文AI绘画提示词：主体人物、环境、光线、氛围，风格 ancient Chinese period illustration, cinematic lighting, highly detailed。只输出提示词，勿加引号与解释，80词以内。',[{role:'user',content:dTxt}]).then(function(t){return String(t||'').trim().slice(0,700)||('ancient Chinese Zhou dynasty scene, cinematic, detailed: '+dTxt.slice(0,140));})
           :Promise.resolve('ancient Chinese Zhou dynasty scene, cinematic lighting, highly detailed illustration: '+dTxt.slice(0,160));
         dP.then(function(prompt){
           return apiHttp(imgBase()+'/images/generations',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+API.img.key},body:JSON.stringify({model:API.img.model,prompt:prompt,n:1,size:'1024x1024',response_format:'b64_json'})});
@@ -2391,16 +2462,21 @@ root.addEventListener('click',function(e){
       else if(a==='memToggle'){S.memOn=S.memOn===false?true:false;savePref();render();}
       else if(a==='memClear'){if(S.mem.length&&!confirm('清空整卷长程记忆？此举不可复原。'))return;S.mem=[];savePref();render();}
       else if(a==='memAdd'){var mi=document.getElementById('zjMemAdd');var tv=mi?mi.value.trim():'';if(tv){S.mem.push({e:'',d:'',a:tv.slice(0,120),s:'',fp:0,manual:true});savePref();render();}}
+      else if(a==='pvToggle'){S.pvShow=!S.pvShow;renderOverlay();}
       else if(a==='apiModels'){apiModelsRun();}
       else if(a==='apiClear'){var cc=apiCur();cc.url='';cc.key='';cc.model='';S.apiModels=null;saveApi();S.apiMsg={t:'已清除本机保存的该接口配置。',c:'var(--mut2)'};render();}
       else if(a==='loreAdd'){var ltE=document.getElementById('zjLoreTitle'),lkE=document.getElementById('zjLoreKeys'),lcE=document.getElementById('zjLoreConst'),lxE=document.getElementById('zjLoreText');
+        var l2E=document.getElementById('zjLoreKeys2'),loE=document.getElementById('zjLoreOrder'),lpE=document.getElementById('zjLoreProb');
         var lc=lxE?lxE.value.trim():'';var lks=(lkE?lkE.value:'').split(/[,\uff0c\u3001]/).map(function(k){return k.trim();}).filter(function(k){return k;});
+        var lks2=(l2E?l2E.value:'').split(/[,\uff0c\u3001]/).map(function(k){return k.trim();}).filter(function(k){return k;});
+        var lordN=parseInt(loE?loE.value:'',10);var lord=isFinite(lordN)?lordN:100;
+        var lprobN=parseInt(lpE?lpE.value:'',10);var lprob=(isFinite(lprobN)&&lprobN>=1&&lprobN<=99)?lprobN:null;
         var lcons=!!(lcE&&lcE.checked);
         if(!lc){S.loreMsg='请填写条目内容';renderOverlay();}
         else if(!lks.length&&!lcons){S.loreMsg='请填写触发关键词，或勾选常驻注入';renderOverlay();}
         else{var lt=(ltE?ltE.value.trim():'')||lks[0]||('条目'+(ULORE.length+1));
-          if(S.loreEdit!=null&&ULORE[S.loreEdit]){var le0=ULORE[S.loreEdit];le0.title=lt.slice(0,40);le0.keys=lks.slice(0,20);le0.content=lc;le0.constant=lcons;S.loreMsg='已保存修改「'+lt.slice(0,40)+'」';S.loreEdit=null;}
-          else{ULORE.push({title:lt.slice(0,40),keys:lks.slice(0,20),content:lc,constant:lcons,on:true});S.loreMsg='已添加「'+lt.slice(0,40)+'」';}
+          if(S.loreEdit!=null&&ULORE[S.loreEdit]){var le0=ULORE[S.loreEdit];le0.title=lt.slice(0,40);le0.keys=lks.slice(0,20);le0.keys2=lks2.slice(0,20);le0.order=lord;le0.prob=lprob;le0.content=lc;le0.constant=lcons;S.loreMsg='已保存修改「'+lt.slice(0,40)+'」';S.loreEdit=null;}
+          else{ULORE.push({title:lt.slice(0,40),keys:lks.slice(0,20),keys2:lks2.slice(0,20),order:lord,prob:lprob,content:lc,constant:lcons,on:true});S.loreMsg='已添加「'+lt.slice(0,40)+'」';}
           uloreSave();S.loreDelIx=null;renderOverlay();}}
       else if(a==='loreCancel'){S.loreEdit=null;renderOverlay();}
       else if(a==='rxAdd'){var rnE=document.getElementById('zjRxName'),rfE=document.getElementById('zjRxFind'),rrE=document.getElementById('zjRxRep'),rbE=document.getElementById('zjRxBoth');
