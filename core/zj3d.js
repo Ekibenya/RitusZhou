@@ -4381,6 +4381,8 @@
     if (window.ZJ3D_onExpand) window.ZJ3D_onExpand();
     updateHud();
   };
+  Z.setLow = function (on) { PERF.low = !!on; perfSave(); applyPerf(); if (Z._lowBtn) Z._lowBtn(); };
+  Z.isLow = function () { return PERF.low; };
   Z.paneH = function (mob) {
     if (!Z.owns()) return mob ? 140 : 186;
     if (Z.expanded) return Math.round(window.innerHeight * (mob ? 0.52 : 0.58));

@@ -21,7 +21,7 @@
     s.onerror=function(){window.__THREE_OK__=false;};
     document.head.appendChild(s);
   }
-  var ZJ3D_VER='1.4.2';
+  var ZJ3D_VER='1.4.3';
   var b=document.createElement('script');
   b.src='core/three-bundle.min.js?v=1';
   b.onload=function(){
@@ -61,6 +61,10 @@ textarea:focus,button:focus,input:focus{outline:none}
 .gbtn:hover{filter:brightness(1.14)}
 .obtn{cursor:pointer;background:transparent;border:1px solid rgba(201,160,99,.3);color:var(--gold);transition:all .2s}
 .obtn:hover{border-color:rgba(224,190,130,.75);color:var(--gold2);background:rgba(201,160,99,.08)}
+/* ── 低配模式：撤实时模糊，玻璃改实底；动画减负 ── */
+html.zjLow *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.zjLow .glass{background:linear-gradient(135deg,rgba(30,23,15,.92),rgba(20,15,10,.9))!important}
+html.zjLow .fade{animation-duration:.22s}
 /* ── 封面无框键：弥散暖雾，悬停/按住浮现流光金线 ── */
 .zjCoverBtn{position:relative;z-index:0;border:none;background:transparent;font-family:var(--kai);cursor:pointer;text-shadow:0 0 14px rgba(224,190,130,.5),0 1px 2px rgba(0,0,0,.85);transition:transform .3s cubic-bezier(.3,1.3,.4,1),filter .3s}
 .zjCoverBtn::before{content:'';position:absolute;z-index:-1;left:-30%;right:-30%;top:-70%;bottom:-70%;pointer-events:none;background:radial-gradient(ellipse 50% 42% at 50% 50%,rgba(224,180,110,.16),rgba(200,150,90,.05) 55%,transparent 78%);-webkit-backdrop-filter:blur(5px) saturate(150%);backdrop-filter:blur(5px) saturate(150%);-webkit-mask-image:radial-gradient(ellipse 46% 40% at 50% 50%,#000 8%,transparent 72%);mask-image:radial-gradient(ellipse 46% 40% at 50% 50%,#000 8%,transparent 72%)}
@@ -173,6 +177,16 @@ function ensureTyping(){
   },20);
 }
 
+var LOWFX=false;try{LOWFX=localStorage.getItem('zhouji_lowfx')==='1';}catch(e){}
+if(LOWFX)document.documentElement.classList.add('zjLow');
+function lowApply(on){
+  LOWFX=!!on;
+  try{localStorage.setItem('zhouji_lowfx',LOWFX?'1':'0');}catch(e){}
+  try{localStorage.setItem('zj3d_lowfx',LOWFX?'1':'0');}catch(e){}
+  document.documentElement.classList.toggle('zjLow',LOWFX);
+  try{if(GL.applyLow)GL.applyLow(LOWFX);}catch(e){}
+  try{if(window.ZJ3D&&ZJ3D.setLow)ZJ3D.setLow(LOWFX);}catch(e){}
+}
 var GL={done:false,tries:0};
 function glInit(){
   if(GL.done)return;
@@ -182,7 +196,8 @@ function glInit(){
     var T=window.THREE, W=window.innerWidth, H=window.innerHeight;
     var rnd=new T.WebGLRenderer({canvas:cv,alpha:false,antialias:true});
     rnd.setClearColor(0x0d0a08,1); /* 不透明底色与页面同色：加法混合不再污染合成alpha，根治光斑黑印 */
-    rnd.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); rnd.setSize(W,H);
+    rnd.setPixelRatio(LOWFX?1:Math.min(2,window.devicePixelRatio||1)); rnd.setSize(W,H);
+    GL.applyLow=function(on){try{rnd.setPixelRatio(on?1:Math.min(2,window.devicePixelRatio||1));rnd.setSize(window.innerWidth,window.innerHeight);}catch(e){}};
     var scene=new T.Scene(); var cam=new T.PerspectiveCamera(60,W/H,.1,1000); cam.position.z=60;
     /* 弥散暖雾光斑贴图：白→黑全不透明渐变（加法混合下黑=消散，规避预乘alpha脏点） */
     var glsp=(function(){var c=document.createElement('canvas');c.width=c.height=64;var x=c.getContext('2d');
@@ -194,12 +209,18 @@ function glInit(){
     var f1=field(680,2.6,0xe0a45e,0.55,150), f2=field(120,5.6,0xffd9a0,0.85,130);
     GL.done=true;
     window.addEventListener('resize',function(){var w=window.innerWidth,h=window.innerHeight;cam.aspect=w/h;cam.updateProjectionMatrix();rnd.setSize(w,h);});
-    var t0=Date.now();
+    var t0=Date.now(),glLast=0;
     (function loop(){
+      requestAnimationFrame(loop);
+      if(LOWFX){
+        if(document.hidden)return;
+        if(window.__ZJSCR==='game')return; /* 游戏内被正文全幅覆盖，白画 */
+        var nw9=Date.now();if(nw9-glLast<33)return;glLast=nw9; /* 锁30帧 */
+      }
       var dt=(Date.now()-t0)/1000;
       [f1,f2].forEach(function(f,idx){var a=f.g.attributes.position.array;var v=idx?0.11:0.06;for(var k=0;k<f.n;k++){a[k*3+1]+=v;if(a[k*3+1]>85)a[k*3+1]=-85;a[k*3]+=Math.sin(dt*.4+k)*0.004;}f.g.attributes.position.needsUpdate=true;f.p.rotation.y=Math.sin(dt*.05)*.12;});
       cam.position.x=Math.sin(dt*.06)*4; cam.lookAt(0,0,0);
-      rnd.render(scene,cam); requestAnimationFrame(loop);
+      rnd.render(scene,cam);
     })();
   }catch(e){}
 }
@@ -1403,8 +1424,9 @@ function titleView(){
   var badge = TH.available?'已连接酒馆 · 真实生成驱动':apiReady()?'独立模式 · 已接入 '+API_DEF[API.provider].name+' · '+apiCur().model:(window.claude&&window.claude.complete)?'独立模式 · AI 就绪':'独立模式 · 尚未接入 AI · 点「链 · 接入」配置后即可正式游玩';
   var dotc = (TH.available||apiReady())?'var(--grn)':((window.claude&&window.claude.complete)?'var(--grn)':'var(--red2)');
   var cont = (S.history.length||(!TH.available&&pref.history&&pref.history.length))?'<button data-act="continue" class="btn zjCoverBtn" style="color:var(--gold);font-size:21px;letter-spacing:.3em;width:clamp(150px,42vw,230px);height:54px;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1">续 前 缘</button>':'';
-  var bgmBtn='<button data-act="bgm" class="btn kai" title="编钟雅乐" style="position:absolute;top:16px;right:64px;width:38px;height:38px;font-size:19px;border:none;background:transparent;cursor:pointer;color:'+(BGM.playing?'var(--gold2)':'var(--mut2)')+';text-shadow:0 0 14px rgba(224,190,130,'+(BGM.playing||S.bgmOpen?'.65':'.3')+'),0 1px 2px rgba(0,0,0,.8)">乐</button>'
-    +'<button data-ov="set" class="btn" title="设置" style="position:absolute;top:16px;right:16px;width:38px;height:38px;border:none;background:transparent;cursor:pointer;color:var(--mut2);filter:drop-shadow(0 0 7px rgba(201,160,99,.4))"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="3.1"/><path d="M19.3 12c0-.5-.05-.99-.15-1.46l2-1.56-1.8-3.12-2.37.95a7.4 7.4 0 0 0-2.52-1.46L14.1 2.8h-4.2l-.36 2.55a7.4 7.4 0 0 0-2.52 1.46l-2.37-.95-1.8 3.12 2 1.56c-.1.47-.15.96-.15 1.46s.05.99.15 1.46l-2 1.56 1.8 3.12 2.37-.95c.75.65 1.6 1.15 2.52 1.46l.36 2.55h4.2l.36-2.55a7.4 7.4 0 0 0 2.52-1.46l2.37.95 1.8-3.12-2-1.56c.1-.47.15-.96.15-1.46z"/></svg></button>';
+  var bgmBtn='<button data-act="bgm" class="btn kai" title="编钟雅乐" style="position:absolute;top:16px;right:82px;width:30px;height:30px;font-size:14px;border:none;background:transparent;cursor:pointer;padding:0;color:'+(BGM.playing?'var(--gold2)':'var(--mut2)')+';text-shadow:0 0 12px rgba(224,190,130,'+(BGM.playing||S.bgmOpen?'.65':'.3')+'),0 1px 2px rgba(0,0,0,.8)">乐</button>'
+    +'<button data-act="lowTog" class="btn kai" title="低配模式：降特效省电防发热（不满意随时关回）" style="position:absolute;top:16px;right:48px;width:30px;height:30px;font-size:14px;border:none;background:transparent;cursor:pointer;padding:0;color:'+(LOWFX?'var(--gold2)':'var(--mut2)')+';text-shadow:0 0 12px rgba(224,190,130,'+(LOWFX?'.65':'.3')+'),0 1px 2px rgba(0,0,0,.8)">低</button>'
+    +'<button data-ov="set" class="btn" title="设置" style="position:absolute;top:16px;right:14px;width:30px;height:30px;border:none;background:transparent;cursor:pointer;padding:0;color:var(--mut2);filter:drop-shadow(0 0 7px rgba(201,160,99,.4))"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="3.1"/><path d="M19.3 12c0-.5-.05-.99-.15-1.46l2-1.56-1.8-3.12-2.37.95a7.4 7.4 0 0 0-2.52-1.46L14.1 2.8h-4.2l-.36 2.55a7.4 7.4 0 0 0-2.52 1.46l-2.37-.95-1.8 3.12 2 1.56c-.1.47-.15.96-.15 1.46s.05.99.15 1.46l-2 1.56 1.8 3.12 2.37-.95c.75.65 1.6 1.15 2.52 1.46l.36 2.55h4.2l.36-2.55a7.4 7.4 0 0 0 2.52-1.46l2.37.95 1.8-3.12-2-1.56c.1-.47.15-.96.15-1.46z"/></svg></button>';
   return '<div class="col center" style="position:relative;text-align:center;padding-bottom:11vh">'+bgmBtn
     +'<div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 75% 55% at 50% 82%, rgba(170,95,40,.22), transparent 62%)"></div>'
     +'<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">'+embersHtml()+'</div>'
@@ -2285,6 +2307,9 @@ function fontPane(){
    +[['auto','自动'],['desktop','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="2.75" y="4.5" width="18.5" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 17.2v3.3"/></svg> 电脑'],['mobile','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="7.25" y="2.75" width="9.5" height="18.5" rx="2.4"/><path d="M10.7 18.2h2.6"/></svg> 手机']].map(function(dv){var on=S.device===dv[0];return '<div class="btn" data-dev="'+dv[0]+'" style="cursor:pointer;padding:8px 18px;font-size:13.5px;letter-spacing:.08em;color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'rgba(201,160,99,.12)':'transparent')+'">'+dv[1]+'</div>';}).join('')+'</div>'
    +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">自动依屏幕宽窄选择版式；也可强制使用电脑或手机布局。</div>'
    +'<div class="glass" style="margin-top:28px;padding:16px 18px"><div class="kai" style="font-size:17px;color:var(--gold3)">预览 · 洛邑的冬夜</div><div id="zjFontPrev" data-zjzoom style="margin-top:8px;font-size:15px;line-height:2;color:#cfc0a0;zoom:'+FS+'">「撑过三年。」单穆公白着头发对你叩首时这么说，「三年后，从宗室里择一子过继，老臣以死谢罪。」</div></div>'
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">性能</div>'
+   +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptLow" type="checkbox" style="accent-color:#c9a063"'+(LOWFX?' checked':'')+'>低配模式：手机防发热防卡顿（降特效模糊与渲染分辨率、背景光斑歇屏、三维降档锁30帧）</label>'
+   +'<div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-top:4px">封面右上角的「低」是同一开关。默认关闭，画质无任何妥协。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">输入栏功能</div>'
    +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptMic" type="checkbox" style="accent-color:#c9a063"'+((S.micOn===true||(S.micOn==null&&!isMobile()))?' checked':'')+'>「声」语音输入按钮（说话成文；手机默认关，输入法自带语音）</label>'
    +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptSugg" type="checkbox" style="accent-color:#c9a063"'+(S.sugg!==false?' checked':'')+'>懒人四策：每幕后 AI 拟四条可点选项（每轮多一次杂务调用）</label>'
@@ -2592,6 +2617,7 @@ function fitStoryPad(){
   st.style.paddingBottom=need+'px';
 }
 function render(){
+  window.__ZJSCR=S.screen;
   try{if(S.screen==='game')memSync();}catch(e){}
   try{edictSync();}catch(e){}
   var focused=document.activeElement&&document.activeElement.id==='zjInput';
@@ -2818,6 +2844,7 @@ root.addEventListener('pointercancel',function(e){dragEnd(e,false);});
 root.addEventListener('change',function(e){
   if(e.target&&e.target.id==='zjTtsAuto'){TTS.auto=!!e.target.checked;ttsSave();return;}
   if(e.target&&e.target.id==='zjDlgPick'){var pD2=DLGC;DLGC=e.target.value||'#e0be82';dlgApply(pD2);return;}
+  if(e.target&&e.target.id==='zjOptLow'){lowApply(!!e.target.checked);render();return;}
   if(e.target&&e.target.id==='zjOptMic'){S.micOn=!!e.target.checked;savePref();render();return;}
   if(e.target&&e.target.id==='zjOptSugg'){S.sugg=!!e.target.checked;if(S.sugg===false)S.suggList=null;savePref();render();return;}
   if(e.target&&e.target.id==='zjJsFile'&&e.target.files&&e.target.files.length){
@@ -3078,6 +3105,7 @@ root.addEventListener('click',function(e){
         if(dch){var don2=S.dice;dch.style.border='1px solid '+(don2?'rgba(217,160,106,.8)':'rgba(255,238,205,.22)');dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.background=don2?'linear-gradient(135deg,rgba(233,180,110,.18),rgba(201,140,80,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}
         else{S._noFade=true;render();}}
       else if(a==='micTog'){sttToggle();}
+      else if(a==='lowTog'){lowApply(!LOWFX);S._noFade=true;render();}
       else if(a==='chatTog'){S.chatOnly=!S.chatOnly;savePref();S._noFade=true;render();}
       else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;savePref();
         var sch=document.querySelector('[data-act="suggTog"]');
