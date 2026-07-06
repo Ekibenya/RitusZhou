@@ -1131,7 +1131,7 @@ function sidebar(){
   var worldRows=['纪年','时地','天气'].filter(function(k){return cw[k];}).map(function(k){return '<div style="display:flex;gap:12px;font-size:13px;line-height:1.7;margin:3px 0"><span style="flex:none;width:2.6em;color:var(--mut)">'+k+'</span><span style="flex:1;color:var(--ink2)">'+esc(cw[k])+'</span></div>';}).join('');
   var dashi=(cw['大势']||'').split(/[｜|]/).map(function(t){return t.trim();}).filter(Boolean).map(function(t){return '<div style="display:flex;gap:8px;font-size:12.5px;line-height:1.7;color:#b3a17d"><span style="color:var(--gold)">◦</span><span>'+esc(t)+'</span></div>';}).join('');
   function head(open,act,color,title,mark){return '<div class="btn" data-act="'+act+'" style="display:flex;align-items:center;gap:10px;padding:12px 15px;cursor:pointer"><span class="diamond" style="background:'+color+'"></span><span class="kai" style="font-size:16px;letter-spacing:.22em;color:var(--gold2);flex:1">'+title+'</span><span style="color:var(--mut);font-size:11px">'+(open?'▾ 收':'▸ 展')+'</span></div>';}
-  return '<div class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:rgba(26,20,14,.92);-webkit-backdrop-filter:blur(9px) saturate(130%);backdrop-filter:blur(9px) saturate(130%);zoom:'+FS+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
+  return '<div class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:rgba(26,20,14,.92);-webkit-backdrop-filter:blur(9px) saturate(130%);backdrop-filter:blur(9px) saturate(130%);zoom:'+FS+';padding-top:'+(isMobile()?'100px':'62px')+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
     +'<div style="padding:15px 15px 3px"><div class="kai" style="font-size:19px;letter-spacing:.26em;color:var(--gold2);text-align:center">太史简 · 起居注</div><div class="slip" style="margin-top:9px"></div></div>'
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secC,'tgC','var(--red)','王 · 起 居',S.secC)
       +(S.secC?'<div class="fade" style="padding:0 15px 16px">'+charRows
@@ -1174,7 +1174,8 @@ function storyPane(){
   var hideScene=window.__ZJ3D_OFF__&&SVGF&&mob;
   var hide3d=!window.__ZJ3D_OFF__&&HIDE3D;
   var sceneH=(window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mob):((window.__ZJ3D_OFF__&&SVGF)?34:(mob?140:186));
-  var scene='<div style="position:relative;height:'+sceneH+'px;flex:none;border-bottom:1px solid rgba(201,160,99,.18);overflow:hidden;background:#0b0906">'+(window.THREE?'<div id="zjScene3D" style="position:absolute;inset:0"></div>':sceneSvg(m))+(window.__ZJ3D_OFF__?('<div data-act="svgfold" class="btn" style="position:absolute;top:6px;right:10px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">'+(SVGF?'展开':'收起')+'</div>'+(SVGF?'':'<div data-act="on3d" class="btn" style="position:absolute;top:6px;right:66px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">启 · 三维</div>')):'')
+  var barH=mob?96:58;
+  var scene='<div style="position:absolute;top:'+barH+'px;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';height:'+sceneH+'px;z-index:4;border-radius:16px;overflow:hidden;background:#0b0906;border:1px solid rgba(255,238,205,.16);box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,242,214,.14)">'+(window.THREE?'<div id="zjScene3D" style="position:absolute;inset:0"></div>':sceneSvg(m))+(window.__ZJ3D_OFF__?('<div data-act="svgfold" class="btn" style="position:absolute;top:6px;right:10px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">'+(SVGF?'展开':'收起')+'</div>'+(SVGF?'':'<div data-act="on3d" class="btn" style="position:absolute;top:6px;right:66px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">启 · 三维</div>')):'')
     +'<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">'+particlesHtml(m)+'</div>'
     +(m.place?'<div class="kai" style="position:absolute;top:48px;right:16px;writing-mode:vertical-rl;font-size:17px;letter-spacing:.3em;color:rgba(232,217,176,.92);text-shadow:0 0 16px rgba(0,0,0,.9)">'+esc(m.place)+'</div>':'')
     +(m.wx?'<div style="position:absolute;left:14px;bottom:'+((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded)?30:10)+'px;font-size:11px;letter-spacing:.2em;color:rgba(157,140,107,.9);background:rgba(13,10,8,.55);padding:4px 10px;border:1px solid rgba(201,160,99,.2);border-radius:8px">'+esc(m.wx)+'</div>':'')
@@ -1189,8 +1190,7 @@ function storyPane(){
     +'<button data-act="send" class="btn glass kai" style="flex:none;width:'+(mob?'44px':'56px')+';font-size:14px;letter-spacing:.15em;writing-mode:vertical-rl;color:var(--gold2);border-color:rgba(224,190,130,.5);border-radius:12px;cursor:pointer;opacity:'+(S.thinking?.5:1)+'">递呈</button></div>'+(S.cmdHint?'<div id="zjCmdHint" style="margin-top:7px;font-size:12.5px;line-height:1.6;color:#d9a06a">令未行：'+esc(S.cmdHint)+'</div>':'')+'</div></div></div>';
   if(hideScene)scene='<div data-act="svgfold" class="btn" style="position:absolute;top:6px;right:10px;z-index:6;padding:2px 9px;background:rgba(12,9,6,.72);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">展开</div>';
   if(hide3d)scene='<div data-act="show3d" class="btn" style="position:absolute;top:6px;right:10px;z-index:6;padding:2px 9px;background:rgba(12,9,6,.72);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">展开</div>';
-  var veil='<div style="position:absolute;left:0;right:0;top:'+sceneH+'px;height:60px;z-index:4;pointer-events:none;background:linear-gradient(180deg,rgba(19,15,11,.97),rgba(19,15,11,.62) 42%,rgba(19,15,11,0))"></div>';
-  return '<div class="col grow" style="position:relative">'+scene+veil+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;padding:58px clamp(16px,5vw,70px) '+(mob?'calc(210px + env(safe-area-inset-bottom))':'160px')+';background:rgba(23,18,12,.93);-webkit-backdrop-filter:blur(9px) saturate(130%);backdrop-filter:blur(9px) saturate(130%)'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
+  return '<div class="col grow" style="position:relative">'+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;padding:'+(barH+sceneH+18)+'px clamp(16px,5vw,70px) '+(mob?'calc(210px + env(safe-area-inset-bottom))':'160px')+';background:rgba(23,18,12,.93);-webkit-backdrop-filter:blur(9px) saturate(130%);backdrop-filter:blur(9px) saturate(130%)'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
 }
 function gameView(){
   var mob=isMobile();var m=mood();
@@ -1216,13 +1216,15 @@ function gameView(){
   var top;
   if(mob){
     // 手机端双行头：一行状态，一行功能键，九键尽显不再溢出
-    top='<div style="flex:none;position:relative;z-index:7;pointer-events:none;margin-bottom:-26px;padding-bottom:26px;background:linear-gradient(180deg,rgba(12,8,5,.97) 0%,rgba(12,8,5,.88) 52%,rgba(12,8,5,0) 100%)">'
-      +'<div style="pointer-events:auto;display:flex;align-items:center;gap:7px;padding:6px 10px 0">'+logo+eraDiv+conn+'</div>'
-      +'<div style="pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:3px;padding:7px 10px 6px">'+topBtns+'</div>'
+    top='<div style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:22px">'
+      +'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.94) 0%,rgba(12,8,5,.72) 58%,rgba(12,8,5,0) 100%);-webkit-backdrop-filter:blur(9px) saturate(135%);backdrop-filter:blur(9px) saturate(135%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>'
+      +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;gap:7px;padding:6px 10px 0">'+logo+eraDiv+conn+'</div>'
+      +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:3px;padding:7px 10px 6px">'+topBtns+'</div>'
       +'</div>';
   }else{
-    top='<div style="flex:none;position:relative;z-index:7;pointer-events:none;margin-bottom:-24px;padding-bottom:24px;background:linear-gradient(180deg,rgba(12,8,5,.97) 0%,rgba(12,8,5,.88) 55%,rgba(12,8,5,0) 100%)">'
-      +'<div style="pointer-events:auto;height:56px;display:flex;align-items:center;gap:9px;padding:4px 12px 0">'
+    top='<div style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:20px">'
+      +'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.94) 0%,rgba(12,8,5,.72) 58%,rgba(12,8,5,0) 100%);-webkit-backdrop-filter:blur(9px) saturate(135%);backdrop-filter:blur(9px) saturate(135%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>'
+      +'<div style="position:relative;pointer-events:auto;height:56px;display:flex;align-items:center;gap:9px;padding:4px 12px 0">'
       +logo
       +'<div class="kai" style="font-size:16px;letter-spacing:.12em;color:var(--gold2);white-space:nowrap">周纪·千年天下</div>'
       +eraDiv
@@ -1237,7 +1239,7 @@ function gameView(){
   }else{
     body='<div class="row grow">'+storyPane()+'<div style="flex:none;width:348px;border-left:1px solid rgba(201,160,99,.2)">'+sidebar()+'</div></div>';
   }
-  return '<div class="col">'+top+body+'</div>'+(S.bgmOpen?bgmPanel():'')+(S.overlay?overlayView():'');
+  return '<div class="col" style="position:relative">'+top+body+'</div>'+(S.bgmOpen?bgmPanel():'')+(S.overlay?overlayView():'');
 }
 
 /* ---------------- BGM PANEL ---------------- */
