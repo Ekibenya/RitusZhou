@@ -8,6 +8,8 @@
 
 ### 🎮 Play now → [**ekibenya.github.io/RitusZhou**](https://ekibenya.github.io/RitusZhou/)
 
+**Mirror (always in sync)** → [**ritus-zhou.vercel.app**](https://ritus-zhou.vercel.app/)
+
 *No download, no install — works on desktop & mobile; bring your own AI key and start*
 
 [简体中文](README.md) | [English](README_EN.md)
@@ -29,17 +31,40 @@
 
 <div align="center">
 
-![Luoyi overview](docs/shots/city.png)
+![2.0 overview](docs/shots/v2-story.png)
 
-*Luoyi, the royal capital — live god-view*
+*The 2.0 interface — floating 3D island, liquid glass, and the Historian's panel in one view*
 
 </div>
+
+## ✦ What's new in 2.0
+
+**A full visual overhaul plus deep SillyTavern-ecosystem compatibility.**
+
+- **New interface** — iOS-style liquid glass everywhere; frameless glowing cover; the 3D world lives on a floating rounded island (collapse it into a breathing gold "dynamic island"); full-screen reading mode; a **Low-spec switch** (cover top-right / settings) that cuts blur & render load for hot phones — off by default, zero visual compromise
+- **Chat mode** — one tap and the AI drops all narration: NPCs reply in messenger-style bubbles, short and instant, with the status panel skipped for speed
+- **Streaming output** — text appears as it generates on all three API types, with automatic fallback
+- **Lazy Four Counsels** — after each scene the AI drafts four tappable next moves; tap to send
+- **Dice of Heaven** — an open d100 roll attached to your actions; the AI must obey the result
+- **Voice input & read-aloud** — speech-to-text on the input bar; built-in browser TTS or your own TTS endpoint, with full / dialogue-only / narration-only scopes
+- **Edit anything** — every message can be edited, deleted (as a pair) or used as a "restart from here" point; re-rolls keep every draft with ◀ ▶ swipes
+- **SillyTavern ecosystem** — import **character cards (PNG / V2/V3 JSON)**, worldbooks with advanced fields (secondary keys, order, probability, scan depth, recursion), **regex scripts** (display-only or display+send), **Tavern-Helper-style JS scripts** in a sandbox, and presets with per-entry editing; chain-of-thought folds automatically and is stripped from history
+- **Prompt X-ray, sampling, aux model, API profiles** — inspect the exact request sent to your AI; set temperature/top_p/max_tokens; route chores to a cheap secondary model; save multiple API configs and switch in one tap
+- **Scene illustrations** — plug in your own image API; the local gallery auto-slims (10 images kept on mobile, 30 on desktop)
+- **Historian's toolkit** — a draggable **relationship graph** (spring physics, favor-colored), a chronicle **timeline**, and **book export**: the whole run cleaned, typeset and saved as a beautiful standalone page
+- **Share & return** — share any custom opening as a link/code friends can replay; come back after 20+ hours and a story-aware letter awaits; custom openings accept any year
+- **Your data, yours** — per-item export for chat / memory / worldbook / presets, one-tap full backup, one-tap wipe
+
+| | |
+|---|---|
+| ![Cover](docs/shots/v2-title.png) | ![Chat mode](docs/shots/v2-chat.png) |
+| *The 2.0 diffuse-glow cover* | *Chat mode with the Four Counsels* |
 
 ## ✦ Features
 
 - **📜 Single-file game** — the whole game is one HTML file; download it and double-click to play, nothing to install
 - **🎵 Ancient-music score** — eleven guqin / Chu-Ci pieces as background music, switchable and pausable from the "乐" control in the top bar
-- **🎭 AI world narration** — no fixed options, no scripted endings; five action modes (Speak / Act / Observe / Freeform / **Decree**); Decree commands (build a stable ×2 / demolish the tavern / attack the granary / find Laozi / go south / travel to Ying) are **parsed and executed by the game itself** — the 3D city changes instantly and the AI only narrates the accomplished fact with the world reacting in real time
+- **🎭 AI world narration** — no fixed options, no scripted endings; four action modes (Speak / Act / Freeform / **Game Control**) plus **Chat mode**; Decree commands (build a stable ×2 / demolish the tavern / attack the granary / find Laozi / go south / travel to Ying) are **parsed and executed by the game itself** — the 3D city changes instantly and the AI only narrates the accomplished fact with the world reacting in real time
 - **📖 Thousand-year lorebook** — nine built-in categories (the Zhou court, the Hundred Schools, the feudal states, Qin & Han, and more), auto-activated by context
 - **🀄 Historian's panel** — per-turn status: the Sovereign's regalia, health, divinity and official record; each NPC's favor and inner thoughts; the era, weather and tides of the realm
 - **🏯 3D realm · eight walkable cities** — above the chat lives a real-time 3D world: Luoyi and the seven capitals each built in their state's color (Zhou gold / Qin black / Chu red / Qi purple / Yan blue / Han green / Zhao tan / Wei teal); travel to another state and the city above transforms to match. Hit「游历」to expand the viewport and walk freely — WASD on desktop, virtual joystick on mobile — and step through doorways into interiors (the Bright Hall, study, bedchamber, tavern, royal archive…). All 457 low-poly ancient-Chinese building & furniture assets are placed in-world, with Luoyi the grandest: pailou gates, a fourteen-statue spirit way, the Mingtang altar, five palaces, twin pagodas and the Gongshu builders' yard
