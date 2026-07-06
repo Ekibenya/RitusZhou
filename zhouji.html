@@ -183,10 +183,14 @@ function glInit(){
     var rnd=new T.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
     rnd.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); rnd.setSize(W,H);
     var scene=new T.Scene(); var cam=new T.PerspectiveCamera(60,W/H,.1,1000); cam.position.z=60;
-    /* 弥散暖雾光斑贴图：径向渐变，无边消散 */
-    var glsp=(function(){var c=document.createElement('canvas');c.width=c.height=64;var x=c.getContext('2d');var g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.3,'rgba(255,255,255,.5)');g.addColorStop(.7,'rgba(255,255,255,.12)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return new T.CanvasTexture(c);})();
+    /* 方块＋弥散暖雾贴图：中心实心小方块保持原貌，周身光雾无边消散 */
+    var glsp=(function(){var c=document.createElement('canvas');c.width=c.height=64;var x=c.getContext('2d');
+      var g=x.createRadialGradient(32,32,6,32,32,32);g.addColorStop(0,'rgba(255,255,255,.5)');g.addColorStop(.45,'rgba(255,255,255,.16)');g.addColorStop(1,'rgba(255,255,255,0)');
+      x.fillStyle=g;x.fillRect(0,0,64,64);
+      x.fillStyle='rgba(255,255,255,1)';x.fillRect(24,24,16,16);
+      return new T.CanvasTexture(c);})();
     function field(n,size,color,op,spread){var pos=new Float32Array(n*3);for(var i=0;i<n;i++){pos[i*3]=(Math.random()-.5)*spread;pos[i*3+1]=(Math.random()-.5)*spread*1.15;pos[i*3+2]=(Math.random()-.5)*70;}var g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(pos,3));var m=new T.PointsMaterial({color:color,size:size,map:glsp,transparent:true,opacity:op,blending:T.AdditiveBlending,depthWrite:false});var p=new T.Points(g,m);scene.add(p);return {g:g,p:p,n:n};}
-    var f1=field(680,2.6,0xe0a45e,0.5,150), f2=field(120,5.6,0xffd9a0,0.8,130);
+    var f1=field(680,3.4,0xe0a45e,0.55,150), f2=field(120,7.4,0xffd9a0,0.85,130);
     GL.done=true;
     window.addEventListener('resize',function(){var w=window.innerWidth,h=window.innerHeight;cam.aspect=w/h;cam.updateProjectionMatrix();rnd.setSize(w,h);});
     var t0=Date.now();
