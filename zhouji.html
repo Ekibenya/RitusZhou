@@ -939,7 +939,7 @@ function apiModelsRun(){
 
 var LSK='zhouji_tavern_v1';
 function loadPref(){try{return JSON.parse(localStorage.getItem(LSK)||'{}');}catch(e){return {};}}
-function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN,dice:S.dice?1:0}));}catch(e){}}
+function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN,dice:S.dice?1:0,last:Date.now()}));}catch(e){}}
 
 /* ---------------- 长程记忆 · 太史长卷 ----------------
    每轮世界回应自动摘为一条编年纪要（纪年·时地·天子之举·史笔），永久保存、
@@ -998,6 +998,28 @@ if(!TH.available && pref.history && pref.history.length){
   S.history = pref.history.map(function(h){h=Object.assign({},h);if(h.role==='world')h.panel=parseMvu(h.text);return h;});
   S.history.forEach(function(h){typedSet.add(h);});
   if(S.history.length) S.screen='game';
+}
+/* 友人链接带开局码：自动导入并落在择局页 */
+try{
+  var hm0=/[#&]op=([^&]+)/.exec(location.hash||'');
+  if(hm0){var sh0=parseShareCode(decodeURIComponent(hm0[1]));
+    if(sh0){S.customOp=sh0.op;S.customRole=sh0.role||null;S.opMsg='友人所赠开局「'+(sh0.op.scene||'')+'」已备好——点绿色卡片入局。';S.screen='select';savePref();
+      try{history.replaceState(null,'',location.pathname+location.search);}catch(e0){}}}
+}catch(e){}
+/* 闲时来信：离开20小时以上归来，御前自动呈上一封与剧情呼应的短信 */
+if(S.screen==='game'&&!TH.available&&S.history.length>=3&&pref.last&&(Date.now()-pref.last)>72e6&&S.history[S.history.length-1].role==='world'){
+  setTimeout(function(){
+    if(S.thinking||!apiReady())return;
+    S.thinking=true;render();
+    var brief=(S.mem&&S.mem.length?S.mem.slice(-6).map(function(m){return (m.e||'')+(m.d?('·'+m.d):'')+'：'+(m.a||'')+' '+(m.s||'');}).join('\n'):'')
+      +'\n最近一幕：'+stripCoT(stripMvu(S.history[S.history.length-1].text)).slice(-400);
+    callAuxAI('你是历史角色扮演游戏的信使。玩家离开游戏一阵子又回来了。根据既往剧情，写一封此刻送到玩家（周天子或其所扮角色）面前的短信：宫中来报、边关急件、故人来信或民间风闻皆可，须与剧情中的人物事件呼应，并抛出一个新钩子引人继续。150字以内，只输出信件正文与落款，不要任何解释。',[{role:'user',content:brief}])
+    .then(function(t){t=String(t||'').trim();
+      S.thinking=false;
+      if(t){S.history.push({role:'world',text:'【别来无恙 · 一信呈上】\n\n'+t,panel:null});savePref();}
+      render();
+    }).catch(function(){S.thinking=false;render();});
+  },2600);
 }
 
 function isMobile(){ if(S.device==='mobile')return true; if(S.device==='desktop')return false; return window.innerWidth<920; }
@@ -1418,6 +1440,27 @@ function startCustomOpening(text,role){
     else if(TH.triggerSlash){TH.triggerSlash('/sys '+JSON.stringify(text));setTimeout(pullHistory,800);}
   }catch(e){}}
 }
+/* ---------------- 开局码分享 ---------------- */
+function shareCode(){
+  if(!S.customOp)return null;
+  try{return btoa(unescape(encodeURIComponent(JSON.stringify({v:1,op:S.customOp,role:S.customRole||null}))));}catch(e){return null;}
+}
+function parseShareCode(txt){
+  var clean=String(txt||'').replace(/\s+/g,'');
+  var m=/op=([A-Za-z0-9+\/=]{40,})/.exec(clean)||/([A-Za-z0-9+\/=]{40,})/.exec(clean);
+  if(!m)return null;
+  try{
+    var o=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    if(!o||!o.op||!o.op.text)return null;
+    return o;
+  }catch(e){return null;}
+}
+function startSharedOpening(){
+  if(!S.customOp||!S.customOp.text)return;
+  S.openingId=0;S.mem=[];S.memN=0;S.wiz=null;
+  S.history=[{role:'world',text:S.customOp.text,panel:parseMvu(S.customOp.text)}];
+  S.screen='game';S.cmdHint=null;render();savePref();
+}
 function selectView(){
   var NUM=['一','二','三','四','五','六','七','八','九','十','十一','十二','十三','十四','十五','十六','十七','十八'];
   function yearOf(era){var m=/前(\d+)年/.exec(era);if(m)return -parseInt(m[1],10);var m2=/(\d+)年/.exec(era);return m2?parseInt(m2[1],10):0;}
@@ -1442,12 +1485,23 @@ function selectView(){
     +'<div style="flex:1;min-width:240px"><div class="kai" style="font-size:22px;color:var(--gold2);letter-spacing:.08em">自定义开局 · 执笔者是你</div>'
     +'<div style="font-size:13px;line-height:1.8;color:#a08d6b;margin-top:4px">选时代、选地点、选在场之人——甚至选择「不当天子」，以史上真实人物或你自创的角色，走进这个有神的天下。选罢，太史令为你现场撰写独一无二的开场。</div></div>'
     +'<div style="flex:none;font-size:13px;letter-spacing:.3em;color:var(--gold)">入局 →</div></div>';
+  var mine=S.customOp?('<div class="btn glass glassHover" data-act="opReplay" style="grid-column:1/-1;cursor:pointer;border-color:rgba(126,168,146,.4);padding:16px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
+    +'<div style="flex:none;width:38px;height:38px;background:linear-gradient(160deg,#7ea892,#48604f);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--kai);font-size:20px;color:#101a14;box-shadow:inset 0 0 0 2px rgba(220,255,235,.25)">存</div>'
+    +'<div style="flex:1;min-width:220px"><div class="kai" style="font-size:18px;color:var(--gold2)">'+esc(S.customOp.scene||'自定义开局')+'</div>'
+    +'<div style="font-size:12px;color:var(--mut);margin-top:3px">'+esc(S.customOp.era||'')+' · 此前撰定的自定义开局，可重新入局，也可发口令与友人共启同一局</div></div>'
+    +'<button data-act="opShare" class="obtn btn" style="flex:none;font-size:12.5px;letter-spacing:.15em;padding:8px 16px">分享开局码</button>'
+    +'<div style="flex:none;font-size:13px;letter-spacing:.3em;color:var(--gold)">入局 →</div></div>'):'';
+  var imp='<div class="glass" style="grid-column:1/-1;padding:13px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+    +'<div class="kai" style="font-size:16px;color:var(--gold2);letter-spacing:.1em;flex:none">友传开局</div>'
+    +'<input id="zjOpCode" placeholder="粘贴友人分享的开局码或链接，即可开同一局…" style="flex:1;min-width:200px;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);padding:9px 12px;font-size:13px" autocomplete="off" spellcheck="false">'
+    +'<button data-act="opImport" class="obtn btn" style="flex:none;font-size:13px;letter-spacing:.15em;padding:9px 18px">导 入</button>'
+    +(S.opMsg?'<div style="width:100%;font-size:12px;color:var(--gold3)">'+esc(S.opMsg)+'</div>':'')+'</div>';
   return '<div class="col">'
     +'<div class="grow" style="overflow-y:auto">'
     +'<div style="position:sticky;top:0;z-index:6;pointer-events:none;margin-bottom:-26px;padding-bottom:26px">'+'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.95) 0%,rgba(12,8,5,.76) 56%,rgba(12,8,5,0) 100%);-webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%);-webkit-mask-image:linear-gradient(180deg,#000 54%,transparent);mask-image:linear-gradient(180deg,#000 54%,transparent)"></div>'+'<div style="position:relative;pointer-events:auto;display:flex;align-items:baseline;gap:16px;padding:18px 28px 10px;flex-wrap:wrap">'
     +'<button data-act="totitle" class="obtn btn" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">〈 题名</button>'
     +'<div class="kai" style="font-size:26px;letter-spacing:.14em;color:var(--gold2)">择一开局 · 千年之间</div></div></div>'
-    +'<div style="padding:22px 28px 60px"><div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:16px">'+zero+grid+'</div></div>'
+    +'<div style="padding:22px 28px 60px"><div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:16px">'+zero+mine+imp+grid+'</div></div>'
     +'</div></div>';
 }
 
@@ -2569,6 +2623,15 @@ root.addEventListener('click',function(e){
     }
     if(a){
       if(a==='toselect'){S.screen='select';S.overlay=null;render();}
+      else if(a==='opReplay'){if(S.history.length&&!confirm('入此局将开启新剧情（当前进度请先在「简」存档）。继续？'))return;startSharedOpening();}
+      else if(a==='opShare'){var sc9=shareCode();if(!sc9)return;
+        var su9=location.origin+location.pathname+'#op='+sc9;
+        if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(su9).then(function(){S.opMsg='开局链接已复制——发给友人，点开即得同一开局。';render();},function(){prompt('复制此链接分享：',su9);});
+        else prompt('复制此链接分享：',su9);}
+      else if(a==='opImport'){var oc9=document.getElementById('zjOpCode');
+        var sh9=parseShareCode(oc9?oc9.value:'');
+        if(!sh9){S.opMsg='识别不出：请完整粘贴开局码或分享链接';render();}
+        else{S.customOp=sh9.op;S.customRole=sh9.role||null;S.opMsg='已导入开局「'+(sh9.op.scene||'')+'」——点上方绿色卡片入局。';savePref();render();}}
       else if(a==='wzOpen'){S.wiz={step:1,era:null,place:null,placeCustom:false,npcs:[],role:null,busy:false,err:'',customYear:''};S.screen='wizard';render();}
       else if(a==='wzExit'){S.wiz=null;S.screen='select';render();}
       else if(a==='wzBack'){if(S.wiz&&S.wiz.step>1){S.wiz.step--;S.wiz.err='';render();}}
