@@ -2400,7 +2400,7 @@ function apiBody(){
     +lbl('绘图接口（可选 · OpenAI images 兼容）')+'<input id="zjImgUrl" '+inp+' value="'+esc(API.img.url)+'" placeholder="https://api.openai.com/v1（或中转地址）">'
     +lbl('绘图密钥')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(API.img.key)+'" placeholder="sk-…（可与文字接口相同）">'
     +lbl('绘图模型')+'<input id="zjImgModel" '+inp+' value="'+esc(API.img.model)+'" placeholder="如 gpt-image-1 / dall-e-3 / flux-schnell">'
-    +'<div style="font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1.7">填好保存后，每幕正文下出现「✦ 绘此幕」。插画只存本机图库（仅保留最近60张自动瘦身），存档只记编号，不撑爆手机内存与存档。</div>'
+    +'<div style="font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1.7">填好保存后，每幕正文下出现「✦ 绘此幕」。插画只存本机图库并自动瘦身（手机留最近10张、电脑留30张），存档只记编号，不撑爆手机内存与存档。</div>'
     +lbl('副模型 · 杂务分工（可选 · OpenAI 兼容）')+'<input id="zjAuxUrl" '+inp+' value="'+esc(API.aux.url)+'" placeholder="接口地址：https://api.openai.com/v1（或中转）">'
     +'<div style="margin-top:9px"><input id="zjAuxKey" type="password" '+inp+' value="'+esc(API.aux.key)+'" placeholder="密钥 sk-…（可与主接口相同）"></div>'
     +'<div style="margin-top:9px"><input id="zjAuxModel" '+inp+' value="'+esc(API.aux.model)+'" placeholder="便宜快模型：如 deepseek-chat / gpt-4o-mini"></div>'
@@ -2896,7 +2896,7 @@ root.addEventListener('click',function(e){
         }).then(function(blob){
           var iid='img_'+Date.now()+'_'+Math.floor(Math.random()*10000);
           idbPut(iid,blob,function(okp){
-            if(okp){S.history[dli].img=iid;savePref();idbPrune(60);}
+            if(okp){S.history[dli].img=iid;savePref();idbPrune(isMobile()?10:30);}
             else S.imgErr='插画存储失败（浏览器不支持或空间不足）';
             S.imgBusy=null;S._noFade=true;render();});
         })['catch'](function(err){
