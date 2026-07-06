@@ -1806,7 +1806,84 @@ function savesBody(){
   return '<div class="grow" style="overflow-y:auto;padding:18px 24px"><div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap"><button data-act="savenow" class="gbtn btn" style="font-size:15px;letter-spacing:.15em;padding:9px 22px">存于新简</button><div style="font-size:12px;color:var(--mut)">最多十二枚简册，存于此浏览器。</div></div>'+rows+'</div>';
 }
 
+function npcStats(){
+  var map={},order=[];
+  S.history.forEach(function(h){
+    if(h.role!=='world')return;
+    var p=h.panel||(h.panel=parseMvu(h.text));
+    if(!p||!p.npcs)return;
+    p.npcs.forEach(function(np){
+      if(!np||!np.name)return;
+      if(!map[np.name]){map[np.name]={name:np.name,n:0};order.push(np.name);}
+      var o=map[np.name];o.n++;
+      if(np.favor!=null)o.favor=np.favor;
+      if(np.status)o.status=np.status;
+      if(np.thought)o.thought=np.thought;
+    });
+  });
+  return order.map(function(k){return map[k];});
+}
+function memGraphBody(){
+  var ns=npcStats();
+  if(!ns.length)return '<div class="grow bambooV" style="overflow-y:auto;padding:46px 26px;text-align:center;font-size:13px;letter-spacing:.25em;color:#6f6148;line-height:2.2">尚无人物入络<br>与 NPC 相逢相知后，此处自动结成关系网</div>';
+  ns=ns.slice(-14); /* 至多画14人，取最近出场者 */
+  var W=640,H=Math.max(430,260+ns.length*22),cx=W/2,cy=H/2,R=Math.min(W,H)/2-84;
+  var lines='',nodes='';
+  ns.forEach(function(o,i){
+    var ang=-Math.PI/2+i*2*Math.PI/ns.length;
+    var x=cx+R*Math.cos(ang),y=cy+R*Math.sin(ang);
+    var fv=Number(o.favor);if(!isFinite(fv))fv=50;
+    var col=fv>=70?'#7ea892':fv>=40?'#c9a063':'#b06a55';
+    var wdt=(1+Math.min(3,o.n/3)).toFixed(1);
+    var sel=S.memNpc===o.name;
+    lines+='<line x1="'+cx+'" y1="'+cy+'" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-opacity="'+(sel?'.9':'.45')+'" stroke-width="'+wdt+'"/>';
+    nodes+='<g data-npc="'+esc(o.name)+'" style="cursor:pointer">'
+      +'<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="27" fill="rgba(26,20,16,.94)" stroke="'+col+'" stroke-width="'+(sel?2.2:1.2)+'"/>'
+      +'<text x="'+x.toFixed(1)+'" y="'+(y-1).toFixed(1)+'" text-anchor="middle" font-size="13" fill="'+(sel?'#e0be82':'#d8c9a8')+'" font-family="var(--kai)">'+esc(String(o.name).slice(0,4))+'</text>'
+      +'<text x="'+x.toFixed(1)+'" y="'+(y+13).toFixed(1)+'" text-anchor="middle" font-size="9.5" fill="'+col+'">'+fv+'</text></g>';
+  });
+  var center='<circle cx="'+cx+'" cy="'+cy+'" r="33" fill="rgba(140,35,24,.25)" stroke="#e0be82" stroke-width="1.4"/>'
+    +'<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" font-size="16" fill="#e0be82" font-family="var(--kai)">'+(S.customRole?'吾':'朕')+'</text>';
+  var card='';
+  if(S.memNpc){
+    var sel2=null;ns.forEach(function(o){if(o.name===S.memNpc)sel2=o;});
+    if(sel2){var fv2=Number(sel2.favor);if(!isFinite(fv2))fv2=50;
+      card='<div style="border:1px solid rgba(224,190,130,.4);border-radius:12px;padding:13px 16px;margin-top:14px;background:rgba(255,255,255,.02)">'
+      +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="kai" style="font-size:17px;color:var(--gold2)">'+esc(sel2.name)+'</span><span style="font-size:11.5px;color:var(--mut)">出场 '+sel2.n+' 幕</span>'
+      +'<div style="flex:1;min-width:120px;height:6px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden"><div style="width:'+Math.max(2,Math.min(100,fv2))+'%;height:100%;background:linear-gradient(90deg,#b06a55,#c9a063,#7ea892)"></div></div>'
+      +'<span style="font-size:12px;color:var(--gold3)">好感 '+fv2+'</span></div>'
+      +(sel2.status?'<div style="font-size:12.5px;color:var(--ink2);margin-top:8px">近况：'+esc(sel2.status)+'</div>':'')
+      +(sel2.thought?'<div style="font-size:12.5px;color:#9d8c6b;margin-top:4px;line-height:1.7">心声：'+esc(sel2.thought)+'</div>':'')+'</div>';}
+  }
+  return '<div class="grow bambooV" style="overflow-y:auto;padding:16px 22px"><div style="max-width:680px;margin:0 auto">'
+    +'<div style="font-size:12px;color:var(--mut);line-height:1.8;margin-bottom:4px">线愈粗缘愈深（出场愈多），色由好感而定：<span style="color:#7ea892">青为亲厚</span> · <span style="color:#c9a063">金为平和</span> · <span style="color:#b06a55">赤为疏恶</span>。点人物看详情。</div>'
+    +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">'+lines+center+nodes+'</svg>'+card+'</div></div>';
+}
+function memAxisBody(){
+  var ms=S.mem||[];
+  if(!ms.length)return '<div class="grow bambooV" style="overflow-y:auto;padding:46px 26px;text-align:center;font-size:13px;letter-spacing:.25em;color:#6f6148">编年尚空 · 行过一轮自动记一笔</div>';
+  var lastE=null;
+  var items=ms.map(function(m,i){
+    var eraChip='';
+    if((m.e||'')&&m.e!==lastE){lastE=m.e;eraChip='<div style="display:flex;align-items:center;gap:10px;margin:18px 0 10px"><div class="kai" style="flex:none;font-size:15px;color:var(--gold2);letter-spacing:.18em;border:1px solid rgba(224,190,130,.4);border-radius:99px;padding:4px 16px;background:rgba(201,160,99,.08)">'+esc(m.e)+'</div><div style="flex:1;height:1px;background:linear-gradient(90deg,rgba(201,160,99,.35),transparent)"></div></div>';}
+    return eraChip+'<div style="position:relative;padding:0 0 18px 24px">'
+      +'<div style="position:absolute;left:5px;top:8px;bottom:-4px;width:1px;background:rgba(201,160,99,.22)"></div>'
+      +'<div style="position:absolute;left:1px;top:5px;width:9px;height:9px;border-radius:50%;background:'+(m.manual?'#7ea892':'var(--gold)')+';box-shadow:0 0 8px rgba(224,190,130,.45)"></div>'
+      +'<div style="font-size:11px;color:var(--mut);letter-spacing:.08em">第'+(i+1)+'笔'+(m.d?(' · '+esc(m.d)):'')+(m.manual?' · <span style="color:var(--grn2)">手记</span>':'')+'</div>'
+      +(m.a?'<div style="font-size:12.5px;color:#a08e6c;margin-top:3px">天子：'+esc(m.a)+'</div>':'')
+      +(m.s?'<div style="font-size:13px;color:var(--ink2);line-height:1.7;margin-top:3px">'+esc(m.s)+'</div>':'')
+      +'</div>';
+  }).join('');
+  return '<div class="grow bambooV" style="overflow-y:auto;padding:20px 26px"><div style="max-width:640px">'+items+'</div></div>';
+}
 function memBody(){
+  var mtabs=[['scroll','卷 · 长卷'],['axis','史 · 编年史'],['graph','络 · 人物图谱']].map(function(tb){var on=(S.memTab||'scroll')===tb[0];return '<div class="btn" data-memtab="'+tb[0]+'" style="cursor:pointer;white-space:nowrap;padding:9px 15px;font-family:var(--kai);font-size:15px;letter-spacing:.18em;color:'+(on?'var(--gold2)':'var(--mut)')+';border-bottom:2px solid '+(on?'rgba(224,190,130,.7)':'transparent')+'">'+tb[1]+'</div>';}).join('');
+  var mbody=(S.memTab==='axis')?memAxisBody():(S.memTab==='graph')?memGraphBody():memScrollBody();
+  return '<div class="col grow" style="min-height:0">'
+    +'<div style="flex:none;display:flex;gap:6px;padding:6px 18px 0;border-bottom:1px solid rgba(201,160,99,.18);overflow-x:auto;scrollbar-width:none">'+mtabs+'</div>'
+    +mbody+'</div>';
+}
+function memScrollBody(){
   var n=S.mem?S.mem.length:0;
   var chars=0;S.mem.forEach(function(m){chars+=(m.a||'').length+(m.s||'').length+(m.e||'').length;});
   var on=S.memOn!==false;
@@ -1856,6 +1933,47 @@ function fontApply(){
   }catch(e){}
 }
 fontApply();
+function bookHtml(cb){
+  var op=currentOpening();
+  var title='周纪 · '+(op?(op.era||'千年天下'):'千年天下');
+  var sub=op?(op.scene||''):'';
+  var withImgs=[];
+  S.history.forEach(function(h){if(h.role==='world'&&h.img)withImgs.push(h);});
+  withImgs=withImgs.slice(-30); /* 只嵌最近30张插画，防文件过大 */
+  var imgMap={},left=withImgs.length;
+  function assemble(){
+    var body=S.history.map(function(h){
+      if(h.role==='user')return '<div class="say"><div class="cap">王 之 言 行</div>'+esc(h.text)+'</div>';
+      var t=applyRegex(stripCoT(stripMvu(h.text)),'display');
+      var cm=/^【[^】]*】/.exec(t),chap='';
+      if(cm){chap='<h2>'+esc(cm[0].replace(/[【】]/g,''))+'</h2>';t=t.slice(cm[0].length).trim();}
+      var img=(h.img&&imgMap[h.img])?'<img src="'+imgMap[h.img]+'" alt="">':'';
+      return chap+img+t.split(/\n{2,}/).map(function(pp){return '<p>'+esc(pp).replace(/\n/g,'<br>')+'</p>';}).join('');
+    }).join('');
+    var chron=(S.mem&&S.mem.length>1)?'<h2>太史长卷 · 编年附录</h2>'+S.mem.map(function(m,i){return '<p class="chron">'+(i+1)+' · '+esc((m.e||'')+(m.d?('·'+m.d):''))+(m.a?('　'+esc(m.a)):'')+(m.s?('　——'+esc(m.s)):'')+'</p>';}).join(''):'';
+    var doc='<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'
+      +'body{margin:0;background:#14100b;color:#d8c9a8;font-family:"Kaiti SC","STKaiti","KaiTi","Songti SC",serif;line-height:2.1;font-size:17px}'
+      +'.wrap{max-width:680px;margin:0 auto;padding:60px 24px 100px}'
+      +'h1{font-size:34px;letter-spacing:.3em;text-align:center;color:#e0be82;font-weight:400;margin:40px 0 8px}'
+      +'.sub{text-align:center;color:#8a7a5e;letter-spacing:.4em;font-size:13px;margin-bottom:70px}'
+      +'h2{font-size:20px;color:#e0be82;letter-spacing:.15em;font-weight:400;margin:54px 0 18px;text-align:center}'
+      +'p{margin:0 0 18px;text-indent:2em}'
+      +'.say{border-right:3px solid #a63b26;background:rgba(166,59,38,.08);border-radius:10px;padding:12px 16px;margin:0 0 18px;color:#cfa08c;white-space:pre-wrap}'
+      +'.say .cap{font-size:10px;letter-spacing:.4em;color:#c05a40;margin-bottom:4px}'
+      +'img{max-width:100%;border-radius:12px;display:block;margin:0 auto 18px}'
+      +'.chron{font-size:13px;color:#9d8c6b;text-indent:0;margin:0 0 8px}'
+      +'.fin{text-align:center;letter-spacing:.6em;color:#8a7a5e;margin-top:70px}'
+      +'</style></head><body><div class="wrap"><h1>'+esc(title)+'</h1><div class="sub">'+esc(sub)+'</div>'+body+chron+'<div class="fin">〔全 卷 终〕</div></div></body></html>';
+    cb(doc);
+  }
+  if(!left){assemble();return;}
+  withImgs.forEach(function(h){
+    idbGet(h.img,function(blob){
+      if(blob){var fr=new FileReader();fr.onload=function(){imgMap[h.img]=fr.result;if(--left===0)assemble();};fr.onerror=function(){if(--left===0)assemble();};fr.readAsDataURL(blob);}
+      else if(--left===0)assemble();
+    });
+  });
+}
 function fontPane(){
   var pct=Math.round(FS*100);
   var fname=FONTC&&FONTC.name?FONTC.name:'';
@@ -1878,6 +1996,7 @@ function fontPane(){
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键导出此浏览器里的全部游戏数据为一个 JSON 文件：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体与接口配置、三维营造记录。换设备或清数据前先备份。</div>'
    +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px">'
    +'<button data-act="expChat" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出聊天记录</button>'
+   +'<button data-act="bookExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px;color:var(--gold2)">成书导出</button>'
    +'<button data-act="memExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出记忆长卷</button>'
    +'<button data-act="loreExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出世界书</button>'
    +'<button data-act="pExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出预设</button>'
@@ -2403,6 +2522,8 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-mtool')){var mtix=parseInt(t.getAttribute('data-mtool'),10)-1;S.msgTools=(S.msgTools===mtix?null:mtix);S.msgEdit=null;S._noFade=true;render();return;}
       if(t.getAttribute('data-medit')){S.memEdit=parseInt(t.getAttribute('data-medit'),10)-1;renderOverlay();return;}
       if(t.getAttribute('data-mdel')){S.mem.splice(parseInt(t.getAttribute('data-mdel'),10),1);savePref();renderOverlay();return;}
+      if(t.getAttribute('data-memtab')){S.memTab=t.getAttribute('data-memtab');S.memNpc=null;renderOverlay();return;}
+      if(t.getAttribute('data-npc')!=null&&t.getAttribute('data-npc')!==''){var npv=t.getAttribute('data-npc');S.memNpc=(S.memNpc===npv?null:npv);renderOverlay();return;}
       if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;renderOverlay();pillFlip('zjSetPill',spr);return;}
       if(t.getAttribute('data-cat')){var ncat=t.getAttribute('data-cat');if(ncat===S.codexCat)return;var corder=[].map.call(document.querySelectorAll('[data-cat]'),function(x){return x.getAttribute('data-cat');});var cpo=document.getElementById('zjCatPill');var cpr=cpo&&cpo.getBoundingClientRect();var epo=document.getElementById('zjEntPill');var epr=epo&&epo.getBoundingClientRect();
         var elC3=document.getElementById('zjCatBar');var stCx3=elC3?elC3.scrollLeft:0,stCy3=elC3?elC3.scrollTop:0;
@@ -2639,6 +2760,8 @@ root.addEventListener('click',function(e){
         savePref();S.memEdit=null;renderOverlay();}}
       else if(a==='memCancel'){S.memEdit=null;renderOverlay();}
       else if(a==='memExport'){try{var mb=new Blob([JSON.stringify({__app:'周纪·千年天下',__type:'zhouji-memory',entries:S.mem},null,1)],{type:'application/json'});var mu=URL.createObjectURL(mb);var ma=document.createElement('a');ma.href=mu;ma.download='周纪太史长卷.json';document.body.appendChild(ma);ma.click();document.body.removeChild(ma);setTimeout(function(){URL.revokeObjectURL(mu);},4000);}catch(e){}}
+      else if(a==='bookExport'){if(!S.history.length)return;
+        bookHtml(function(doc){try{var bb=new Blob([doc],{type:'text/html'});var bu=URL.createObjectURL(bb);var ba=document.createElement('a');ba.href=bu;ba.download='周纪成书.html';document.body.appendChild(ba);ba.click();document.body.removeChild(ba);setTimeout(function(){URL.revokeObjectURL(bu);},4000);}catch(e){}});}
       else if(a==='expChat'){try{var hb=new Blob([JSON.stringify({__app:'周纪·千年天下',__type:'zhouji-chat',opening:S.customOp||S.openingId,history:S.history.map(function(h){return {role:h.role,text:h.text};})},null,1)],{type:'application/json'});var hu=URL.createObjectURL(hb);var ha=document.createElement('a');ha.href=hu;ha.download='周纪聊天记录.json';document.body.appendChild(ha);ha.click();document.body.removeChild(ha);setTimeout(function(){URL.revokeObjectURL(hu);},4000);}catch(e){}}
       else if(a==='pSave'){if(PRESET&&S.pEdit!=null&&PRESET.entries[S.pEdit]){var peN=document.getElementById('zjPeName'),peP=document.getElementById('zjPePos'),peT=document.getElementById('zjPeText');
         var pe0=PRESET.entries[S.pEdit];pe0.name=(peN&&peN.value.trim())||pe0.name;pe0.pos=(peP&&peP.value==='post')?'post':'pre';pe0.content=peT?peT.value:pe0.content;
