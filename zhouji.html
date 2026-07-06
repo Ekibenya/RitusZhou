@@ -1715,8 +1715,8 @@ function storyPane(){
   chips+='<div class="btn zjHl" data-act="suggTog" title="懒人四策：每幕后由 AI 拟四条可点选的下一步" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(son?'rgba(126,168,146,.7)':'rgba(255,238,205,.22)')+';color:'+(son?'#a9cbb8':'var(--mut)')+';background:'+(son?'linear-gradient(135deg,rgba(150,200,170,.14),rgba(80,120,95,.07))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?'策':'策 · 四策')+'</div>';
   var ph=MODE_PH[S.mode];
   var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(66px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none"><div style="max-width:860px;margin:0 auto">'
-    +'<div style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:8px;padding:2px 2px 3px;'+(mob?'overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch':'flex-wrap:wrap')+'">'+chips+'</div>'
-    +((S.suggList&&S.suggList.length&&!S.thinking)?'<div style="pointer-events:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'+S.suggList.map(function(sg,si){return '<div class="btn zjHl" data-sugg="'+si+'" style="cursor:pointer;font-size:'+(mob?'11px':'12px')+';line-height:1.5;letter-spacing:.02em;padding:'+(mob?'6px 10px':'6px 12px')+';border-radius:12px;color:#c8b48e;border:1px solid rgba(255,238,205,.18);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.03));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);box-shadow:inset 0 1px 0 rgba(255,242,214,.18),0 2px 8px rgba(0,0,0,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sg)+'</div>';}).join('')+'</div>':'')
+    +((S.suggList&&S.suggList.length&&!S.thinking)?'<div id="zjSuggRow" style="pointer-events:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'+S.suggList.map(function(sg,si){return '<div class="btn zjHl" data-sugg="'+si+'" style="cursor:pointer;font-size:'+(mob?'11px':'12px')+';line-height:1.5;letter-spacing:.02em;padding:'+(mob?'6px 10px':'6px 12px')+';border-radius:12px;color:#c8b48e;border:1px solid rgba(255,238,205,.18);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.03));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);box-shadow:inset 0 1px 0 rgba(255,242,214,.18),0 2px 8px rgba(0,0,0,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sg)+'</div>';}).join('')+'</div>':'')
+    +'<div id="zjChipsRow" style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:8px;padding:2px 2px 3px;'+(mob?'overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch':'flex-wrap:wrap')+'">'+chips+'</div>'
     +'<div class="glass" style="pointer-events:auto;padding:'+(mob?'7px 9px 8px':'8px 12px 9px')+';border-radius:20px">'
     +'<div style="display:flex;gap:8px;align-items:stretch"><textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'" style="flex:1;resize:none;background:rgba(20,15,11,.28);border:1px solid rgba(201,160,99,.28);border-radius:12px;color:var(--gold3);font-size:16px;line-height:1.7;padding:'+(mob?'6px 10px':'6px 12px')+'">'+esc(S.input)+'</textarea>'
     +(sttOK()?'<button id="zjMicBtn" data-act="micTog" class="btn glass" title="语音输入（说完自动停）" style="flex:none;width:'+(mob?'38px':'44px')+';font-size:15px;color:'+(S.rec?'#e06a50':'var(--mut2)')+';border-color:'+(S.rec?'rgba(224,106,80,.65)':'rgba(255,238,205,.25)')+';border-radius:12px;cursor:pointer">'+(S.rec?'●':'声')+'</button>':'')
@@ -2507,12 +2507,15 @@ function render(){
   /* 滚动策略：回看历史时重渲染不再把画面拽回底部 */
   var ps=document.getElementById('zjStory');
   var keepPos=(ps&&ps.scrollTop+ps.clientHeight<ps.scrollHeight-60)?ps.scrollTop:null;
+  var chipsEl=document.getElementById('zjChipsRow');
+  var chipsL=chipsEl?chipsEl.scrollLeft:null;
   var noF=S._noFade;S._noFade=false;
   if(noF)root.classList.add('zjNoFade');
   root.innerHTML=view();
   if(noF)setTimeout(function(){root.classList.remove('zjNoFade');},80);
   var story=document.getElementById('zjStory');
   if(story){if(S._stayTop)story.scrollTop=0;else if(keepPos!=null)story.scrollTop=keepPos;else story.scrollTop=story.scrollHeight;S._stayTop=false;}
+  if(chipsL){var chipsEl2=document.getElementById('zjChipsRow');if(chipsEl2)chipsEl2.scrollLeft=chipsL;}
   if(focused){var ta=document.getElementById('zjInput');if(ta){ta.focus();try{ta.setSelectionRange(selStart,selStart);}catch(e){}}}
   try{
     if(S.thinking&&!SBX.thinking){SBX.thinking=true;sbxEmit('GENERATION_STARTED',null);}
@@ -2965,9 +2968,17 @@ root.addEventListener('click',function(e){
       else if(a==='bgmnext'){bgmPlay(BGM.idx+1);render();}
       else if(a==='apiSave'){readApiForm();saveApi();S.apiMsg={t:'已保存。密钥仅存于此浏览器，不会上传。'+(apiReady()?'现在可以开局游玩了。':'还差密钥或模型名未填。'),c:apiReady()?'var(--grn2)':'var(--red2)'};render();}
       else if(a==='apiTest'){apiTestRun();}
-      else if(a==='diceTog'){S.dice=!S.dice;savePref();S._noFade=true;render();}
+      else if(a==='diceTog'){S.dice=!S.dice;savePref();
+        var dch=document.querySelector('[data-act="diceTog"]');
+        if(dch){var don2=S.dice;dch.style.border='1px solid '+(don2?'rgba(217,160,106,.8)':'rgba(255,238,205,.22)');dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.background=don2?'linear-gradient(135deg,rgba(233,180,110,.18),rgba(201,140,80,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}
+        else{S._noFade=true;render();}}
       else if(a==='micTog'){sttToggle();}
-      else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;if(S.sugg===false)S.suggList=null;else genSuggestions();savePref();S._noFade=true;render();}
+      else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;savePref();
+        var sch=document.querySelector('[data-act="suggTog"]');
+        if(sch){var son2=S.sugg!==false;sch.style.border='1px solid '+(son2?'rgba(126,168,146,.7)':'rgba(255,238,205,.22)');sch.style.color=son2?'#a9cbb8':'var(--mut)';sch.style.background=son2?'linear-gradient(135deg,rgba(150,200,170,.14),rgba(80,120,95,.07))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}
+        if(S.sugg===false){S.suggList=null;var srw=document.getElementById('zjSuggRow');if(srw&&srw.parentNode)srw.parentNode.removeChild(srw);}
+        else genSuggestions();
+        if(!sch){S._noFade=true;render();}}
       else if(a==='apiProfSave'){readApiForm();saveApi();
         var pfn=prompt('给这套接口配置起个名：',apiCur().model||'档案');
         if(pfn&&pfn.trim()){PROFILES.push({name:pfn.trim().slice(0,20),data:JSON.parse(JSON.stringify(API))});profSave();S.apiMsg={t:'已存档案「'+pfn.trim().slice(0,20)+'」。',c:'var(--grn2)'};renderOverlay();}}
