@@ -1450,14 +1450,23 @@ function memBody(){
   var n=S.mem?S.mem.length:0;
   var chars=0;S.mem.forEach(function(m){chars+=(m.a||'').length+(m.s||'').length+(m.e||'').length;});
   var on=S.memOn!==false;
+  var min='width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:8px;color:var(--ink);padding:7px 10px;font-size:12.5px';
   var rows=S.mem.slice().reverse().map(function(m,ri){
     var i=n-1-ri;
-    return '<div style="display:flex;gap:10px;align-items:flex-start;border:1px solid rgba(201,160,99,.16);padding:9px 12px;margin-bottom:6px;background:rgba(255,255,255,.015)">'
+    if(S.memEdit===i){
+      return '<div style="border:1px solid rgba(224,190,130,.55);border-radius:10px;padding:11px 12px;margin-bottom:6px;background:rgba(255,255,255,.02)">'
+        +'<div style="display:flex;gap:8px"><input id="zjMeE" value="'+esc(m.e||'')+'" placeholder="纪年" style="'+min+';flex:1"><input id="zjMeD" value="'+esc(m.d||'')+'" placeholder="时地" style="'+min+';flex:1"></div>'
+        +'<input id="zjMeA" value="'+esc(m.a||'')+'" placeholder="天子之举" style="'+min+';margin-top:7px">'
+        +'<textarea id="zjMeS" placeholder="史载" style="'+min+';margin-top:7px;min-height:64px;resize:vertical;font-family:inherit;line-height:1.6">'+esc(m.s||'')+'</textarea>'
+        +'<div style="display:flex;gap:9px;margin-top:9px;justify-content:flex-end"><button data-act="memCancel" class="obtn btn" style="font-size:12px;padding:6px 15px">取消</button><button data-act="memSave" class="gbtn btn" style="font-size:12px;letter-spacing:.12em;padding:6px 18px">保 存</button></div></div>';
+    }
+    return '<div style="display:flex;gap:10px;align-items:flex-start;border:1px solid rgba(201,160,99,.16);border-radius:10px;padding:9px 12px;margin-bottom:6px;background:rgba(255,255,255,.015)">'
       +'<div style="flex:none;font-size:11px;color:var(--mut);min-width:26px;text-align:right;padding-top:2px">'+(i+1)+'</div>'
       +'<div style="flex:1;min-width:0"><div style="font-size:11.5px;color:var(--gold);letter-spacing:.06em">'+esc((m.e||'')+(m.d?('·'+m.d):''))+(m.manual?' · <span style="color:var(--grn2)">手记</span>':'')+'</div>'
       +(m.a?'<div style="font-size:12px;color:#a08e6c;margin-top:2px">天子：'+esc(m.a)+'</div>':'')
       +(m.s?'<div style="font-size:12.5px;color:var(--ink2);line-height:1.6;margin-top:2px">'+esc(m.s)+'</div>':'')+'</div>'
-      +'<div class="btn" data-mdel="'+i+'" style="flex:none;cursor:pointer;font-size:11px;color:#b06a55;border:1px solid rgba(166,59,38,.3);padding:2px 8px">删</div></div>';
+      +'<div class="btn" data-medit="'+(i+1)+'" style="flex:none;cursor:pointer;font-size:11px;color:var(--gold);border:1px solid rgba(201,160,99,.35);border-radius:7px;padding:2px 8px">编辑</div>'
+      +'<div class="btn" data-mdel="'+i+'" style="flex:none;cursor:pointer;font-size:11px;color:#b06a55;border:1px solid rgba(166,59,38,.3);border-radius:7px;padding:2px 8px">删</div></div>';
   }).join('');
   if(!rows)rows='<div style="text-align:center;padding:30px 0;font-size:13px;letter-spacing:.25em;color:#6f6148">长卷尚空 · 行过一轮自动记一笔</div>';
   return '<div class="grow bambooV" style="overflow-y:auto;padding:20px 26px">'
@@ -1466,7 +1475,8 @@ function memBody(){
     +'<div style="display:flex;gap:12px;align-items:center;margin:16px 0;flex-wrap:wrap">'
     +'<div class="btn" data-act="memToggle" style="cursor:pointer;padding:7px 16px;font-size:13px;letter-spacing:.12em;border:1px solid '+(on?'rgba(126,168,146,.5)':'rgba(201,160,99,.3)')+';color:'+(on?'var(--grn2)':'var(--mut)')+'">'+(on?'✓ 注入中':'已停用')+'</div>'
     +'<div style="font-size:12px;color:var(--mut)">'+n+' 条 · 约'+chars+'字'+(chars>7000?'（超长部分自动中略，首尾保留）':'')+'</div>'
-    +'<div class="btn" data-act="memClear" style="cursor:pointer;margin-left:auto;font-size:12px;color:#b06a55;border:1px solid rgba(166,59,38,.35);padding:6px 14px">清空长卷</div></div>'
+    +'<div class="btn" data-act="memExport" style="cursor:pointer;margin-left:auto;font-size:12px;color:var(--gold2);border:1px solid rgba(201,160,99,.35);border-radius:8px;padding:6px 14px">导出长卷</div>'
+    +'<div class="btn" data-act="memClear" style="cursor:pointer;font-size:12px;color:#b06a55;border:1px solid rgba(166,59,38,.35);border-radius:8px;padding:6px 14px">清空长卷</div></div>'
     +'<div style="display:flex;gap:8px;margin-bottom:14px"><input id="zjMemAdd" placeholder="手记一笔（重要设定/约定/伏笔，AI 会永远记住）…" style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.25);color:#d8c9a8;font-size:12.5px;padding:9px 12px;font-family:inherit" autocomplete="off"><button data-act="memAdd" class="obtn btn" style="flex:none;font-size:13px;letter-spacing:.15em;padding:0 18px">入卷</button></div>'
     +rows+'</div>';
 }
@@ -1506,7 +1516,12 @@ function fontPane(){
    +'<div class="glass" style="margin-top:28px;padding:16px 18px"><div class="kai" style="font-size:17px;color:var(--gold3)">预览 · 洛邑的冬夜</div><div id="zjFontPrev" data-zjzoom style="margin-top:8px;font-size:15px;line-height:2;color:#cfc0a0;zoom:'+FS+'">「撑过三年。」单穆公白着头发对你叩首时这么说，「三年后，从宗室里择一子过继，老臣以死谢罪。」</div></div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">数据备份</div>'
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键导出此浏览器里的全部游戏数据为一个 JSON 文件：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体与接口配置、三维营造记录。换设备或清数据前先备份。</div>'
-   +'<button data-act="expAll" class="gbtn btn" style="margin-top:12px;font-size:13.5px;letter-spacing:.15em;padding:9px 24px;border-radius:10px">导出全部数据</button>'
+   +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px">'
+   +'<button data-act="expChat" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出聊天记录</button>'
+   +'<button data-act="memExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出记忆长卷</button>'
+   +'<button data-act="loreExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出世界书</button>'
+   +'<button data-act="pExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出预设</button>'
+   +'<button data-act="expAll" class="gbtn btn" style="font-size:12.5px;letter-spacing:.15em;padding:8px 20px;border-radius:10px">导出全部数据</button></div>'
    +'<div class="kai" style="font-size:19px;color:#c9705a;letter-spacing:.15em;margin:34px 0 10px">清除本机数据</div>'
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键抹掉此浏览器里的全部游戏数据：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体、AI 接口配置、三维天下营造记录与全部缓存。不可恢复，清除后页面自动重载如初见。</div>'
    +(S.wipeArm
@@ -1871,6 +1886,7 @@ root.addEventListener('click',function(e){
         morphOpen('zjOvBox','[data-ov="'+ovK+'"]');codexPills();setPills();return;}
       if(t.getAttribute('data-prov')){readApiForm();API.provider=t.getAttribute('data-prov');S.apiModels=null;S.apiMsg=null;saveApi();renderOverlay();return;}
       if(t.getAttribute('data-setmodel')){apiCur().model=t.getAttribute('data-setmodel');saveApi();renderOverlay();return;}
+      if(t.getAttribute('data-medit')){S.memEdit=parseInt(t.getAttribute('data-medit'),10)-1;renderOverlay();return;}
       if(t.getAttribute('data-mdel')){S.mem.splice(parseInt(t.getAttribute('data-mdel'),10),1);savePref();renderOverlay();return;}
       if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;renderOverlay();pillFlip('zjSetPill',spr);return;}
       if(t.getAttribute('data-cat')){var ncat=t.getAttribute('data-cat');if(ncat===S.codexCat)return;var corder=[].map.call(document.querySelectorAll('[data-cat]'),function(x){return x.getAttribute('data-cat');});var cpo=document.getElementById('zjCatPill');var cpr=cpo&&cpo.getBoundingClientRect();var epo=document.getElementById('zjEntPill');var epr=epo&&epo.getBoundingClientRect();
@@ -2000,6 +2016,13 @@ root.addEventListener('click',function(e){
         var xb=new Blob([JSON.stringify(xo,null,1)],{type:'application/json'});var xu=URL.createObjectURL(xb);var xa=document.createElement('a');xa.href=xu;xa.download='周纪全部数据备份.json';document.body.appendChild(xa);xa.click();document.body.removeChild(xa);setTimeout(function(){URL.revokeObjectURL(xu);},4000);}catch(e){}}
       else if(a==='wipeAll'){if(!S.wipeArm){S.wipeArm=true;renderOverlay();}else{try{var wks=[];for(var wi=0;wi<localStorage.length;wi++){var wk=localStorage.key(wi);if(wk&&/^(zhouji_|zj3d_|zj_)/.test(wk))wks.push(wk);}wks.forEach(function(k){try{localStorage.removeItem(k);}catch(e2){}});}catch(e){}location.reload();}}
       else if(a==='fontReset'){try{localStorage.removeItem('zhouji_font_v1');}catch(e){}FONTC=null;var frs=document.documentElement.style;frs.removeProperty('--serif');frs.removeProperty('--kai');renderOverlay();}
+      else if(a==='memSave'){if(S.memEdit!=null&&S.mem[S.memEdit]){var me0=S.mem[S.memEdit];
+        var gv=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
+        me0.e=gv('zjMeE');me0.d=gv('zjMeD');me0.a=gv('zjMeA');me0.s=gv('zjMeS');me0.manual=true;me0.fp=null;
+        savePref();S.memEdit=null;renderOverlay();}}
+      else if(a==='memCancel'){S.memEdit=null;renderOverlay();}
+      else if(a==='memExport'){try{var mb=new Blob([JSON.stringify({__app:'周纪·千年天下',__type:'zhouji-memory',entries:S.mem},null,1)],{type:'application/json'});var mu=URL.createObjectURL(mb);var ma=document.createElement('a');ma.href=mu;ma.download='周纪太史长卷.json';document.body.appendChild(ma);ma.click();document.body.removeChild(ma);setTimeout(function(){URL.revokeObjectURL(mu);},4000);}catch(e){}}
+      else if(a==='expChat'){try{var hb=new Blob([JSON.stringify({__app:'周纪·千年天下',__type:'zhouji-chat',opening:S.customOp||S.openingId,history:S.history.map(function(h){return {role:h.role,text:h.text};})},null,1)],{type:'application/json'});var hu=URL.createObjectURL(hb);var ha=document.createElement('a');ha.href=hu;ha.download='周纪聊天记录.json';document.body.appendChild(ha);ha.click();document.body.removeChild(ha);setTimeout(function(){URL.revokeObjectURL(hu);},4000);}catch(e){}}
       else if(a==='pSave'){if(PRESET&&S.pEdit!=null&&PRESET.entries[S.pEdit]){var peN=document.getElementById('zjPeName'),peP=document.getElementById('zjPePos'),peT=document.getElementById('zjPeText');
         var pe0=PRESET.entries[S.pEdit];pe0.name=(peN&&peN.value.trim())||pe0.name;pe0.pos=(peP&&peP.value==='post')?'post':'pre';pe0.content=peT?peT.value:pe0.content;
         presetSave();S.pEdit=null;S.pMsg='已保存修改';renderOverlay();}}
