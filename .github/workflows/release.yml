@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '发布版本号（如 v0.1.0），将自动创建同名 tag'
+        required: true
+        default: 'v0.1.0'
+      overwrite:
+        description: '若同名 Release/tag 已存在，先删除再重建'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VER: ${{ inputs.version || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Remove existing release (overwrite)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.overwrite }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete "$VER" --cleanup-tag -y || true
+
+      - name: Package assets
+        run: |
+          # 独立 HTML（无音乐，方便快速试玩 / 酒馆内嵌）
+          cp zhouji.html "ZhouJi-QianNianTianXia-${VER}.html"
+          # 完整包：游戏 + 音乐 + 三维天下资材 + 说明，解压后浏览器打开 index.html 即完整游玩
+          PKG="ZhouJi-QianNianTianXia-${VER}"
+          mkdir -p "$PKG"
+          cp zhouji.html "$PKG/index.html"
+          cp -r core "$PKG/core"
+          cp README.md README_EN.md RELEASE_NOTES.md "$PKG/"
+          zip -r "${PKG}.zip" "$PKG"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: "周纪·千年天下 ${{ inputs.version || github.ref_name }}"
+          body_path: RELEASE_NOTES.md
+          fail_on_unmatched_files: true
+          files: |
+            ZhouJi-QianNianTianXia-${{ inputs.version || github.ref_name }}.html
+            ZhouJi-QianNianTianXia-${{ inputs.version || github.ref_name }}.zip
