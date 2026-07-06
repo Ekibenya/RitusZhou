@@ -397,6 +397,37 @@ function scanLore(recent,budget){
   return out;
 }
 function fill(s){return String(s||'').split('{{user}}').join('姬瑶（由玩家扮演）').split('{{char}}').join('你');}
+/* ---------------- 插画图库（IndexedDB 存图，存档只记编号；双层瘦身防卡防爆） ---------------- */
+var IDB=null;
+function idbOpen(cb){if(IDB)return cb(IDB);if(!window.indexedDB)return cb(null);
+  try{var rq=indexedDB.open('zhouji_img',1);
+  rq.onupgradeneeded=function(){rq.result.createObjectStore('img');};
+  rq.onsuccess=function(){IDB=rq.result;cb(IDB);};
+  rq.onerror=function(){cb(null);};}catch(e){cb(null);}}
+function idbPut(id,blob,cb){idbOpen(function(db){if(!db)return cb&&cb(false);
+  try{var tx=db.transaction('img','readwrite');tx.objectStore('img').put(blob,id);
+  tx.oncomplete=function(){cb&&cb(true);};tx.onerror=function(){cb&&cb(false);};}catch(e){cb&&cb(false);}});}
+function idbGet(id,cb){idbOpen(function(db){if(!db)return cb(null);
+  try{var rq=db.transaction('img').objectStore('img').get(id);
+  rq.onsuccess=function(){cb(rq.result||null);};rq.onerror=function(){cb(null);};}catch(e){cb(null);}});}
+function idbPrune(keep){idbOpen(function(db){if(!db)return;
+  try{var st=db.transaction('img','readwrite').objectStore('img');var rq=st.getAllKeys();
+  rq.onsuccess=function(){var ks=(rq.result||[]).slice().sort();
+    if(ks.length>keep){var tx2=db.transaction('img','readwrite').objectStore('img');
+      ks.slice(0,ks.length-keep).forEach(function(k){try{tx2['delete'](k);}catch(e2){}});}};}catch(e){}});}
+var IMGC={},IMGQ=[];
+function imgURL(id,cb){
+  if(IMGC[id])return cb(IMGC[id]);
+  idbGet(id,function(b){if(!b)return cb(null);
+    var u=URL.createObjectURL(b);IMGC[id]=u;IMGQ.push(id);
+    while(IMGQ.length>12){var old=IMGQ.shift();try{URL.revokeObjectURL(IMGC[old]);}catch(e){}delete IMGC[old];}
+    cb(u);});}
+function imgHydrate(){
+  var els=document.querySelectorAll('[data-img]');
+  [].forEach.call(els,function(el){var id=el.getAttribute('data-img');el.removeAttribute('data-img');
+    imgURL(id,function(u){if(!el.isConnected)return;
+      if(!u){el.innerHTML='<div style="padding:14px 0;text-align:center;font-size:12px;letter-spacing:.15em;color:var(--mut)">插画已散佚（本机图库无此图）</div>';return;}
+      el.innerHTML='<img src="'+u+'" loading="lazy" style="width:100%;display:block">';});});}
 /* ---------------- 酒馆助手脚本兼容层（沙箱 iframe，脚本摸不到密钥与页面本体） ---------------- */
 var JSKEY='zhouji_scripts_v1';
 var USCRIPTS=[];try{USCRIPTS=JSON.parse(localStorage.getItem(JSKEY)||'[]')||[];}catch(e){}if(!Array.isArray(USCRIPTS))USCRIPTS=[];
@@ -664,11 +695,12 @@ var API_DEF={
   gemini:{name:'Gemini 官方',url:'https://generativelanguage.googleapis.com',hint:'Google AI Studio 官方直连，一般无需修改地址'}
 };
 function loadApi(){
-  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}}};
+  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}},img:{url:'',key:'',model:''}};
   try{
     var s=JSON.parse(localStorage.getItem(APIK)||'{}');
     if(s.provider&&d.cfg[s.provider])d.provider=s.provider;
     if(s.cfg)Object.keys(d.cfg).forEach(function(k){if(s.cfg[k])Object.assign(d.cfg[k],s.cfg[k]);});
+    if(s.img)Object.assign(d.img,s.img);
   }catch(e){}
   return d;
 }
@@ -676,6 +708,8 @@ var API=loadApi();
 function apiCur(){return API.cfg[API.provider];}
 function saveApi(){try{localStorage.setItem(APIK,JSON.stringify(API));}catch(e){}}
 function apiReady(){var c=apiCur();return !!(c.key&&c.model);}
+function imgReady(){return !!(API.img&&API.img.key&&API.img.model);}
+function imgBase(){return String(API.img.url||'https://api.openai.com/v1').trim().replace(/\/+$/,'');}
 function apiBase(){var c=apiCur();return (c.url||API_DEF[API.provider].url).trim().replace(/\/+$/,'');}
 function apiHttp(url,opt){
   return fetch(url,opt).then(function(r){
@@ -712,6 +746,8 @@ function readApiForm(){
   var c=apiCur();
   var u=document.getElementById('zjApiUrl'),k=document.getElementById('zjApiKey'),m=document.getElementById('zjApiModel');
   if(u)c.url=u.value.trim();if(k)c.key=k.value.trim();if(m)c.model=m.value.trim();
+  var iu=document.getElementById('zjImgUrl'),ik=document.getElementById('zjImgKey'),im=document.getElementById('zjImgModel');
+  if(iu)API.img.url=iu.value.trim();if(ik)API.img.key=ik.value.trim();if(im)API.img.model=im.value.trim();
 }
 function apiTestRun(){
   readApiForm();saveApi();
@@ -732,7 +768,7 @@ function apiModelsRun(){
 
 var LSK='zhouji_tavern_v1';
 function loadPref(){try{return JSON.parse(localStorage.getItem(LSK)||'{}');}catch(e){return {};}}
-function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN}));}catch(e){}}
+function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN}));}catch(e){}}
 
 /* ---------------- 长程记忆 · 太史长卷 ----------------
    每轮世界回应自动摘为一条编年纪要（纪年·时地·天子之举·史笔），永久保存、
@@ -1274,6 +1310,12 @@ function storyPane(){
     }
     var text=stripMvu(h.text);var chap='';
     var cotX=extractCoT(text);text=applyRegex(cotX.text,'display');
+    var illu='';
+    if(h.img){var nearEnd=(S.history.length-1-i)<=8;
+      illu='<div '+(nearEnd?'data-img="'+esc(h.img)+'"':'')+' style="margin:0 0 14px;border:1px solid rgba(255,238,205,.18);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.15),0 6px 18px rgba(0,0,0,.3)">'
+        +(nearEnd?'<div style="padding:26px 0;text-align:center;font-size:12px;letter-spacing:.2em;color:var(--mut)">插画载入中…</div>'
+          :'<div class="btn" data-imgload="'+esc(h.img)+'" style="cursor:pointer;padding:13px 0;text-align:center;font-size:12px;letter-spacing:.18em;color:var(--mut)">▸ 插画（点开加载）</div>')
+        +'</div>';}
     var cotHtml=cotX.cot?'<details class="zjCot" style="margin:0 0 12px"><summary style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:12px;letter-spacing:.14em;color:var(--mut);border:1px solid rgba(201,160,99,.25);border-radius:99px;padding:5px 14px;background:rgba(255,255,255,.02)">✦ 推演之思</summary><div style="margin-top:8px;border-left:3px solid rgba(201,160,99,.3);border-radius:8px;background:rgba(255,255,255,.018);padding:10px 13px;font-size:13px;line-height:1.9;color:#9d8c6b;white-space:pre-wrap">'+esc(cotX.cot)+'</div></details>':'';
     var cm=/^【[^】]*】/.exec(text);
     if(cm&&i===0){chap='<div style="text-align:center;margin:4px 0 30px"><div style="font-size:12px;letter-spacing:.42em;color:var(--mut)">'+esc(op?op.era:'')+'</div><div class="kai" style="font-size:clamp(23px,3.4vw,30px);color:var(--gold2);letter-spacing:.1em;margin-top:8px">'+esc(op?op.scene:'')+'</div><div class="slip" style="width:190px;margin:14px auto 0"></div></div>';text=text.slice(cm[0].length).trim();}
@@ -1282,8 +1324,10 @@ function storyPane(){
     var paras;
     if(typing){ if(TYPE.msg!==h){TYPE.msg=h;TYPE.full=text;TYPE.pos=0;} paras='<div id="zjTypeBox">'+worldParas(text,TYPE.pos)+'<span class="tcursor">▍</span></div>'; }
     else{ paras='<div>'+worldParas(text)+'</div>'; }
-    var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;margin-top:2px"><div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div></div>':'';
-    return '<div class="fade" style="margin-bottom:24px">'+chap+cotHtml+paras+retry+'</div>';
+    var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;gap:9px;align-items:center;margin-top:2px;flex-wrap:wrap"><div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div>'
+      +(imgReady()&&!h.img?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">✦ 绘此幕</div>'):'')
+      +(S.imgErr?'<div style="font-size:11.5px;color:#d9a06a">'+esc(S.imgErr)+'</div>':'')+'</div>':'';
+    return '<div class="fade" style="margin-bottom:24px">'+chap+illu+cotHtml+paras+retry+'</div>';
   }).join('');
   var thinking=S.thinking?'<div style="display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px;letter-spacing:.25em;padding:4px 0 12px"><span>太史令执笔中</span><span style="animation:blink 1.2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .4s infinite;color:var(--gold)">●</span></div>':'';
   var HIDE3D=false;try{HIDE3D=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
@@ -1755,6 +1799,10 @@ function apiBody(){
     +lbl('接口地址（Base URL）')+'<input id="zjApiUrl" '+inp+' value="'+esc(c.url)+'" placeholder="'+esc(def.url)+'"><div style="font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1.7">'+esc(def.hint)+'；留空即使用默认地址。</div>'
     +lbl('API 密钥（API Key）')+'<input id="zjApiKey" type="password" '+inp+' value="'+esc(c.key)+'" placeholder="sk-…">'
     +lbl('模型名')+'<div style="display:flex;gap:10px"><input id="zjApiModel" '+inp+' value="'+esc(c.model)+'" placeholder="如 deepseek-chat / claude-sonnet-4-5 / gemini-2.5-pro"><button data-act="apiModels" class="obtn btn" style="flex:none;font-size:13px;letter-spacing:.1em;padding:0 18px;white-space:nowrap">拉取模型</button></div>'+models
+    +lbl('绘图接口（可选 · OpenAI images 兼容）')+'<input id="zjImgUrl" '+inp+' value="'+esc(API.img.url)+'" placeholder="https://api.openai.com/v1（或中转地址）">'
+    +lbl('绘图密钥')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(API.img.key)+'" placeholder="sk-…（可与文字接口相同）">'
+    +lbl('绘图模型')+'<input id="zjImgModel" '+inp+' value="'+esc(API.img.model)+'" placeholder="如 gpt-image-1 / dall-e-3 / flux-schnell">'
+    +'<div style="font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1.7">填好保存后，每幕正文下出现「✦ 绘此幕」。插画只存本机图库（仅保留最近60张自动瘦身），存档只记编号，不撑爆手机内存与存档。</div>'
     +'<div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;align-items:center">'
     +'<button data-act="apiSave" class="gbtn btn" style="font-size:15px;letter-spacing:.2em;padding:10px 30px">保 存</button>'
     +'<button data-act="apiTest" class="obtn btn" style="font-size:14px;letter-spacing:.15em;padding:10px 24px">测试连接</button>'
@@ -1833,6 +1881,7 @@ function render(){
     else if(_wc<SBX.wc){SBX.wc=_wc;}
   }catch(e){}
   ensureTyping();
+  try{imgHydrate();}catch(e){}
   if(window.ZJ3D&&ZJ3D.owns()){
     var _m=mood();ZJ3D.onRender(playerLoc().name,_m.night);
   }else{
@@ -2083,6 +2132,11 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-load')){var id=+t.getAttribute('data-load');var r=S.saves.filter(function(x){return x.id===id;})[0];if(r)loadSave(r);return;}
       if(t.getAttribute('data-del')){delSave(+t.getAttribute('data-del'));return;}
       if(t.getAttribute('data-bgm')){bgmPlay(parseInt(t.getAttribute('data-bgm'),10));render();return;}
+      if(t.getAttribute('data-imgload')){var mlid=t.getAttribute('data-imgload');var mlWrap=t.parentNode;
+        mlWrap.innerHTML='<div style="padding:26px 0;text-align:center;font-size:12px;letter-spacing:.2em;color:var(--mut)">插画载入中…</div>';
+        imgURL(mlid,function(u){if(!mlWrap.isConnected)return;
+          mlWrap.innerHTML=u?'<img src="'+u+'" loading="lazy" style="width:100%;display:block">':'<div style="padding:14px 0;text-align:center;font-size:12px;color:var(--mut)">插画已散佚</div>';});
+        return;}
       if(t.getAttribute('data-jsedit')){S.jsEdit=parseInt(t.getAttribute('data-jsedit'),10)-1;S.jsDelIx=null;renderOverlay();var jsf=document.getElementById('zjJsName');if(jsf)jsf.scrollIntoView({block:'center'});return;}
       if(t.getAttribute('data-jstog')){var jti=parseInt(t.getAttribute('data-jstog'),10)-1;if(USCRIPTS[jti]){USCRIPTS[jti].on=USCRIPTS[jti].on===false;uscriptsSave();sbxStartAll();renderOverlay();}return;}
       if(t.getAttribute('data-jsdel')!=null&&t.getAttribute('data-jsdel')!==''){var jdi=parseInt(t.getAttribute('data-jsdel'),10)-1;
@@ -2166,6 +2220,33 @@ root.addEventListener('click',function(e){
             zi1.animate([{transform:'translate('+(zwR.left+zwR.width/2-(zr1.left+zr1.width/2))+'px,'+(zwR.top+zwR.height/2-(zr1.top+zr1.height/2))+'px) scale('+Math.max(.05,zwR.width/zr1.width)+','+Math.max(.05,zwR.height/zr1.height)+')',opacity:.3},{transform:'translateZ(0)',opacity:1}],{duration:440,easing:'cubic-bezier(.3,1.06,.32,1)'});}
         }
         return;}
+      else if(a==='drawScene'){
+        if(S.imgBusy!=null||!imgReady())return;
+        var dli=-1;for(var dj=S.history.length-1;dj>=0;dj--){if(S.history[dj].role==='world'){dli=dj;break;}}
+        if(dli<0||S.history[dli].img)return;
+        S.imgBusy=dli;S.imgErr=null;S._noFade=true;render();
+        var dTxt=stripCoT(stripMvu(S.history[dli].text)).slice(0,1200);
+        var dP=apiReady()
+          ?callCustomAI('你是绘画提示词工程师。把给定的中国古代场景描写浓缩为一条英文AI绘画提示词：主体人物、环境、光线、氛围，风格 ancient Chinese period illustration, cinematic lighting, highly detailed。只输出提示词，勿加引号与解释，80词以内。',[{role:'user',content:dTxt}]).then(function(t){return String(t||'').trim().slice(0,700)||('ancient Chinese Zhou dynasty scene, cinematic, detailed: '+dTxt.slice(0,140));})
+          :Promise.resolve('ancient Chinese Zhou dynasty scene, cinematic lighting, highly detailed illustration: '+dTxt.slice(0,160));
+        dP.then(function(prompt){
+          return apiHttp(imgBase()+'/images/generations',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+API.img.key},body:JSON.stringify({model:API.img.model,prompt:prompt,n:1,size:'1024x1024',response_format:'b64_json'})});
+        }).then(function(j){
+          var d0=j&&j.data&&j.data[0];
+          if(d0&&d0.b64_json){var bin=atob(d0.b64_json);var u8=new Uint8Array(bin.length);for(var bi=0;bi<bin.length;bi++)u8[bi]=bin.charCodeAt(bi);return new Blob([u8],{type:'image/png'});}
+          if(d0&&d0.url)return fetch(d0.url).then(function(r){if(!r.ok)throw new Error('取图失败 HTTP '+r.status);return r.blob();});
+          throw new Error('接口未返回图像数据');
+        }).then(function(blob){
+          var iid='img_'+Date.now()+'_'+Math.floor(Math.random()*10000);
+          idbPut(iid,blob,function(okp){
+            if(okp){S.history[dli].img=iid;savePref();idbPrune(60);}
+            else S.imgErr='插画存储失败（浏览器不支持或空间不足）';
+            S.imgBusy=null;S._noFade=true;render();});
+        })['catch'](function(err){
+          S.imgErr='绘图失败：'+String(err&&err.message||err).slice(0,120);
+          S.imgBusy=null;S._noFade=true;render();
+          setTimeout(function(){if(S.imgErr){S.imgErr=null;renderSoft();}},8000);});
+        return;}
       else if(a==='histmore'){S.histShow=(S.histShow||30)+30;S._stayTop=true;S._noFade=true;render();return;}
       else if(a==='closeov'){var cvk=S.overlay;var dm=document.getElementById('zjOvDim');if(dm){dm.style.pointerEvents='none';dm.style.webkitBackdropFilter='none';dm.style.backdropFilter='none';if(dm.animate)dm.animate([{opacity:1},{opacity:0}],{duration:280,easing:'ease',fill:'forwards'});dm.style.transition='opacity 280ms';dm.style.opacity='0';}morphClose('zjOvBox','[data-ov="'+cvk+'"]',function(){S.overlay=null;S.movePending=null;var ow=document.getElementById('zjOvWrap');if(ow&&ow.parentNode)ow.parentNode.removeChild(ow);else render();});}
       else if(a==='on3d'){try{localStorage.removeItem('zj3d_off');}catch(e){}location.reload();}
@@ -2226,7 +2307,7 @@ root.addEventListener('click',function(e){
       else if(a==='expAll'){try{var xo={__app:'周纪·千年天下',__type:'zhouji-full-backup',__version:1,data:{}};
         for(var xi=0;xi<localStorage.length;xi++){var xk=localStorage.key(xi);if(xk&&/^(zhouji_|zj3d_|zj_)/.test(xk))xo.data[xk]=localStorage.getItem(xk);}
         var xb=new Blob([JSON.stringify(xo,null,1)],{type:'application/json'});var xu=URL.createObjectURL(xb);var xa=document.createElement('a');xa.href=xu;xa.download='周纪全部数据备份.json';document.body.appendChild(xa);xa.click();document.body.removeChild(xa);setTimeout(function(){URL.revokeObjectURL(xu);},4000);}catch(e){}}
-      else if(a==='wipeAll'){if(!S.wipeArm){S.wipeArm=true;renderOverlay();}else{try{var wks=[];for(var wi=0;wi<localStorage.length;wi++){var wk=localStorage.key(wi);if(wk&&/^(zhouji_|zj3d_|zj_)/.test(wk))wks.push(wk);}wks.forEach(function(k){try{localStorage.removeItem(k);}catch(e2){}});}catch(e){}location.reload();}}
+      else if(a==='wipeAll'){if(!S.wipeArm){S.wipeArm=true;renderOverlay();}else{try{var wks=[];for(var wi=0;wi<localStorage.length;wi++){var wk=localStorage.key(wi);if(wk&&/^(zhouji_|zj3d_|zj_)/.test(wk))wks.push(wk);}wks.forEach(function(k){try{localStorage.removeItem(k);}catch(e2){}});}catch(e){}try{indexedDB.deleteDatabase('zhouji_img');}catch(e4){}location.reload();}}
       else if(a==='fontReset'){try{localStorage.removeItem('zhouji_font_v1');}catch(e){}FONTC=null;var frs=document.documentElement.style;frs.removeProperty('--serif');frs.removeProperty('--kai');renderOverlay();}
       else if(a==='memSave'){if(S.memEdit!=null&&S.mem[S.memEdit]){var me0=S.mem[S.memEdit];
         var gv=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
