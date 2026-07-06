@@ -1184,11 +1184,15 @@ var WIZ_ERAS=[
 ];
 var WIZ_HOME=[['阿枣','天子的当代贴身侍女'],['大祧','守祧教团当代首领']];
 function wizYearStr(y){return y<0?('前'+(-y)+'年'):(y+'年');}
-function wizYearOf(w){var t=String(w&&w.customYear||'').trim();if(!t||w.era==null)return w&&w.era!=null?WIZ_ERAS[w.era].year:0;
+function wizParseYear(t){t=String(t||'').trim();if(!t)return null;
   var neg=/^(公元)?前/.test(t)||/^-/.test(t);
   var n=parseInt(t.replace(/^公元/,'').replace(/^前/,'').replace(/^-/,'').replace(/年$/,''),10);
-  if(isNaN(n)||n<=0)return WIZ_ERAS[w.era].year;
+  if(isNaN(n)||n<=0)return null;
   return neg?-n:n;}
+function wizYearOf(w){var py=wizParseYear(w&&w.customYear);
+  if(py!=null)return py;
+  return (w&&w.era!=null)?WIZ_ERAS[w.era].year:0;}
+function wizNearestEra(y){var bi=0,bd=Infinity;for(var i=0;i<WIZ_ERAS.length;i++){var d=Math.abs(WIZ_ERAS[i].year-y);if(d<bd){bd=d;bi=i;}}return bi;}
 function wizFigs(era){return era.figs.concat(WIZ_HOME);}
 function wizChip(attr,val,label,on,sub){
   return '<div class="btn glass glassHover" '+attr+'="'+esc(val)+'" style="cursor:pointer;padding:12px 14px;'+(on?'border-color:rgba(224,190,130,.85);background:rgba(201,160,99,.14)':'')+'">'
@@ -1208,7 +1212,9 @@ function wizardView(){
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px">'
       +WIZ_ERAS.map(function(e,i){return wizChip('data-wz-era',i,e.label+' · '+wizYearStr(e.year),w.era===i,e.blurb);}).join('')+'</div>'
       +'<div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-size:13px;color:var(--mut);letter-spacing:.1em">自定义年份（可选）</span><input id="zjWzYear" value="'+esc(w.customYear||'')+'" placeholder="如：前505 或 620" style="width:150px;background:rgba(26,20,16,.5);border:1px solid rgba(201,160,99,.35);border-radius:9px;color:var(--gold3);font-size:14px;padding:8px 11px">'
-      +(w.era!=null?'<span style="font-size:12px;color:var(--mut)">本局纪年：'+wizYearStr(wizYearOf(w))+'（人物地点仍取自所选时代）</span>':'')+'</div>';
+      +(w.era!=null
+        ?'<span style="font-size:12px;color:var(--mut)">本局纪年：'+wizYearStr(wizYearOf(w))+'（人物地点仍取自所选时代）</span>'
+        :'<span style="font-size:12px;color:var(--mut)">只填年份直接点继续也行：会自动匹配年代最近的时代</span>')+'</div>';
   }else if(w.step===2){
     body='<div class="kai" style="font-size:17px;color:var(--gold3);margin-bottom:14px">'+esc(era.label)+' · 故事从哪里开场？</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:12px">'
@@ -2264,7 +2270,9 @@ root.addEventListener('click',function(e){
       else if(a==='wzOpen'){S.wiz={step:1,era:null,place:null,placeCustom:false,npcs:[],role:null,busy:false,err:'',customYear:''};S.screen='wizard';render();}
       else if(a==='wzExit'){S.wiz=null;S.screen='select';render();}
       else if(a==='wzBack'){if(S.wiz&&S.wiz.step>1){S.wiz.step--;S.wiz.err='';render();}}
-      else if(a==='wzNext'){var wz=S.wiz;if(!wz)return;var ok1=(wz.step===1&&wz.era!=null)||(wz.step===2&&wz.place&&wz.place!=='__custom')||(wz.step===3&&wz.npcs.length>0);if(ok1){wz.step++;wz.err='';render();}}
+      else if(a==='wzNext'){var wz=S.wiz;if(!wz)return;
+        if(wz.step===1&&wz.era==null){var pyN=wizParseYear(wz.customYear);if(pyN!=null)wz.era=wizNearestEra(pyN);}
+        var ok1=(wz.step===1&&wz.era!=null)||(wz.step===2&&wz.place&&wz.place!=='__custom')||(wz.step===3&&wz.npcs.length>0);if(ok1){wz.step++;wz.err='';render();}}
       else if(a==='wzGen'){var wg=S.wiz;if(wg&&wg.role&&(wg.role.mode==='tianzi'||(wg.role.mode==='figure'&&wg.role.fig)||(wg.role.mode==='custom'&&(wg.role.c.id||'').trim())))wizGenerate();}
       else if(a==='totitle'){S.screen='title';S.overlay=null;render();}
       else if(a==='continue'){if(TH.available)pullHistory();S.screen='game';render();}
