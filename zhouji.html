@@ -86,6 +86,7 @@ textarea,input{border-radius:10px}
 .zjHl::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;pointer-events:none;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.6),rgba(255,246,224,0))}
 .gbtn{position:relative;overflow:hidden}
 .gbtn::after{content:'';position:absolute;left:8%;right:45%;top:0;height:1px;border-radius:1px;pointer-events:none;background:linear-gradient(90deg,rgba(255,250,235,0),rgba(255,250,235,.85),rgba(255,250,235,0))}
+.zjCot>summary{list-style:none}.zjCot>summary::-webkit-details-marker{display:none}.zjCot[open]>summary{color:var(--gold2);border-color:rgba(224,190,130,.5)}
 .zjMarq{display:inline-flex;white-space:nowrap;animation:zjMarqAn 15s linear infinite;will-change:transform}.zjMarq>span{padding-right:3em}@keyframes zjMarqAn{to{transform:translateX(-50%)}}
 .zjSheen{position:absolute;inset:-20%;background:linear-gradient(115deg,transparent 34%,rgba(255,246,224,.18) 47%,transparent 60%);transform:translateX(-130%);pointer-events:none;z-index:9}
 @keyframes zjSweep{to{transform:translateX(130%)}}
@@ -396,6 +397,104 @@ function scanLore(recent,budget){
   return out;
 }
 function fill(s){return String(s||'').split('{{user}}').join('姬瑶（由玩家扮演）').split('{{char}}').join('你');}
+/* ---------------- 酒馆助手脚本兼容层（沙箱 iframe，脚本摸不到密钥与页面本体） ---------------- */
+var JSKEY='zhouji_scripts_v1';
+var USCRIPTS=[];try{USCRIPTS=JSON.parse(localStorage.getItem(JSKEY)||'[]')||[];}catch(e){}if(!Array.isArray(USCRIPTS))USCRIPTS=[];
+function uscriptsSave(){try{localStorage.setItem(JSKEY,JSON.stringify(USCRIPTS));}catch(e){}}
+var SBX={frames:{},wc:null,thinking:false};
+function sbxShim(){return '('+String(function(){
+  var RQ={},qid=0;
+  function call(fn,args){return new Promise(function(res){var id=++qid;RQ[id]=res;parent.postMessage({t:'th',id:id,fn:fn,args:args||[]},'*');});}
+  var EVS={};
+  window.eventOn=function(n,cb){(EVS[n]=EVS[n]||[]).push(cb);};
+  window.eventOnce=function(n,cb){var f=function(p){cb(p);EVS[n]=(EVS[n]||[]).filter(function(x){return x!==f;});};window.eventOn(n,f);};
+  window.eventRemoveListener=function(n,cb){EVS[n]=(EVS[n]||[]).filter(function(x){return x!==cb;});};
+  window.getChatMessages=function(r){return call('getChatMessages',[r]);};
+  window.setChatMessage=function(d,i,o){return call('setChatMessage',[d,i,o]);};
+  window.getLastMessageId=function(){return call('getLastMessageId',[]);};
+  window.getVariables=function(o){return call('getVariables',[o]);};
+  window.insertOrAssignVariables=function(v,o){return call('insertOrAssignVariables',[v,o]);};
+  window.triggerSlash=function(c){return call('triggerSlash',[c]);};
+  window.TavernHelper={getChatMessages:window.getChatMessages,setChatMessage:window.setChatMessage,getLastMessageId:window.getLastMessageId,getVariables:window.getVariables,insertOrAssignVariables:window.insertOrAssignVariables,eventOn:window.eventOn,eventOnce:window.eventOnce,eventRemoveListener:window.eventRemoveListener,triggerSlash:window.triggerSlash};
+  window.tavern_events={GENERATION_STARTED:'GENERATION_STARTED',GENERATION_ENDED:'GENERATION_ENDED',MESSAGE_RECEIVED:'MESSAGE_RECEIVED',MESSAGE_UPDATED:'MESSAGE_UPDATED',APP_READY:'APP_READY',CHAT_CHANGED:'CHAT_CHANGED'};
+  window.iframe_events=window.tavern_events;
+  window.addEventListener('message',function(e){var d=e.data||{};
+    if(d.t==='re'&&RQ[d.id]){var f=RQ[d.id];delete RQ[d.id];f(d.val);}
+    if(d.t==='ev'&&EVS[d.name])EVS[d.name].slice().forEach(function(cb){try{cb(d.payload);}catch(er){parent.postMessage({t:'th',fn:'log',args:[String(er)]},'*');}});
+  });
+})+')();';}
+function sbxStop(i){var f=SBX.frames[i];if(f&&f.parentNode)f.parentNode.removeChild(f);delete SBX.frames[i];}
+function sbxStart(i){
+  var sc=USCRIPTS[i];if(!sc||sc.on===false)return;
+  sbxStop(i);
+  var f=document.createElement('iframe');
+  f.style.display='none';f.setAttribute('sandbox','allow-scripts');
+  var code=String(sc.code||'').replace(/<\/script/gi,'<\\/script');
+  f.srcdoc='<script>'+sbxShim()+'<'+'/script><script>try{'+code+'\n}catch(e){parent.postMessage({t:"th",fn:"log",args:["脚本错误: "+String(e)]},"*")}<'+'/script>';
+  document.body.appendChild(f);
+  SBX.frames[i]=f;
+  setTimeout(function(){sbxEmitTo(f,'APP_READY',null);sbxEmitTo(f,'CHAT_CHANGED',null);},400);
+}
+function sbxStartAll(){Object.keys(SBX.frames).forEach(function(k){sbxStop(k);});USCRIPTS.forEach(function(sc,i){if(sc.on!==false)sbxStart(i);});}
+function sbxEmitTo(f,name,payload){try{if(f&&f.contentWindow)f.contentWindow.postMessage({t:'ev',name:name,payload:payload},'*');}catch(e){}}
+function sbxEmit(name,payload){Object.keys(SBX.frames).forEach(function(k){sbxEmitTo(SBX.frames[k],name,payload);});}
+window.addEventListener('message',function(e){
+  var d=e.data||{};if(d.t!=='th')return;
+  var ok=false;Object.keys(SBX.frames).forEach(function(k){if(SBX.frames[k].contentWindow===e.source)ok=true;});
+  if(!ok)return;
+  var val=null;
+  try{
+    if(d.fn==='getChatMessages'){var rng=d.args[0];var msgs=S.history.map(function(h,ix){return {message_id:ix,role:h.role==='user'?'user':'assistant',name:h.role==='user'?'天子':'周纪',is_hidden:false,message:h.text};});
+      if(typeof rng==='number')val=[msgs[rng<0?msgs.length+rng:rng]].filter(Boolean);
+      else if(typeof rng==='string'&&rng!=='all'){var pr=String(rng).split('-');var a0=parseInt(pr[0],10)||0;var b0=pr[1]!=null?(parseInt(pr[1],10)||0):a0;val=msgs.slice(a0,b0+1);}
+      else val=msgs;}
+    else if(d.fn==='getLastMessageId')val=S.history.length-1;
+    else if(d.fn==='setChatMessage'){var dd=d.args[0];var mid=d.args[1];
+      if(typeof dd==='string')dd={message:dd};
+      if(typeof mid==='number'&&mid<0)mid=S.history.length+mid;
+      if(dd&&typeof mid==='number'&&S.history[mid]&&typeof dd.message==='string'){
+        S.history[mid].text=dd.message;
+        if(S.history[mid].role==='world')S.history[mid].panel=parseMvu(dd.message);
+        typedSet.add(S.history[mid]);savePref();renderSoft();val=true;}else val=false;}
+    else if(d.fn==='getVariables'){val=currentPanel()||{};}
+    else if(d.fn==='insertOrAssignVariables'){val=false;}
+    else if(d.fn==='triggerSlash'){val=false;}
+    else if(d.fn==='log'){try{console.warn('[助手脚本]',d.args&&d.args[0]);}catch(e2){}}
+  }catch(err){val=null;}
+  if(d.id){try{e.source.postMessage({t:'re',id:d.id,val:val},'*');}catch(e3){}}
+});
+/* ---------------- 玩家正则（兼容酒馆正则脚本JSON） ---------------- */
+var RXKEY='zhouji_regex_v1';
+var UREGEX=[];try{UREGEX=JSON.parse(localStorage.getItem(RXKEY)||'[]')||[];}catch(e){}if(!Array.isArray(UREGEX))UREGEX=[];
+function uregexSave(){try{localStorage.setItem(RXKEY,JSON.stringify(UREGEX.map(function(r){return {name:r.name,find:r.find,replace:r.replace,mode:r.mode,on:r.on};})));}catch(e){}}
+function rxCompile(f){f=String(f||'');var m=/^\/([\s\S]+)\/([a-z]*)$/.exec(f);
+  try{if(m)return new RegExp(m[1],m[2].indexOf('g')<0?m[2]+'g':m[2]);return new RegExp(f,'g');}catch(e){return null;}}
+function applyRegex(text,scope){
+  if(!UREGEX.length)return text;
+  for(var i=0;i<UREGEX.length;i++){var r=UREGEX[i];
+    if(r.on===false)continue;
+    if(scope==='prompt'&&r.mode!=='both')continue;
+    var re=r._c||(r._c=rxCompile(r.find));if(!re)continue;
+    try{re.lastIndex=0;text=String(text).replace(re,String(r.replace||''));}catch(e){}
+  }
+  return text;
+}
+function uregexParse(txt){var o=null;try{o=JSON.parse(txt);}catch(e){}
+  var arr=Array.isArray(o)?o:(o?[o]:[]);var out=[];
+  arr.forEach(function(it){if(!it||typeof it!=='object')return;var f=it.findRegex||it.find;if(!f)return;
+    var rp=String(it.replaceString!=null?it.replaceString:(it.replace!=null?it.replace:''));rp=rp.split('{{match}}').join('$&');
+    out.push({name:String(it.scriptName||it.name||'正则'),find:String(f),replace:rp,mode:it.markdownOnly?'display':'both',on:it.disabled?false:(it.on!==false)});});
+  return out;}
+function uregexImportText(txt){var es=uregexParse(txt);
+  if(es.length){UREGEX=UREGEX.concat(es);uregexSave();S.rxMsg='已导入 '+es.length+' 条正则';}
+  else{S.rxMsg='无法识别：需为酒馆正则脚本 JSON（单条或数组）';}
+  if(S.overlay)renderOverlay();else render();}
+/* ---------------- 思维链折叠 ---------------- */
+var COT_RE=/<(think|thinking|cot|reasoning|思考|思维链)>([\s\S]*?)<\/\1>|【思维链】([\s\S]*?)【\/?思维链】/gi;
+function stripCoT(t){COT_RE.lastIndex=0;return String(t||'').replace(COT_RE,'').trim();}
+function extractCoT(t){var outs=[];COT_RE.lastIndex=0;
+  var s=String(t||'').replace(COT_RE,function(m,tag,c1,c2){outs.push((c1!=null?c1:c2||'').trim());return '';});
+  return {text:s.trim(),cot:outs.filter(Boolean).join('\n\n')};}
 /* ---------------- 玩家自定义世界书 ---------------- */
 var LKEY='zhouji_lore_v1';
 var ULORE=[]; try{ULORE=JSON.parse(localStorage.getItem(LKEY)||'[]')||[];}catch(e){} if(!Array.isArray(ULORE))ULORE=[];
@@ -497,7 +596,9 @@ function buildMessages(history,userInput){
   if(history.length>30)history=history.slice(-30);
   history.forEach(function(h,i){
     var lastWorld = h.role==='world' && i===history.length-1;
-    msgs.push({role:h.role==='user'?'user':'assistant',content:(h.role==='world'&&!lastWorld)?stripMvu(h.text):h.text});
+    var mc=h.text;
+    if(h.role==='world'){mc=lastWorld?mc:stripMvu(mc);mc=stripCoT(mc);mc=applyRegex(mc,'prompt');}
+    msgs.push({role:h.role==='user'?'user':'assistant',content:mc});
   });
   msgs.push({role:'user',content:userInput});
   var merged=[];
@@ -640,7 +741,7 @@ function memFp(t){var h=5381,str=String(t||'').slice(0,120);for(var i=0;i<str.le
 function memEntryOf(worldMsg,actText){
   var p=worldMsg.panel||parseMvu(worldMsg.text);
   var line=(p&&p.char&&p.char['史笔'])||'';
-  if(!line)line=stripMvu(worldMsg.text).replace(/\s+/g,' ').slice(0,70);
+  if(!line)line=stripCoT(stripMvu(worldMsg.text)).replace(/\s+/g,' ').slice(0,70);
   return {e:p&&p.world?(p.world['纪年']||''):'',d:p&&p.world?(p.world['时地']||''):'',
     a:String(actText||'').replace(/\s+/g,' ').slice(0,40),s:String(line).replace(/\s+/g,' ').slice(0,90),fp:memFp(worldMsg.text)};
 }
@@ -1172,6 +1273,8 @@ function storyPane(){
       return '<div class="fade" style="display:flex;justify-content:flex-end;margin-bottom:22px"><div style="max-width:82%;border:1px solid rgba(166,59,38,.28);border-right:3px solid var(--red);border-radius:12px;background:linear-gradient(135deg,rgba(166,59,38,.11),rgba(166,59,38,.04));box-shadow:inset 0 1px 0 rgba(255,220,200,.1);padding:11px 15px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e3b6a0;white-space:pre-wrap">'+esc(h.text)+'</div></div></div>';
     }
     var text=stripMvu(h.text);var chap='';
+    var cotX=extractCoT(text);text=applyRegex(cotX.text,'display');
+    var cotHtml=cotX.cot?'<details class="zjCot" style="margin:0 0 12px"><summary style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:12px;letter-spacing:.14em;color:var(--mut);border:1px solid rgba(201,160,99,.25);border-radius:99px;padding:5px 14px;background:rgba(255,255,255,.02)">✦ 推演之思</summary><div style="margin-top:8px;border-left:3px solid rgba(201,160,99,.3);border-radius:8px;background:rgba(255,255,255,.018);padding:10px 13px;font-size:13px;line-height:1.9;color:#9d8c6b;white-space:pre-wrap">'+esc(cotX.cot)+'</div></details>':'';
     var cm=/^【[^】]*】/.exec(text);
     if(cm&&i===0){chap='<div style="text-align:center;margin:4px 0 30px"><div style="font-size:12px;letter-spacing:.42em;color:var(--mut)">'+esc(op?op.era:'')+'</div><div class="kai" style="font-size:clamp(23px,3.4vw,30px);color:var(--gold2);letter-spacing:.1em;margin-top:8px">'+esc(op?op.scene:'')+'</div><div class="slip" style="width:190px;margin:14px auto 0"></div></div>';text=text.slice(cm[0].length).trim();}
     var isLast=(i===S.history.length-1);
@@ -1180,7 +1283,7 @@ function storyPane(){
     if(typing){ if(TYPE.msg!==h){TYPE.msg=h;TYPE.full=text;TYPE.pos=0;} paras='<div id="zjTypeBox">'+worldParas(text,TYPE.pos)+'<span class="tcursor">▍</span></div>'; }
     else{ paras='<div>'+worldParas(text)+'</div>'; }
     var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;margin-top:2px"><div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div></div>':'';
-    return '<div class="fade" style="margin-bottom:24px">'+chap+paras+retry+'</div>';
+    return '<div class="fade" style="margin-bottom:24px">'+chap+cotHtml+paras+retry+'</div>';
   }).join('');
   var thinking=S.thinking?'<div style="display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px;letter-spacing:.25em;padding:4px 0 12px"><span>太史令执笔中</span><span style="animation:blink 1.2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .4s infinite;color:var(--gold)">●</span></div>':'';
   var HIDE3D=false;try{HIDE3D=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
@@ -1563,11 +1666,73 @@ function lorePane(){
    +msg+listBlock
    +'</div></div>';
 }
+function rxPane(){
+  var red=(S.rxEdit!=null&&UREGEX[S.rxEdit])?UREGEX[S.rxEdit]:null;
+  var inp='style="width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);padding:9px 12px;font-size:13.5px;font-family:inherit" autocomplete="off" spellcheck="false"';
+  var msg=S.rxMsg?'<div style="font-size:12.5px;color:var(--gold3);margin-top:12px">'+esc(S.rxMsg)+'</div>':'';
+  var rows=UREGEX.map(function(r,i){
+    var on=r.on!==false;
+    var del=S.rxDelIx===i
+      ?'<button data-rxdel="'+(i+1)+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:rgba(166,59,38,.25);border:1px solid rgba(166,59,38,.6);border-radius:8px;color:#e0a493">确认删除</button>'
+      :'<button data-rxdel="'+(i+1)+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:transparent;border:1px solid rgba(166,59,38,.35);border-radius:8px;color:#b06a55">删</button>';
+    return '<div style="display:flex;align-items:flex-start;gap:11px;border:1px solid rgba(255,238,205,.16);border-radius:12px;background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.04));box-shadow:inset 0 1px 0 rgba(255,242,214,.18);padding:10px 13px;margin-bottom:7px">'
+      +'<div class="btn" data-rxtog="'+(i+1)+'" title="启用/停用" style="cursor:pointer;flex:none;width:34px;height:18px;border-radius:9px;margin-top:2px;background:'+(on?'rgba(122,168,143,.45)':'rgba(255,255,255,.08)')+';position:relative"><div style="position:absolute;top:2px;'+(on?'right:2px':'left:2px')+';width:14px;height:14px;border-radius:50%;background:'+(on?'#a9cbb8':'#6f6148')+'"></div></div>'
+      +'<div class="grow" style="min-width:0"><div style="font-size:13.5px;color:'+(on?'var(--gold3)':'var(--mut)')+'">'+esc(r.name)+'<span style="font-size:10.5px;color:var(--mut);margin-left:9px">'+(r.mode==='display'?'仅显示':'显示并发送')+'</span></div>'
+      +'<div style="font-size:11.5px;color:#8a7a5e;line-height:1.65;margin-top:3px;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(r.find).slice(0,80))+' → '+esc(String(r.replace||'').slice(0,40)||'（删除）')+'</div></div>'
+      +'<button data-rxedit="'+(i+1)+'" class="obtn btn" style="flex:none;font-size:12px;padding:5px 12px;border-radius:8px">编辑</button>'+del+'</div>';
+  }).join('');
+  var listBlock=UREGEX.length
+    ?'<div style="display:flex;align-items:center;gap:12px;margin:30px 0 12px"><div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em">我的正则</div><span style="font-size:12px;color:var(--mut)">'+UREGEX.length+' 条 · 自上而下依次应用</span><div class="grow"></div><button data-act="rxExport" class="obtn btn" style="font-size:12.5px;padding:6px 16px;letter-spacing:.1em">导出备份</button></div>'+rows
+    :'<div style="text-align:center;padding:26px 0 4px;font-size:13px;letter-spacing:.25em;color:#6f6148">尚无正则</div>';
+  return '<div class="grow bambooV" style="overflow-y:auto;padding:22px 28px"><div style="max-width:680px">'
+   +'<div style="font-size:12.5px;line-height:1.85;color:#8a7a5e;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 14px">对 AI 输出做查找替换，兼容 <b style="color:var(--gold2)">SillyTavern 正则脚本 JSON</b> 直接导入。「仅显示」只改你看到的正文；「显示并发送」连同发回给 AI 的历史一起改。查找支持 <b style="color:var(--gold2)">/pattern/flags</b> 或裸正则。另：<b style="color:var(--gold2)">思维链已内置自动折叠</b>（think/thinking/cot/reasoning 等标签），无需自写正则。</div>'
+   +'<div class="kai" style="font-size:19px;color:'+(red?'#a9cbb8':'var(--gold2)')+';letter-spacing:.15em;margin:22px 0 12px">'+(red?'编辑正则「'+esc(red.name)+'」':'新建正则')+'</div>'
+   +'<div><input id="zjRxName" '+inp+' value="'+esc(red?red.name:'')+'" placeholder="名称"></div>'
+   +'<div style="margin-top:10px"><input id="zjRxFind" '+inp+' value="'+esc(red?red.find:'')+'" placeholder="查找：如 /悄悄话[：:]([\\s\\S]*?)。/g"></div>'
+   +'<div style="margin-top:10px"><input id="zjRxRep" '+inp+' value="'+esc(red?red.replace:'')+'" placeholder="替换为（可用 $1、$& ；留空即删除命中内容）"></div>'
+   +'<div style="display:flex;gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mut2);cursor:pointer"><input id="zjRxBoth" type="checkbox" style="accent-color:#c9a063"'+(red&&red.mode!=='display'?' checked':'')+'>同时作用于发回 AI 的历史</label><div class="grow"></div>'+(red?'<button data-act="rxCancel" class="obtn btn" style="font-size:13px;letter-spacing:.15em;padding:9px 18px">取消</button>':'')+'<button data-act="rxAdd" class="gbtn btn" style="font-size:14px;letter-spacing:.2em;padding:9px 26px">'+(red?'保存修改':'添 加')+'</button></div>'
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:30px 0 12px">导入酒馆正则</div>'
+   +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
+   +'<label class="btn glass" style="padding:9px 22px;cursor:pointer;color:var(--gold2);font-size:13.5px;letter-spacing:.1em">选择正则 JSON<input id="zjRxFile" type="file" accept=".json,application/json" multiple style="display:none"></label>'
+   +'<span style="font-size:12px;color:var(--mut)">酒馆 → 扩展 → 正则 → 导出的 .json（可多选）</span></div>'
+   +msg+listBlock
+   +'</div></div>';
+}
+function jsPane(){
+  var jed=(S.jsEdit!=null&&USCRIPTS[S.jsEdit])?USCRIPTS[S.jsEdit]:null;
+  var inp='style="width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);padding:9px 12px;font-size:13.5px" autocomplete="off" spellcheck="false"';
+  var msg=S.jsMsg?'<div style="font-size:12.5px;color:var(--gold3);margin-top:12px">'+esc(S.jsMsg)+'</div>':'';
+  var rows=USCRIPTS.map(function(sc,i){
+    var on=sc.on!==false;
+    var del=S.jsDelIx===i
+      ?'<button data-jsdel="'+(i+1)+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:rgba(166,59,38,.25);border:1px solid rgba(166,59,38,.6);border-radius:8px;color:#e0a493">确认删除</button>'
+      :'<button data-jsdel="'+(i+1)+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:transparent;border:1px solid rgba(166,59,38,.35);border-radius:8px;color:#b06a55">删</button>';
+    return '<div style="display:flex;align-items:flex-start;gap:11px;border:1px solid rgba(255,238,205,.16);border-radius:12px;background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.04));box-shadow:inset 0 1px 0 rgba(255,242,214,.18);padding:10px 13px;margin-bottom:7px">'
+      +'<div class="btn" data-jstog="'+(i+1)+'" title="启用/停用" style="cursor:pointer;flex:none;width:34px;height:18px;border-radius:9px;margin-top:2px;background:'+(on?'rgba(122,168,143,.45)':'rgba(255,255,255,.08)')+';position:relative"><div style="position:absolute;top:2px;'+(on?'right:2px':'left:2px')+';width:14px;height:14px;border-radius:50%;background:'+(on?'#a9cbb8':'#6f6148')+'"></div></div>'
+      +'<div class="grow" style="min-width:0"><div style="font-size:13.5px;color:'+(on?'var(--gold3)':'var(--mut)')+'">'+esc(sc.name)+'<span style="font-size:10.5px;color:var(--mut);margin-left:9px">'+String(sc.code||'').length+'字 · 沙箱运行</span></div></div>'
+      +'<button data-jsedit="'+(i+1)+'" class="obtn btn" style="flex:none;font-size:12px;padding:5px 12px;border-radius:8px">编辑</button>'+del+'</div>';
+  }).join('');
+  var listBlock=USCRIPTS.length
+    ?'<div style="display:flex;align-items:center;gap:12px;margin:30px 0 12px"><div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em">我的脚本</div><span style="font-size:12px;color:var(--mut)">'+USCRIPTS.length+' 个</span></div>'+rows
+    :'<div style="text-align:center;padding:26px 0 4px;font-size:13px;letter-spacing:.25em;color:#6f6148">尚无脚本</div>';
+  return '<div class="grow bambooV" style="overflow-y:auto;padding:22px 28px"><div style="max-width:680px">'
+   +'<div style="font-size:12.5px;line-height:1.85;color:#8a7a5e;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 14px">运行<b style="color:var(--gold2)">酒馆助手（Tavern Helper）风格的 JS 脚本</b>。脚本在<b style="color:var(--gold2)">隔离沙箱</b>里执行，接触不到你的 API 密钥与页面本体。当前支持的 API：<span style="font-family:monospace;font-size:11.5px">eventOn / eventOnce（GENERATION_STARTED · GENERATION_ENDED · MESSAGE_RECEIVED · APP_READY · CHAT_CHANGED）、getChatMessages、setChatMessage、getLastMessageId、getVariables（只读）</span>。依赖酒馆本体界面或其他扩展的脚本无法运行。</div>'
+   +'<div class="kai" style="font-size:19px;color:'+(jed?'#a9cbb8':'var(--gold2)')+';letter-spacing:.15em;margin:22px 0 12px">'+(jed?'编辑脚本「'+esc(jed.name)+'」':'新建脚本')+'</div>'
+   +'<div><input id="zjJsName" '+inp+' value="'+esc(jed?jed.name:'')+'" placeholder="脚本名"></div>'
+   +'<div style="margin-top:10px"><textarea id="zjJsCode" placeholder="// 例：AI 回复后自动在结尾加一句话\neventOn(tavern_events.MESSAGE_RECEIVED, async function(id){\n  var m=(await getChatMessages(id))[0];\n  if(m) setChatMessage({message:m.message+&quot;\\n\\n（史官注：此幕已录）&quot;}, id);\n});" style="width:100%;min-height:170px;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);font-size:12.5px;line-height:1.7;padding:9px 12px;resize:vertical;font-family:monospace" spellcheck="false">'+esc(jed?jed.code:'')+'</textarea></div>'
+   +'<div style="display:flex;gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap"><div class="grow"></div>'+(jed?'<button data-act="jsCancel" class="obtn btn" style="font-size:13px;letter-spacing:.15em;padding:9px 18px">取消</button>':'')+'<button data-act="jsAdd" class="gbtn btn" style="font-size:14px;letter-spacing:.2em;padding:9px 26px">'+(jed?'保存修改':'添 加')+'</button></div>'
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:30px 0 12px">导入脚本文件</div>'
+   +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
+   +'<label class="btn glass" style="padding:9px 22px;cursor:pointer;color:var(--gold2);font-size:13.5px;letter-spacing:.1em">选择 .js 文件<input id="zjJsFile" type="file" accept=".js,.txt,text/javascript,text/plain" multiple style="display:none"></label>'
+   +'<span style="font-size:12px;color:var(--mut)">文件名即脚本名</span></div>'
+   +msg+listBlock
+   +'</div></div>';
+}
 function setBody(){
-  var tabs=[['font','显 · 显示'],['lore','书 · 世界书'],['api','链 · AI 接口']].map(function(t){var on=S.setTab===t[0];return '<div class="btn" data-settab="'+t[0]+'" style="position:relative;z-index:1;cursor:pointer;padding:9px 22px;font-family:var(--kai);font-size:15px;letter-spacing:.18em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('');
+  var tabs=[['font','显 · 显示'],['lore','书 · 世界书'],['rx','则 · 正则'],['js','脚 · 助手脚本'],['api','链 · AI 接口']].map(function(t){var on=S.setTab===t[0];return '<div class="btn" data-settab="'+t[0]+'" style="position:relative;z-index:1;cursor:pointer;white-space:nowrap;padding:9px 15px;font-family:var(--kai);font-size:15px;letter-spacing:.18em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('');
   return '<div class="col grow" style="min-height:0">'
-   +'<div id="zjSetBar" style="position:relative;flex:none;display:flex;gap:6px;padding:12px 18px;border-bottom:1px solid rgba(201,160,99,.18)">'+tabs+'</div>'
-   +'<div class="col grow" style="min-height:0">'+(S.setTab==='api'?apiBody():S.setTab==='lore'?lorePane():fontPane())+'</div></div>';
+   +'<div id="zjSetBar" style="position:relative;flex:none;display:flex;gap:6px;padding:12px 18px;border-bottom:1px solid rgba(201,160,99,.18);overflow-x:auto;scrollbar-width:none">'+tabs+'</div>'
+   +'<div class="col grow" style="min-height:0">'+(S.setTab==='api'?apiBody():S.setTab==='lore'?lorePane():S.setTab==='rx'?rxPane():S.setTab==='js'?jsPane():fontPane())+'</div></div>';
 }
 function setPills(){
   if(S.overlay!=='set')return;
@@ -1659,6 +1824,14 @@ function render(){
   var story=document.getElementById('zjStory');
   if(story){if(S._stayTop)story.scrollTop=0;else if(keepPos!=null)story.scrollTop=keepPos;else story.scrollTop=story.scrollHeight;S._stayTop=false;}
   if(focused){var ta=document.getElementById('zjInput');if(ta){ta.focus();try{ta.setSelectionRange(selStart,selStart);}catch(e){}}}
+  try{
+    if(S.thinking&&!SBX.thinking){SBX.thinking=true;sbxEmit('GENERATION_STARTED',null);}
+    else if(!S.thinking&&SBX.thinking){SBX.thinking=false;}
+    var _wc=0;for(var _wi=0;_wi<S.history.length;_wi++)if(S.history[_wi].role==='world')_wc++;
+    if(SBX.wc==null)SBX.wc=_wc;
+    else if(_wc>SBX.wc){SBX.wc=_wc;var _lid=S.history.length-1;sbxEmit('MESSAGE_RECEIVED',_lid);sbxEmit('GENERATION_ENDED',S.history[_lid]?S.history[_lid].text:'');}
+    else if(_wc<SBX.wc){SBX.wc=_wc;}
+  }catch(e){}
   ensureTyping();
   if(window.ZJ3D&&ZJ3D.owns()){
     var _m=mood();ZJ3D.onRender(playerLoc().name,_m.night);
@@ -1842,6 +2015,14 @@ function dragEnd(e,commit){
 root.addEventListener('pointerup',function(e){dragEnd(e,true);});
 root.addEventListener('pointercancel',function(e){dragEnd(e,false);});
 root.addEventListener('change',function(e){
+  if(e.target&&e.target.id==='zjJsFile'&&e.target.files&&e.target.files.length){
+    [].forEach.call(e.target.files,function(jf){var jr=new FileReader();jr.onload=function(){USCRIPTS.push({name:jf.name.replace(/\.[^.]+$/,'').slice(0,40),code:String(jr.result||''),on:true});uscriptsSave();sbxStartAll();S.jsMsg='已导入「'+jf.name+'」';if(S.overlay)renderOverlay();};jr.readAsText(jf);});
+    return;
+  }
+  if(e.target&&e.target.id==='zjRxFile'&&e.target.files&&e.target.files.length){
+    [].forEach.call(e.target.files,function(rf){var rr=new FileReader();rr.onload=function(){uregexImportText(String(rr.result||''));};rr.readAsText(rf);});
+    return;
+  }
   if(e.target&&e.target.id==='zjLoreFile'&&e.target.files&&e.target.files[0]){
     var lf=e.target.files[0];var lrd=new FileReader();
     lrd.onload=function(){uloreImportText(String(lrd.result||''));};
@@ -1902,6 +2083,18 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-load')){var id=+t.getAttribute('data-load');var r=S.saves.filter(function(x){return x.id===id;})[0];if(r)loadSave(r);return;}
       if(t.getAttribute('data-del')){delSave(+t.getAttribute('data-del'));return;}
       if(t.getAttribute('data-bgm')){bgmPlay(parseInt(t.getAttribute('data-bgm'),10));render();return;}
+      if(t.getAttribute('data-jsedit')){S.jsEdit=parseInt(t.getAttribute('data-jsedit'),10)-1;S.jsDelIx=null;renderOverlay();var jsf=document.getElementById('zjJsName');if(jsf)jsf.scrollIntoView({block:'center'});return;}
+      if(t.getAttribute('data-jstog')){var jti=parseInt(t.getAttribute('data-jstog'),10)-1;if(USCRIPTS[jti]){USCRIPTS[jti].on=USCRIPTS[jti].on===false;uscriptsSave();sbxStartAll();renderOverlay();}return;}
+      if(t.getAttribute('data-jsdel')!=null&&t.getAttribute('data-jsdel')!==''){var jdi=parseInt(t.getAttribute('data-jsdel'),10)-1;
+        if(S.jsDelIx===jdi){USCRIPTS.splice(jdi,1);S.jsDelIx=null;S.jsMsg='已删除';uscriptsSave();sbxStartAll();}
+        else S.jsDelIx=jdi;
+        renderOverlay();return;}
+      if(t.getAttribute('data-rxedit')){S.rxEdit=parseInt(t.getAttribute('data-rxedit'),10)-1;S.rxDelIx=null;renderOverlay();var rxf=document.getElementById('zjRxName');if(rxf)rxf.scrollIntoView({block:'center'});return;}
+      if(t.getAttribute('data-rxtog')){var rti=parseInt(t.getAttribute('data-rxtog'),10)-1;if(UREGEX[rti]){UREGEX[rti].on=UREGEX[rti].on===false;delete UREGEX[rti]._c;uregexSave();renderOverlay();}return;}
+      if(t.getAttribute('data-rxdel')!=null&&t.getAttribute('data-rxdel')!==''){var rdi=parseInt(t.getAttribute('data-rxdel'),10)-1;
+        if(S.rxDelIx===rdi){UREGEX.splice(rdi,1);S.rxDelIx=null;S.rxMsg='已删除';uregexSave();}
+        else S.rxDelIx=rdi;
+        renderOverlay();return;}
       if(t.getAttribute('data-ledit')){S.loreEdit=parseInt(t.getAttribute('data-ledit'),10)-1;S.loreDelIx=null;renderOverlay();var lef=document.getElementById('zjLoreTitle');if(lef)lef.scrollIntoView({block:'center'});return;}
       if(t.getAttribute('data-ltog')){var lgi=parseInt(t.getAttribute('data-ltog'),10)-1;if(ULORE[lgi]){ULORE[lgi].on=ULORE[lgi].on===false;uloreSave();renderOverlay();}return;}
       if(t.getAttribute('data-ldel')!=null&&t.getAttribute('data-ldel')!==''){var ldi=parseInt(t.getAttribute('data-ldel'),10);
@@ -2010,6 +2203,25 @@ root.addEventListener('click',function(e){
           else{ULORE.push({title:lt.slice(0,40),keys:lks.slice(0,20),content:lc,constant:lcons,on:true});S.loreMsg='已添加「'+lt.slice(0,40)+'」';}
           uloreSave();S.loreDelIx=null;renderOverlay();}}
       else if(a==='loreCancel'){S.loreEdit=null;renderOverlay();}
+      else if(a==='rxAdd'){var rnE=document.getElementById('zjRxName'),rfE=document.getElementById('zjRxFind'),rrE=document.getElementById('zjRxRep'),rbE=document.getElementById('zjRxBoth');
+        var rf=rfE?rfE.value.trim():'';
+        if(!rf){S.rxMsg='请填写查找正则';renderOverlay();}
+        else if(!rxCompile(rf)){S.rxMsg='正则语法有误，无法编译';renderOverlay();}
+        else{var rn=(rnE?rnE.value.trim():'')||'正则'+(UREGEX.length+1);
+          var ro={name:rn.slice(0,40),find:rf,replace:rrE?rrE.value:'',mode:(rbE&&rbE.checked)?'both':'display',on:true};
+          if(S.rxEdit!=null&&UREGEX[S.rxEdit]){ro.on=UREGEX[S.rxEdit].on;UREGEX[S.rxEdit]=ro;S.rxMsg='已保存修改「'+ro.name+'」';S.rxEdit=null;}
+          else{UREGEX.push(ro);S.rxMsg='已添加「'+ro.name+'」';}
+          uregexSave();S.rxDelIx=null;renderOverlay();}}
+      else if(a==='rxCancel'){S.rxEdit=null;renderOverlay();}
+      else if(a==='jsAdd'){var jnE=document.getElementById('zjJsName'),jcE=document.getElementById('zjJsCode');
+        var jc=jcE?jcE.value:'';
+        if(!jc.trim()){S.jsMsg='请填写脚本内容';renderOverlay();}
+        else{var jn=(jnE?jnE.value.trim():'')||'脚本'+(USCRIPTS.length+1);
+          if(S.jsEdit!=null&&USCRIPTS[S.jsEdit]){USCRIPTS[S.jsEdit].name=jn.slice(0,40);USCRIPTS[S.jsEdit].code=jc;S.jsMsg='已保存修改「'+jn.slice(0,40)+'」';S.jsEdit=null;}
+          else{USCRIPTS.push({name:jn.slice(0,40),code:jc,on:true});S.jsMsg='已添加「'+jn.slice(0,40)+'」';}
+          uscriptsSave();sbxStartAll();S.jsDelIx=null;renderOverlay();}}
+      else if(a==='jsCancel'){S.jsEdit=null;renderOverlay();}
+      else if(a==='rxExport'){try{var rb2=new Blob([JSON.stringify(UREGEX.map(function(r){return {scriptName:r.name,findRegex:r.find,replaceString:r.replace,disabled:r.on===false,markdownOnly:r.mode==='display'};}),null,2)],{type:'application/json'});var ru=URL.createObjectURL(rb2);var ra=document.createElement('a');ra.href=ru;ra.download='周纪正则备份.json';document.body.appendChild(ra);ra.click();document.body.removeChild(ra);setTimeout(function(){URL.revokeObjectURL(ru);},4000);}catch(e){}}
       else if(a==='loreExport'){try{var lbl2=new Blob([JSON.stringify(ULORE,null,2)],{type:'application/json'});var lu=URL.createObjectURL(lbl2);var la=document.createElement('a');la.href=lu;la.download='周纪世界书备份.json';document.body.appendChild(la);la.click();document.body.removeChild(la);setTimeout(function(){URL.revokeObjectURL(lu);},4000);}catch(e){S.loreMsg='导出失败：'+e.message;renderOverlay();}}
       else if(a==='expAll'){try{var xo={__app:'周纪·千年天下',__type:'zhouji-full-backup',__version:1,data:{}};
         for(var xi=0;xi<localStorage.length;xi++){var xk=localStorage.key(xi);if(xk&&/^(zhouji_|zj3d_|zj_)/.test(xk))xo.data[xk]=localStorage.getItem(xk);}
@@ -2063,6 +2275,7 @@ if(window.visualViewport){(function(){
 })();}
 var rt,rw=window.innerWidth;window.addEventListener('resize',function(){var w=window.innerWidth,ae=document.activeElement,typing=ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='INPUT');if(w===rw&&typing)return;/* 软键盘只改高度：输入中不重绘，避免关闭键盘 */rw=w;clearTimeout(rt);rt=setTimeout(render,150);});
 
+try{sbxStartAll();}catch(e){}
 // initial: if ST has chat already, pull it
 if(TH.available){ pullHistory(function(){ if(S.history.length){S.screen='game';} render(); }); }
 render();
