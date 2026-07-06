@@ -109,6 +109,7 @@ textarea,input{border-radius:10px}
 @keyframes fadeup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes blink{0%,80%,100%{opacity:.15}40%{opacity:1}}
 .fade{animation:fadeup .45s ease}
+.zjNoFade .fade{animation:none!important}
 .dot{display:inline-block;width:6px;height:6px;border-radius:50%}
 .diamond{display:inline-block;width:7px;height:7px;transform:rotate(45deg)}
 /* layout */
@@ -976,6 +977,11 @@ var WIZ_ERAS=[
 ];
 var WIZ_HOME=[['阿枣','天子的当代贴身侍女'],['大祧','守祧教团当代首领']];
 function wizYearStr(y){return y<0?('前'+(-y)+'年'):(y+'年');}
+function wizYearOf(w){var t=String(w&&w.customYear||'').trim();if(!t||w.era==null)return w&&w.era!=null?WIZ_ERAS[w.era].year:0;
+  var neg=/^(公元)?前/.test(t)||/^-/.test(t);
+  var n=parseInt(t.replace(/^公元/,'').replace(/^前/,'').replace(/^-/,'').replace(/年$/,''),10);
+  if(isNaN(n)||n<=0)return WIZ_ERAS[w.era].year;
+  return neg?-n:n;}
 function wizFigs(era){return era.figs.concat(WIZ_HOME);}
 function wizChip(attr,val,label,on,sub){
   return '<div class="btn glass glassHover" '+attr+'="'+esc(val)+'" style="cursor:pointer;padding:12px 14px;'+(on?'border-color:rgba(224,190,130,.85);background:rgba(201,160,99,.14)':'')+'">'
@@ -993,7 +999,9 @@ function wizardView(){
   if(w.step===1){
     body='<div class="kai" style="font-size:17px;color:var(--gold3);margin-bottom:14px">这一局，落在哪个时代？</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px">'
-      +WIZ_ERAS.map(function(e,i){return wizChip('data-wz-era',i,e.label+' · '+wizYearStr(e.year),w.era===i,e.blurb);}).join('')+'</div>';
+      +WIZ_ERAS.map(function(e,i){return wizChip('data-wz-era',i,e.label+' · '+wizYearStr(e.year),w.era===i,e.blurb);}).join('')+'</div>'
+      +'<div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-size:13px;color:var(--mut);letter-spacing:.1em">自定义年份（可选）</span><input id="zjWzYear" value="'+esc(w.customYear||'')+'" placeholder="如：前505 或 620" style="width:150px;background:rgba(26,20,16,.5);border:1px solid rgba(201,160,99,.35);border-radius:9px;color:var(--gold3);font-size:14px;padding:8px 11px">'
+      +(w.era!=null?'<span style="font-size:12px;color:var(--mut)">本局纪年：'+wizYearStr(wizYearOf(w))+'（人物地点仍取自所选时代）</span>':'')+'</div>';
   }else if(w.step===2){
     body='<div class="kai" style="font-size:17px;color:var(--gold3);margin-bottom:14px">'+esc(era.label)+' · 故事从哪里开场？</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:12px">'
@@ -1044,39 +1052,39 @@ function wizRoleDesc(w){
   if(w.role.mode==='figure'){var f=wizFigs(era).filter(function(x){return x[0]===w.role.fig;})[0];return '历史人物「'+w.role.fig+'」（'+(f?f[1]:'')+'；'+era.label+'确有其人，事迹依史实与本世界线设定演绎）';}
   var c=w.role.c;return '自定义角色：'+(c.g||'')+'，'+(c.id||'')+(c.age?('，'+c.age+'岁'):'')+(c.look?('。外貌：'+c.look):'')+(c.bg?('。背景：'+c.bg):'');
 }
-function wizPanelSkeleton(npcs,era,place,isTianzi){
-  return '<mvu_panel>\n<sec_char>\n◆衣冠|（角色衣着）\n◆持物|（手边之物）\n◆御体|（身体状态）\n◆观瞻|（旁人眼中的你）\n◆'+(isTianzi?'神格':'处境')+'|100\n◆史笔|（太史令一句记事）\n</sec_char>\n<sec_npc>\n'+npcs.map(function(n){return '◈'+n+'|（状态）|50|（心声）';}).join('\n')+'\n</sec_npc>\n<sec_world>\n◇纪年|（朝代年号 · '+wizYearStr(era.year)+' · 季节）\n◇时地|（时辰 · '+place+'）\n◇天气|（天气）\n◇安稳|80\n◇大势|（当前天下大势一句）\n◇将临|（一句悬而未发的暗流）\n</sec_world>\n</mvu_panel>';
+function wizPanelSkeleton(npcs,era,place,isTianzi,wy){
+  return '<mvu_panel>\n<sec_char>\n◆衣冠|（角色衣着）\n◆持物|（手边之物）\n◆御体|（身体状态）\n◆观瞻|（旁人眼中的你）\n◆'+(isTianzi?'神格':'处境')+'|100\n◆史笔|（太史令一句记事）\n</sec_char>\n<sec_npc>\n'+npcs.map(function(n){return '◈'+n+'|（状态）|50|（心声）';}).join('\n')+'\n</sec_npc>\n<sec_world>\n◇纪年|（朝代年号 · '+wizYearStr(wy!=null?wy:era.year)+' · 季节）\n◇时地|（时辰 · '+place+'）\n◇天气|（天气）\n◇安稳|80\n◇大势|（当前天下大势一句）\n◇将临|（一句悬而未发的暗流）\n</sec_world>\n</mvu_panel>';
 }
 function wizTemplate(w){
-  var era=WIZ_ERAS[w.era];var role=wizRoleDesc(w);var isT=!role;
+  var era=WIZ_ERAS[w.era];var role=wizRoleDesc(w);var isT=!role;var wy=wizYearOf(w);
   var who=isT?'你——姬瑶，永生的周天子——':'你——'+(w.role.mode==='figure'?w.role.fig:(w.role.c.id||'无名之人'))+'——';
   var panel='<mvu_panel>\n<sec_char>\n◆衣冠|依时代与身份\n◆持物|——\n◆御体|'+(isT?'永生之躯':'如常')+'\n◆观瞻|——\n◆'+(isT?'神格':'处境')+'|100\n◆史笔|开局于'+w.place+'。\n</sec_char>\n<sec_npc>\n'
     +w.npcs.map(function(n){return '◈'+n+'|在场|50|静观';}).join('\n')
-    +'\n</sec_npc>\n<sec_world>\n◇纪年|'+era.label+' · '+wizYearStr(era.year)+' · 春\n◇时地|日中 · '+w.place+'\n◇天气|晴\n◇安稳|80\n◇大势|'+era.blurb.split('：')[0]+'\n◇将临|未卜\n</sec_world>\n</mvu_panel>';
-  return '【开局零·'+era.label+'（'+wizYearStr(era.year)+'），'+w.place+'：自定义开局】\n\n'
+    +'\n</sec_npc>\n<sec_world>\n◇纪年|'+era.label+' · '+wizYearStr(wy)+' · 春\n◇时地|日中 · '+w.place+'\n◇天气|晴\n◇安稳|80\n◇大势|'+era.blurb.split('：')[0]+'\n◇将临|未卜\n</sec_world>\n</mvu_panel>';
+  return '【开局零·'+era.label+'（'+wizYearStr(wy)+'），'+w.place+'：自定义开局】\n\n'
     +era.blurb+'\n\n此刻，'+who+'正在'+w.place+'。'+(w.npcs.length?('在场的还有：'+w.npcs.join('、')+'。'):'')
     +'\n\n（这是未接入 AI 时的简易开场。故事从你的第一句话开始——开口吧，太史令已经蘸好了墨。）\n\n'+panel;
 }
 function wizGenerate(){
   var w=S.wiz;if(!w||w.busy)return;
-  var era=WIZ_ERAS[w.era];var role=wizRoleDesc(w);var isT=!role;
+  var era=WIZ_ERAS[w.era];var role=wizRoleDesc(w);var isT=!role;var wy=wizYearOf(w);
   if(!apiReady()){startCustomOpening(wizTemplate(w),role);return;}
   w.busy=true;w.err='';render();
   var sys='你是历史角色扮演游戏《周纪·千年天下》的开局撰写引擎。世界观：姬瑶——女扮男装即位并获得永生的周天子——坐镇洛阳圣域（王城之内千年保持先秦周制），是天下的神明与「活的传国玉玺」；圣域之外，王朝依真实历史更迭。她台前端凝如神，台后懒散爱吐槽。写作要求：现代白话轻小说笔法，画面感强，带冷幽默，绝不说教；时代考据严格，名物、称谓、思想必须符合当年，严禁任何明清元素（银子、圣旨、太监、娘娘等）。';
-  var req='请撰写一个开局场景，700-900字，第二人称「你」指玩家角色，以一个需要玩家表态或行动的瞬间收尾。\n\n玩家的选择：\n· 时代：'+era.label+'（'+wizYearStr(era.year)+'）——'+era.blurb+'\n· 开场地点：'+w.place+'\n· 在场人物：'+w.npcs.join('、')+'（须全部登场且言行符合其人）\n· 玩家扮演：'+(isT?'姬瑶本人（永生的周天子）':role+'。注意：姬瑶本局是NPC，若她在场请依其人设演绎；若不在场，她的存在应作为世界背景被感知。')+'\n\n格式要求：第一行为【开局零·'+era.label+'（'+wizYearStr(era.year)+'），'+w.place+'：（你起一个四到八字的标题）】，正文之后必须输出状态栏，严格采用如下骨架并填实每一项：\n\n'+wizPanelSkeleton(w.npcs,era,w.place,isT);
+  var req='请撰写一个开局场景，700-900字，第二人称「你」指玩家角色，以一个需要玩家表态或行动的瞬间收尾。\n\n玩家的选择：\n· 时代：'+era.label+'（'+wizYearStr(wy)+'）——'+era.blurb+(wy!==era.year?'（注意：玩家指定确切年份为'+wizYearStr(wy)+'，纪年与时局须严格落在该年）':'')+'\n· 开场地点：'+w.place+'\n· 在场人物：'+w.npcs.join('、')+'（须全部登场且言行符合其人）\n· 玩家扮演：'+(isT?'姬瑶本人（永生的周天子）':role+'。注意：姬瑶本局是NPC，若她在场请依其人设演绎；若不在场，她的存在应作为世界背景被感知。')+'\n\n格式要求：第一行为【开局零·'+era.label+'（'+wizYearStr(wy)+'），'+w.place+'：（你起一个四到八字的标题）】，正文之后必须输出状态栏，严格采用如下骨架并填实每一项：\n\n'+wizPanelSkeleton(w.npcs,era,w.place,isT,wy);
   callCustomAI(sys,[{role:'user',content:req}]).then(function(text){
     text=String(text||'').trim();
     if(!text){throw new Error('生成结果为空');}
-    if(text.indexOf('<mvu_panel>')<0)text+='\n\n'+wizPanelSkeleton(w.npcs,era,w.place,isT);
+    if(text.indexOf('<mvu_panel>')<0)text+='\n\n'+wizPanelSkeleton(w.npcs,era,w.place,isT,wy);
     startCustomOpening(text,role);
   }).catch(function(err){
     w.busy=false;w.err='生成失败：'+(err&&err.message||err)+'（可重试，或稍后再试）';render();
   });
 }
 function startCustomOpening(text,role){
-  var w=S.wiz;var era=WIZ_ERAS[w.era];
+  var w=S.wiz;var era=WIZ_ERAS[w.era];var wy=wizYearOf(w);
   var m=/【开局零·[^：】]*：([^】]+)】/.exec(text);
-  S.customOp={id:0,year:era.year,era:era.label+'（'+wizYearStr(era.year)+'），'+w.place,scene:m?m[1]:'自定义开局',text:text};
+  S.customOp={id:0,year:wy,era:era.label+'（'+wizYearStr(wy)+'），'+w.place,scene:m?m[1]:'自定义开局',text:text};
   S.customRole=role||null;
   S.openingId=0;S.mem=[];S.memN=0;S.wiz=null;
   S.history=[{role:'world',text:text,panel:parseMvu(text)}];
@@ -1184,7 +1192,7 @@ function storyPane(){
     +'<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">'+particlesHtml(m)+'</div>'
     +(m.place?'<div class="kai" style="position:absolute;top:48px;right:16px;writing-mode:vertical-rl;font-size:17px;letter-spacing:.3em;color:rgba(232,217,176,.92);text-shadow:0 0 16px rgba(0,0,0,.9)">'+esc(m.place)+'</div>':'')
     +(m.wx?'<div style="position:absolute;left:14px;bottom:'+((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded)?30:10)+'px;font-size:11px;letter-spacing:.2em;color:rgba(157,140,107,.9);background:rgba(13,10,8,.55);padding:4px 10px;border:1px solid rgba(201,160,99,.2);border-radius:8px">'+esc(m.wx)+'</div>':'')
-    +((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded&&!S.worldFull)?'<div data-act="worldFull" class="btn zjHl" title="三维画面全屏" style="position:absolute;top:8px;left:50%;margin-left:-31px;z-index:7;cursor:pointer;padding:3px 13px;border-radius:99px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em">全屏</div>':'')
+    +((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded&&!S.worldFull)?'<div data-act="worldFull" class="btn zjHl" title="三维画面全屏" style="position:absolute;top:40px;left:10px;z-index:7;cursor:pointer;padding:3px 13px;border-radius:99px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em">全屏</div>':'')
     +'</div>';
   var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['look','观 · 察看'],['free','书 · 自由'],['world','令 · 天下']];
   var chips=MODES.map(function(md){var on=md[0]===S.mode;return '<div class="btn zjHl" data-mode="'+md[0]+'" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(on?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)')+';color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?md[1].replace(/\s/g,''):md[1])+'</div>';}).join('');
@@ -1496,6 +1504,9 @@ function fontPane(){
    +[['auto','自动'],['desktop','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="2.75" y="4.5" width="18.5" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 17.2v3.3"/></svg> 电脑'],['mobile','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="7.25" y="2.75" width="9.5" height="18.5" rx="2.4"/><path d="M10.7 18.2h2.6"/></svg> 手机']].map(function(dv){var on=S.device===dv[0];return '<div class="btn" data-dev="'+dv[0]+'" style="cursor:pointer;padding:8px 18px;font-size:13.5px;letter-spacing:.08em;color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'rgba(201,160,99,.12)':'transparent')+'">'+dv[1]+'</div>';}).join('')+'</div>'
    +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">自动依屏幕宽窄选择版式；也可强制使用电脑或手机布局。</div>'
    +'<div class="glass" style="margin-top:28px;padding:16px 18px"><div class="kai" style="font-size:17px;color:var(--gold3)">预览 · 洛邑的冬夜</div><div id="zjFontPrev" data-zjzoom style="margin-top:8px;font-size:15px;line-height:2;color:#cfc0a0;zoom:'+FS+'">「撑过三年。」单穆公白着头发对你叩首时这么说，「三年后，从宗室里择一子过继，老臣以死谢罪。」</div></div>'
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">数据备份</div>'
+   +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键导出此浏览器里的全部游戏数据为一个 JSON 文件：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体与接口配置、三维营造记录。换设备或清数据前先备份。</div>'
+   +'<button data-act="expAll" class="gbtn btn" style="margin-top:12px;font-size:13.5px;letter-spacing:.15em;padding:9px 24px;border-radius:10px">导出全部数据</button>'
    +'<div class="kai" style="font-size:19px;color:#c9705a;letter-spacing:.15em;margin:34px 0 10px">清除本机数据</div>'
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键抹掉此浏览器里的全部游戏数据：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体、AI 接口配置、三维天下营造记录与全部缓存。不可恢复，清除后页面自动重载如初见。</div>'
    +(S.wipeArm
@@ -1505,29 +1516,31 @@ function fontPane(){
    +'</div></div>';
 }
 function lorePane(){
+  var led=(S.loreEdit!=null&&ULORE[S.loreEdit])?ULORE[S.loreEdit]:null;
   var inp='style="width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);padding:9px 12px;font-size:13.5px" autocomplete="off" spellcheck="false"';
   var msg=S.loreMsg?'<div style="font-size:12.5px;color:var(--gold3);margin-top:12px">'+esc(S.loreMsg)+'</div>':'';
   var rows=ULORE.map(function(en,i){
     var on=en.on!==false;
     var badge=en.constant?'<span style="font-size:10.5px;color:#a9cbb8;border:1px solid rgba(122,168,143,.4);border-radius:6px;padding:2px 8px;margin-left:9px">常驻</span>':'<span style="font-size:10.5px;color:var(--mut);margin-left:9px">'+esc((en.keys||[]).slice(0,4).join(' / ')||'无关键词')+'</span>';
+    var edt='<button data-ledit="'+(i+1)+'" class="obtn btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;border-radius:8px">编辑</button>';
     var del=S.loreDelIx===i
       ?'<button data-ldel="'+i+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:rgba(166,59,38,.25);border:1px solid rgba(166,59,38,.6);border-radius:8px;color:#e0a493">确认删除</button>'
       :'<button data-ldel="'+i+'" class="btn" style="flex:none;cursor:pointer;font-size:12px;padding:5px 12px;background:transparent;border:1px solid rgba(166,59,38,.35);border-radius:8px;color:#b06a55">删</button>';
     return '<div style="display:flex;align-items:flex-start;gap:11px;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 13px;margin-bottom:7px;background:rgba(255,255,255,.015)">'
       +'<div class="btn" data-ltog="'+(i+1)+'" title="启用/停用此条" style="cursor:pointer;flex:none;width:34px;height:18px;border-radius:9px;margin-top:2px;background:'+(on?'rgba(122,168,143,.45)':'rgba(255,255,255,.08)')+';position:relative"><div style="position:absolute;top:2px;'+(on?'right:2px':'left:2px')+';width:14px;height:14px;border-radius:50%;background:'+(on?'#a9cbb8':'#6f6148')+'"></div></div>'
       +'<div class="grow" style="min-width:0"><div style="font-size:13.5px;color:'+(on?'var(--gold3)':'var(--mut)')+'">'+esc(en.title)+badge+'</div>'
-      +'<div style="font-size:11.5px;color:#8a7a5e;line-height:1.65;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc(en.content.slice(0,160))+'</div></div>'+del+'</div>';
+      +'<div style="font-size:11.5px;color:#8a7a5e;line-height:1.65;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc(en.content.slice(0,160))+'</div></div>'+edt+del+'</div>';
   }).join('');
   var listBlock=ULORE.length
     ?'<div style="display:flex;align-items:center;gap:12px;margin:30px 0 12px"><div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em">我的条目</div><span style="font-size:12px;color:var(--mut)">'+ULORE.length+' 条 · 也会出现在「典 · 自定义」中</span><div class="grow"></div><button data-act="loreExport" class="obtn btn" style="font-size:12.5px;padding:6px 16px;letter-spacing:.1em">导出备份</button></div>'+rows
     :'<div style="text-align:center;padding:26px 0 4px;font-size:13px;letter-spacing:.25em;color:#6f6148">尚无自定义条目</div>';
   return '<div class="grow bambooV" style="overflow-y:auto;padding:22px 28px"><div style="max-width:680px">'
    +'<div style="font-size:12.5px;line-height:1.85;color:#8a7a5e;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 14px">你写的世界书条目与本卡自带世界书一同生效：正文近几轮提到<b style="color:var(--gold2)">关键词</b>时自动注入该条设定；勾选常驻则每轮必注入（占用篇幅，慎用）。条目只存于你这台设备的浏览器。</div>'
-   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:22px 0 12px">新写一条</div>'
-   +'<div><input id="zjLoreTitle" '+inp+' placeholder="条目名（如：我的家将·赵铁衣）"></div>'
-   +'<div style="margin-top:10px"><input id="zjLoreKeys" '+inp+' placeholder="触发关键词，逗号分隔（如：赵铁衣, 家将, 铁衣）"></div>'
-   +'<div style="margin-top:10px"><textarea id="zjLoreText" placeholder="条目内容：设定、来历、性格、秘密……写给 AI 看的背景资料" style="width:100%;min-height:110px;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);font-size:13.5px;line-height:1.8;padding:9px 12px;resize:vertical;font-family:inherit"></textarea></div>'
-   +'<div style="display:flex;gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mut2);cursor:pointer"><input id="zjLoreConst" type="checkbox" style="accent-color:#c9a063">常驻注入（无视关键词，每轮生效）</label><div class="grow"></div><button data-act="loreAdd" class="gbtn btn" style="font-size:14px;letter-spacing:.2em;padding:9px 26px">添 加</button></div>'
+   +'<div class="kai" style="font-size:19px;color:'+(led?'#a9cbb8':'var(--gold2)')+';letter-spacing:.15em;margin:22px 0 12px">'+(led?'编辑条目「'+esc(led.title)+'」':'新写一条')+'</div>'
+   +'<div><input id="zjLoreTitle" '+inp+' value="'+esc(led?led.title:'')+'" placeholder="条目名（如：我的家将·赵铁衣）"></div>'
+   +'<div style="margin-top:10px"><input id="zjLoreKeys" '+inp+' value="'+esc(led?(led.keys||[]).join(', '):'')+'" placeholder="触发关键词，逗号分隔（如：赵铁衣, 家将, 铁衣）"></div>'
+   +'<div style="margin-top:10px"><textarea id="zjLoreText" placeholder="条目内容：设定、来历、性格、秘密……写给 AI 看的背景资料" style="width:100%;min-height:110px;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);font-size:13.5px;line-height:1.8;padding:9px 12px;resize:vertical;font-family:inherit">'+esc(led?led.content:'')+'</textarea></div>'
+   +'<div style="display:flex;gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mut2);cursor:pointer"><input id="zjLoreConst" type="checkbox" style="accent-color:#c9a063"'+(led&&led.constant?' checked':'')+'>常驻注入（无视关键词，每轮生效）</label><div class="grow"></div>'+(led?'<button data-act="loreCancel" class="obtn btn" style="font-size:13px;letter-spacing:.15em;padding:9px 18px">取消</button>':'')+'<button data-act="loreAdd" class="gbtn btn" style="font-size:14px;letter-spacing:.2em;padding:9px 26px">'+(led?'保存修改':'添 加')+'</button></div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:30px 0 12px">上传世界书</div>'
    +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
    +'<label class="btn glass" style="padding:9px 22px;cursor:pointer;color:var(--gold2);font-size:13.5px;letter-spacing:.1em">选择世界书文件<input id="zjLoreFile" type="file" accept=".json,.txt,application/json,text/plain" style="display:none"></label>'
@@ -1575,15 +1588,25 @@ function presetBody(){
   var msg=S.pMsg?'<div style="font-size:12px;color:var(--gold3);margin-top:10px">'+esc(S.pMsg)+'</div>':'';
   var status;
   if(PRESET){
+    var pin='width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);border-radius:9px;color:var(--ink);padding:8px 11px;font-size:13px';
     var rows=PRESET.entries.map(function(en,i){
-      return '<div style="display:flex;align-items:flex-start;gap:11px;border:1px solid rgba(201,160,99,.18);padding:10px 13px;margin-bottom:7px;background:rgba(255,255,255,.015)">'
+      if(S.pEdit===i){
+        return '<div style="border:1px solid rgba(224,190,130,.55);border-radius:12px;padding:12px 13px;margin-bottom:7px;background:rgba(255,255,255,.02)">'
+          +'<input id="zjPeName" value="'+esc(en.name)+'" style="'+pin+'">'
+          +'<div style="display:flex;gap:10px;align-items:center;margin-top:9px"><span style="font-size:12px;color:var(--mut)">注入位置</span><select id="zjPePos" style="background:rgba(26,20,16,.8);border:1px solid rgba(201,160,99,.3);border-radius:8px;color:var(--gold3);font-size:13px;padding:6px 10px"><option value="pre"'+(en.pos!=='post'?' selected':'')+'>前置（对话历史之前）</option><option value="post"'+(en.pos==='post'?' selected':'')+'>末位（对话历史之后）</option></select></div>'
+          +'<textarea id="zjPeText" style="'+pin+';min-height:130px;margin-top:9px;resize:vertical;font-family:inherit;line-height:1.7">'+esc(en.content)+'</textarea>'
+          +'<div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end"><button data-act="pCancel" class="obtn btn" style="font-size:13px;padding:8px 18px">取消</button><button data-act="pSave" class="gbtn btn" style="font-size:13px;letter-spacing:.15em;padding:8px 22px">保 存</button></div></div>';
+      }
+      return '<div style="display:flex;align-items:flex-start;gap:11px;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 13px;margin-bottom:7px;background:rgba(255,255,255,.015)">'
         +'<div class="btn" data-ptog="'+i+'" title="启用/停用此条" style="cursor:pointer;flex:none;width:34px;height:18px;border-radius:9px;margin-top:2px;background:'+(en.on?'rgba(122,168,143,.45)':'rgba(255,255,255,.08)')+';position:relative"><div style="position:absolute;top:2px;'+(en.on?'right:2px':'left:2px')+';width:14px;height:14px;border-radius:50%;background:'+(en.on?'#a9cbb8':'#6f6148')+'"></div></div>'
-        +'<div style="min-width:0"><div style="font-size:13px;color:'+(en.on?'var(--gold3)':'var(--mut)')+'">'+esc(en.name)+'<span style="font-size:10.5px;color:var(--mut);margin-left:9px">'+(en.pos==='post'?'末位注入':'前置注入')+' · '+en.content.length+'字</span></div>'
-        +'<div style="font-size:11.5px;color:#8a7a5e;line-height:1.65;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc(en.content.slice(0,180))+'</div></div></div>';
+        +'<div class="grow" style="min-width:0"><div style="font-size:13px;color:'+(en.on?'var(--gold3)':'var(--mut)')+'">'+esc(en.name)+'<span style="font-size:10.5px;color:var(--mut);margin-left:9px">'+(en.pos==='post'?'末位注入':'前置注入')+' · '+en.content.length+'字</span></div>'
+        +'<div style="font-size:11.5px;color:#8a7a5e;line-height:1.65;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc(en.content.slice(0,180))+'</div></div>'
+        +'<button data-pedit="'+(i+1)+'" class="obtn btn" style="flex:none;font-size:12px;padding:5px 12px;border-radius:8px">编辑</button></div>';
     }).join('');
     status='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 12px">'
       +'<span class="kai" style="font-size:16px;color:var(--gold2)">'+esc(PRESET.name)+'</span>'
       +'<span style="font-size:12px;color:var(--mut)">'+PRESET.entries.length+' 条提示词</span><div class="grow"></div>'
+      +'<button data-act="pExport" class="obtn btn" style="font-size:12.5px;padding:6px 14px;letter-spacing:.1em">导出预设</button>'
       +'<button data-act="pMaster" class="obtn btn" style="font-size:12.5px;padding:6px 14px;letter-spacing:.1em;color:'+(PRESET.on?'#a9cbb8':'var(--mut)')+'">'+(PRESET.on?'● 已启用':'○ 已停用')+'</button>'
       +'<button data-act="pClear" class="btn" style="font-size:12.5px;padding:6px 14px;letter-spacing:.1em;background:transparent;border:1px solid rgba(166,59,38,.35);color:#b06a55">移除预设</button></div>'
       +rows;
@@ -1614,7 +1637,10 @@ function render(){
   /* 滚动策略：回看历史时重渲染不再把画面拽回底部 */
   var ps=document.getElementById('zjStory');
   var keepPos=(ps&&ps.scrollTop+ps.clientHeight<ps.scrollHeight-60)?ps.scrollTop:null;
+  var noF=S._noFade;S._noFade=false;
+  if(noF)root.classList.add('zjNoFade');
   root.innerHTML=view();
+  if(noF)setTimeout(function(){root.classList.remove('zjNoFade');},80);
   var story=document.getElementById('zjStory');
   if(story){if(S._stayTop)story.scrollTop=0;else if(keepPos!=null)story.scrollTop=keepPos;else story.scrollTop=story.scrollHeight;S._stayTop=false;}
   if(focused){var ta=document.getElementById('zjInput');if(ta){ta.focus();try{ta.setSelectionRange(selStart,selStart);}catch(e){}}}
@@ -1729,6 +1755,7 @@ function morphClose(boxId,srcSel,done){
 root.addEventListener('input',function(e){
   if(!e.target)return;
   if(e.target.id==='zjInput'){S.input=e.target.value;return;}
+  if(e.target.id==='zjWzYear'){if(S.wiz)S.wiz.customYear=e.target.value;return;}
   if(e.target.id==='zjFsRange'){var fv=Math.max(85,Math.min(160,parseInt(e.target.value,10)||100));FS=fv/100;try{localStorage.setItem('zhouji_fs',String(FS));}catch(er){}
     var fl=document.getElementById('zjFsVal');if(fl)fl.textContent=fv+'%';
     var zzs=document.querySelectorAll('[data-zjzoom]');for(var zzi=0;zzi<zzs.length;zzi++)zzs[zzi].style.zoom=FS;
@@ -1859,17 +1886,19 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-load')){var id=+t.getAttribute('data-load');var r=S.saves.filter(function(x){return x.id===id;})[0];if(r)loadSave(r);return;}
       if(t.getAttribute('data-del')){delSave(+t.getAttribute('data-del'));return;}
       if(t.getAttribute('data-bgm')){bgmPlay(parseInt(t.getAttribute('data-bgm'),10));render();return;}
+      if(t.getAttribute('data-ledit')){S.loreEdit=parseInt(t.getAttribute('data-ledit'),10)-1;S.loreDelIx=null;renderOverlay();var lef=document.getElementById('zjLoreTitle');if(lef)lef.scrollIntoView({block:'center'});return;}
       if(t.getAttribute('data-ltog')){var lgi=parseInt(t.getAttribute('data-ltog'),10)-1;if(ULORE[lgi]){ULORE[lgi].on=ULORE[lgi].on===false;uloreSave();renderOverlay();}return;}
       if(t.getAttribute('data-ldel')!=null&&t.getAttribute('data-ldel')!==''){var ldi=parseInt(t.getAttribute('data-ldel'),10);
         if(S.loreDelIx===ldi){ULORE.splice(ldi,1);S.loreDelIx=null;S.loreMsg='已删除';uloreSave();}
         else S.loreDelIx=ldi;
         renderOverlay();return;}
+      if(t.getAttribute('data-pedit')){S.pEdit=parseInt(t.getAttribute('data-pedit'),10)-1;renderOverlay();return;}
       if(t.getAttribute('data-ptog')){var pi=parseInt(t.getAttribute('data-ptog'),10);if(PRESET&&PRESET.entries[pi]){PRESET.entries[pi].on=!PRESET.entries[pi].on;presetSave();renderOverlay();}return;}
       if(t.getAttribute('data-stop')){return;}
     }
     if(a){
       if(a==='toselect'){S.screen='select';S.overlay=null;render();}
-      else if(a==='wzOpen'){S.wiz={step:1,era:null,place:null,placeCustom:false,npcs:[],role:null,busy:false,err:''};S.screen='wizard';render();}
+      else if(a==='wzOpen'){S.wiz={step:1,era:null,place:null,placeCustom:false,npcs:[],role:null,busy:false,err:'',customYear:''};S.screen='wizard';render();}
       else if(a==='wzExit'){S.wiz=null;S.screen='select';render();}
       else if(a==='wzBack'){if(S.wiz&&S.wiz.step>1){S.wiz.step--;S.wiz.err='';render();}}
       else if(a==='wzNext'){var wz=S.wiz;if(!wz)return;var ok1=(wz.step===1&&wz.era!=null)||(wz.step===2&&wz.place&&wz.place!=='__custom')||(wz.step===3&&wz.npcs.length>0);if(ok1){wz.step++;wz.err='';render();}}
@@ -1886,26 +1915,26 @@ root.addEventListener('click',function(e){
       else if(a==='zen'){
         var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
         function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
-        if(S.zen){S.zen=false;S.zenInput=false;S.zenWorld=false;render();
+        if(S.zen){S.zen=false;S.zenInput=false;S.zenWorld=false;S._noFade=true;render();
           if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)'});});
-        }else if(reducedMotion()){S.zen=true;S.zenWorld=false;render();}
+        }else if(reducedMotion()){S.zen=true;S.zenWorld=false;S._noFade=true;render();}
         else{zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)'});});
-          setTimeout(function(){S.zen=true;S.zenWorld=false;render();},295);}
+          setTimeout(function(){S.zen=true;S.zenWorld=false;S._noFade=true;render();},295);}
         return;}
       else if(a==='worldFull'){
         var wfI=document.getElementById('zjSceneIsle');var wfR=wfI&&wfI.getBoundingClientRect();
-        S.worldFull=!S.worldFull;render();
+        S.worldFull=!S.worldFull;S._noFade=true;render();
         var wfI2=document.getElementById('zjSceneIsle');
         if(wfI2&&wfI2.animate&&wfR&&!reducedMotion()){var wfr2=wfI2.getBoundingClientRect();
           wfI2.animate([{transform:'translate('+(wfR.left+wfR.width/2-(wfr2.left+wfr2.width/2))+'px,'+(wfR.top+wfR.height/2-(wfr2.top+wfr2.height/2))+'px) scale('+Math.max(.05,wfR.width/wfr2.width)+','+Math.max(.05,wfR.height/wfr2.height)+')'},{transform:'translateZ(0)'}],{duration:420,easing:'cubic-bezier(.3,1.05,.32,1)'});}
         return;}
-      else if(a==='zenInput'){S.zenInput=true;render();var zt=document.getElementById('zjInput');if(zt)zt.focus();return;}
+      else if(a==='zenInput'){S.zenInput=true;S._noFade=true;render();var zt=document.getElementById('zjInput');if(zt)zt.focus();return;}
       else if(a==='zenWorld'){
         var zwBtn=document.querySelector('[data-act="zenWorld"]');var zwR=zwBtn&&zwBtn.getBoundingClientRect();
         var zwOff=((window.ZJ3D&&ZJ3D.paneH)?ZJ3D.paneH(isMobile()):150)+8;
         function zwCollapse(){if(!S.zenWorld)return;
           var se0=document.getElementById('zjStory');var st0=se0?se0.scrollTop:0;
-          S.zenWorld=false;render();
+          S.zenWorld=false;S._noFade=true;render();
           var se1=document.getElementById('zjStory');if(!se1)return;
           if(st0>zwOff){se1.scrollTop=st0-zwOff;}
           else{se1.scrollTop=0;var inn=se1.firstElementChild;
@@ -1921,14 +1950,14 @@ root.addEventListener('click',function(e){
           try{localStorage.removeItem('zj3d_hide');}catch(e){}
           if(SVGF){SVGF=false;try{localStorage.setItem('zj_svgfold','0');}catch(e){}}
           var se2=document.getElementById('zjStory');var st2=se2?se2.scrollTop:0;
-          S.zenWorld=true;render();
+          S.zenWorld=true;S._noFade=true;render();
           var se3=document.getElementById('zjStory');if(se3)se3.scrollTop=st2+zwOff;
           var zi1=document.getElementById('zjSceneIsle');
           if(zi1&&zi1.animate&&zwR&&!reducedMotion()){var zr1=zi1.getBoundingClientRect();
             zi1.animate([{transform:'translate('+(zwR.left+zwR.width/2-(zr1.left+zr1.width/2))+'px,'+(zwR.top+zwR.height/2-(zr1.top+zr1.height/2))+'px) scale('+Math.max(.05,zwR.width/zr1.width)+','+Math.max(.05,zwR.height/zr1.height)+')',opacity:.3},{transform:'translateZ(0)',opacity:1}],{duration:440,easing:'cubic-bezier(.3,1.06,.32,1)'});}
         }
         return;}
-      else if(a==='histmore'){S.histShow=(S.histShow||30)+30;S._stayTop=true;render();return;}
+      else if(a==='histmore'){S.histShow=(S.histShow||30)+30;S._stayTop=true;S._noFade=true;render();return;}
       else if(a==='closeov'){var cvk=S.overlay;var dm=document.getElementById('zjOvDim');if(dm){dm.style.pointerEvents='none';dm.style.webkitBackdropFilter='none';dm.style.backdropFilter='none';if(dm.animate)dm.animate([{opacity:1},{opacity:0}],{duration:280,easing:'ease',fill:'forwards'});dm.style.transition='opacity 280ms';dm.style.opacity='0';}morphClose('zjOvBox','[data-ov="'+cvk+'"]',function(){S.overlay=null;S.movePending=null;var ow=document.getElementById('zjOvWrap');if(ow&&ow.parentNode)ow.parentNode.removeChild(ow);else render();});}
       else if(a==='on3d'){try{localStorage.removeItem('zj3d_off');}catch(e){}location.reload();}
       else if(a==='svgfold'){var wasF=SVGF;SVGF=!SVGF;try{localStorage.setItem('zj_svgfold',SVGF?'1':'0');}catch(e){}
@@ -1961,11 +1990,21 @@ root.addEventListener('click',function(e){
         if(!lc){S.loreMsg='请填写条目内容';renderOverlay();}
         else if(!lks.length&&!lcons){S.loreMsg='请填写触发关键词，或勾选常驻注入';renderOverlay();}
         else{var lt=(ltE?ltE.value.trim():'')||lks[0]||('条目'+(ULORE.length+1));
-          ULORE.push({title:lt.slice(0,40),keys:lks.slice(0,20),content:lc,constant:lcons,on:true});
-          uloreSave();S.loreDelIx=null;S.loreMsg='已添加「'+lt.slice(0,40)+'」';renderOverlay();}}
+          if(S.loreEdit!=null&&ULORE[S.loreEdit]){var le0=ULORE[S.loreEdit];le0.title=lt.slice(0,40);le0.keys=lks.slice(0,20);le0.content=lc;le0.constant=lcons;S.loreMsg='已保存修改「'+lt.slice(0,40)+'」';S.loreEdit=null;}
+          else{ULORE.push({title:lt.slice(0,40),keys:lks.slice(0,20),content:lc,constant:lcons,on:true});S.loreMsg='已添加「'+lt.slice(0,40)+'」';}
+          uloreSave();S.loreDelIx=null;renderOverlay();}}
+      else if(a==='loreCancel'){S.loreEdit=null;renderOverlay();}
       else if(a==='loreExport'){try{var lbl2=new Blob([JSON.stringify(ULORE,null,2)],{type:'application/json'});var lu=URL.createObjectURL(lbl2);var la=document.createElement('a');la.href=lu;la.download='周纪世界书备份.json';document.body.appendChild(la);la.click();document.body.removeChild(la);setTimeout(function(){URL.revokeObjectURL(lu);},4000);}catch(e){S.loreMsg='导出失败：'+e.message;renderOverlay();}}
+      else if(a==='expAll'){try{var xo={__app:'周纪·千年天下',__type:'zhouji-full-backup',__version:1,data:{}};
+        for(var xi=0;xi<localStorage.length;xi++){var xk=localStorage.key(xi);if(xk&&/^(zhouji_|zj3d_|zj_)/.test(xk))xo.data[xk]=localStorage.getItem(xk);}
+        var xb=new Blob([JSON.stringify(xo,null,1)],{type:'application/json'});var xu=URL.createObjectURL(xb);var xa=document.createElement('a');xa.href=xu;xa.download='周纪全部数据备份.json';document.body.appendChild(xa);xa.click();document.body.removeChild(xa);setTimeout(function(){URL.revokeObjectURL(xu);},4000);}catch(e){}}
       else if(a==='wipeAll'){if(!S.wipeArm){S.wipeArm=true;renderOverlay();}else{try{var wks=[];for(var wi=0;wi<localStorage.length;wi++){var wk=localStorage.key(wi);if(wk&&/^(zhouji_|zj3d_|zj_)/.test(wk))wks.push(wk);}wks.forEach(function(k){try{localStorage.removeItem(k);}catch(e2){}});}catch(e){}location.reload();}}
       else if(a==='fontReset'){try{localStorage.removeItem('zhouji_font_v1');}catch(e){}FONTC=null;var frs=document.documentElement.style;frs.removeProperty('--serif');frs.removeProperty('--kai');renderOverlay();}
+      else if(a==='pSave'){if(PRESET&&S.pEdit!=null&&PRESET.entries[S.pEdit]){var peN=document.getElementById('zjPeName'),peP=document.getElementById('zjPePos'),peT=document.getElementById('zjPeText');
+        var pe0=PRESET.entries[S.pEdit];pe0.name=(peN&&peN.value.trim())||pe0.name;pe0.pos=(peP&&peP.value==='post')?'post':'pre';pe0.content=peT?peT.value:pe0.content;
+        presetSave();S.pEdit=null;S.pMsg='已保存修改';renderOverlay();}}
+      else if(a==='pCancel'){S.pEdit=null;renderOverlay();}
+      else if(a==='pExport'){if(PRESET){try{var pb=new Blob([JSON.stringify(PRESET,null,2)],{type:'application/json'});var pu=URL.createObjectURL(pb);var pa=document.createElement('a');pa.href=pu;pa.download='周纪预设-'+(PRESET.name||'自定义').replace(/[\\/:*?"<>|]/g,'_')+'.json';document.body.appendChild(pa);pa.click();document.body.removeChild(pa);setTimeout(function(){URL.revokeObjectURL(pu);},4000);}catch(e){S.pMsg='导出失败：'+e.message;renderOverlay();}}}
       else if(a==='pMaster'){if(PRESET){PRESET.on=!PRESET.on;presetSave();render();}}
       else if(a==='pClear'){PRESET=null;presetSave();S.pMsg='预设已移除';render();}
       else if(a==='pImport'){var ptx=document.getElementById('zjPresetText');importPresetText(ptx?ptx.value:'','粘贴的预设');}
