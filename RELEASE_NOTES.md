@@ -6,7 +6,7 @@
 
 *大版本更新 —— 界面焕新 · 酒馆生态全兼容 · 快意操作 · 史官三器*
 
-🎮 在线游玩：[**ekibenya.github.io/RitusZhou**](https://ekibenya.github.io/RitusZhou/) ｜ 备用线路：[**ritus-zhou.vercel.app**](https://ritus-zhou.vercel.app/)
+🎮 在线游玩：[**ritus-zhou.vercel.app**](https://ritus-zhou.vercel.app/)
 
 </div>
 
@@ -68,7 +68,7 @@
 ## 🔧 其他改进
 
 - 长上下文自动瘦身：正文只送呈最近三十幕，更早剧情由太史长卷全量兜底，手机长局不再卡死
-- 部署双线路：GitHub Pages 与 Vercel 同步更新，互为备份
+- 部署上线：Vercel 托管，打开即玩，随推随更
 - 大量细节修缮：滚动位置保持、iOS 光标与键盘、模式条单排横滑、聊天模式互斥、图库脏点根治等数十项
 
 ## 📖 说明书

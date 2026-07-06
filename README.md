@@ -6,9 +6,7 @@
 
 *一款单文件、免安装的 AI 驱动历史角色扮演游戏 —— 文字为骨，三维天下为形*
 
-### 🎮 立即游玩 → [**ekibenya.github.io/RitusZhou**](https://ekibenya.github.io/RitusZhou/)
-
-**备用线路（同步更新）** → [**ritus-zhou.vercel.app**](https://ritus-zhou.vercel.app/)
+### 🎮 立即游玩 → [**ritus-zhou.vercel.app**](https://ritus-zhou.vercel.app/)
 
 *免下载 · 免安装 · 手机电脑皆可 · 配好你自己的 AI 接口即开局*
 
@@ -202,7 +200,7 @@
 
 ## ✦ 快速开始
 
-**🌐 在线游玩（推荐）**：打开 [**ekibenya.github.io/RitusZhou**](https://ekibenya.github.io/RitusZhou/) 或备用线路 [**ritus-zhou.vercel.app**](https://ritus-zhou.vercel.app/) 即可，无需下载。两条线路内容同步更新；存档按域名各自独立，认准一个入口常玩即可（换线可用「导出全部数据」搬家）。
+**🌐 在线游玩（推荐）**：打开 [**ritus-zhou.vercel.app**](https://ritus-zhou.vercel.app/) 即可，无需下载。
 
 **📥 下载离线玩**：
 

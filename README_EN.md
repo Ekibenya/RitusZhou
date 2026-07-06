@@ -6,9 +6,7 @@
 
 *A single-file, zero-install, AI-driven historical roleplay text game*
 
-### 🎮 Play now → [**ekibenya.github.io/RitusZhou**](https://ekibenya.github.io/RitusZhou/)
-
-**Mirror (always in sync)** → [**ritus-zhou.vercel.app**](https://ritus-zhou.vercel.app/)
+### 🎮 Play now → [**ritus-zhou.vercel.app**](https://ritus-zhou.vercel.app/)
 
 *No download, no install — works on desktop & mobile; bring your own AI key and start*
 
@@ -95,7 +93,7 @@
 
 ## ✦ Quick Start
 
-**🌐 Play online (recommended)**: just open [**https://ekibenya.github.io/RitusZhou/**](https://ekibenya.github.io/RitusZhou/) — nothing to download.
+**🌐 Play online (recommended)**: just open [**https://ritus-zhou.vercel.app/**](https://ritus-zhou.vercel.app/) — nothing to download.
 
 **📥 Download & play offline**:
 
