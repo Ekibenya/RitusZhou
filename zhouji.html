@@ -141,7 +141,7 @@ function ensureTyping(){
   TYPE.timer=setInterval(function(){
     if(!TYPE.msg||typedSet.has(TYPE.msg)){clearInterval(TYPE.timer);TYPE.timer=null;return;}
     TYPE.pos+=2;
-    if(TYPE.pos>=TYPE.full.length){TYPE.pos=TYPE.full.length;typedSet.add(TYPE.msg);clearInterval(TYPE.timer);TYPE.timer=null;render();return;}
+    if(TYPE.pos>=TYPE.full.length){TYPE.pos=TYPE.full.length;typedSet.add(TYPE.msg);clearInterval(TYPE.timer);TYPE.timer=null;renderSoft();return;}
     var box=document.getElementById('zjTypeBox');
     if(box){box.innerHTML=worldParas(TYPE.full,TYPE.pos)+'<span class="tcursor">▍</span>';}
     var st=document.getElementById('zjStory');if(st)st.scrollTop=st.scrollHeight;
@@ -306,8 +306,8 @@ function bgmEl(){
   var a=new Audio(); a.preload='auto'; a.volume=0.75; a.muted=!!S.muted;
   a.addEventListener('ended',function(){bgmPlay((BGM.idx+1)%BGM_TRACKS.length);});
   a.addEventListener('timeupdate',function(){var n=Date.now();if(n-BGM._ls>4000){BGM._ls=n;bgmSave();}});
-  a.addEventListener('play',function(){BGM.playing=true;renderDeferIfMorph();});
-  a.addEventListener('pause',function(){BGM.playing=false;renderDeferIfMorph();});
+  a.addEventListener('play',function(){BGM.playing=true;renderSoft();});
+  a.addEventListener('pause',function(){BGM.playing=false;renderSoft();});
   a.addEventListener('error',function(){BGM.playing=false;});
   BGM.el=a; return a;
 }
@@ -1631,6 +1631,8 @@ function reducedMotion(){try{return matchMedia('(prefers-reduced-motion: reduce)
 var morphLock=0,morphPending=false;
 function renderDeferIfMorph(){if(morphLock>0){morphPending=true;return;}render();}
 function morphFlush(){if(morphLock===0&&morphPending){morphPending=false;render();}}
+var softPend=false;
+function renderSoft(){var ae=document.activeElement;if(ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='INPUT')){softPend=true;return;}renderDeferIfMorph();}
 var ANIM_IN={'zjIn-f':[30,0,1],'zjIn-b':[-30,0,1],'zjIn-u':[0,22,1],'zjIn-d':[0,-22,1],'zjTab-f':[72,0,.98],'zjTab-b':[-72,0,.98]};
 function animOnce(el,key){
   var k=ANIM_IN[key];if(!k||!el.animate)return;
@@ -1804,6 +1806,7 @@ root.addEventListener('change',function(e){
     rd.readAsText(f);
   }
 });
+root.addEventListener('focusout',function(){if(softPend){softPend=false;setTimeout(function(){var ae=document.activeElement;if(!(ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='INPUT')))render();},120);}});
 root.addEventListener('keydown',function(e){if(e.target&&e.target.id==='zjInput'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();S.input=e.target.value;if(S.zen)S.zenInput=false;send();}});
 root.addEventListener('click',function(e){
   if(!BGM.started){BGM.started=true;if(!S.muted){if(S.screen==='title'){BGM.t0=0;bgmPlay(0);}else bgmPlay();}}
