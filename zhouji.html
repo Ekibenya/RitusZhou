@@ -1193,7 +1193,11 @@ function storyPane(){
     +'<div class="glass" style="pointer-events:auto;padding:'+(mob?'7px 9px 8px':'8px 12px 9px')+';border-radius:20px">'
     +'<div style="display:flex;gap:8px;align-items:stretch"><textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'" style="flex:1;resize:none;background:rgba(20,15,11,.28);border:1px solid rgba(201,160,99,.28);border-radius:12px;color:var(--gold3);font-size:16px;line-height:1.7;padding:'+(mob?'6px 10px':'6px 12px')+'">'+esc(S.input)+'</textarea>'
     +'<button data-act="send" class="btn glass kai" style="flex:none;width:'+(mob?'44px':'56px')+';font-size:14px;letter-spacing:.15em;writing-mode:vertical-rl;color:var(--gold2);border-color:rgba(224,190,130,.5);border-radius:12px;cursor:pointer;opacity:'+(S.thinking?.5:1)+'">递呈</button></div>'+(S.cmdHint?'<div id="zjCmdHint" style="margin-top:7px;font-size:12.5px;line-height:1.6;color:#d9a06a">令未行：'+esc(S.cmdHint)+'</div>':'')+'</div></div></div>';
-  if(S.zen)input='';
+  if(S.zen){
+    input=S.zenInput
+      ?'<div id="zjInWrap" style="position:absolute;left:12px;right:12px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:5;pointer-events:none"><div style="pointer-events:auto;max-width:680px;margin:0 auto;display:flex"><textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'（回车递呈）" style="flex:1;resize:none;background:transparent;border:none;outline:none;color:var(--gold3);font-size:16px;line-height:1.8;padding:4px 6px;text-align:center;text-shadow:0 1px 8px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.9);caret-color:var(--gold2)">'+esc(S.input)+'</textarea></div></div>'
+      :'<div data-act="zenInput" class="btn" title="书写" style="position:absolute;left:50%;margin-left:-24px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:5;width:48px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="width:9px;height:9px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span></div>';
+  }
   if(S.zen){scene='';sceneH=0;}
   else if(hideScene||hide3d){
     scene='<div id="zjMiniIsle" data-act="'+(hide3d?'show3d':'svgfold')+'" class="btn zjHl" title="展开天下画面" style="position:absolute;top:'+(barH+2)+'px;left:50%;margin-left:-47px;width:94px;height:27px;z-index:4;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;gap:7px">'
@@ -1252,7 +1256,9 @@ function gameView(){
     body='<div class="row grow">'+storyPane()+'<div style="flex:none;width:348px;border-left:1px solid rgba(201,160,99,.2)">'+sidebar()+'</div></div>';
   }
   if(S.zen){
-    top='<button data-act="zen" class="obtn btn" title="退出全屏" style="position:absolute;top:'+(mob?'10px':'12px')+';right:12px;z-index:8;font-size:12px;letter-spacing:.14em;padding:7px 14px">退出全屏</button>';
+    top='<div style="position:absolute;top:'+(mob?'10px':'12px')+';right:12px;z-index:8;display:flex;gap:8px;align-items:stretch">'
+      +'<div data-act="zenWorld" class="btn zjHl" title="退出全屏并展开天下画面" style="cursor:pointer;padding:0 13px;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2);display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span><span style="font-size:11px;letter-spacing:.18em;color:var(--gold2);font-family:var(--kai)">天下</span></div>'
+      +'<button data-act="zen" class="obtn btn" title="退出全屏" style="font-size:12px;letter-spacing:.14em;padding:7px 14px">退出全屏</button></div>';
     body=mob?'<div class="grow zjPane" style="position:relative;min-height:0">'+storyPane()+'</div>':'<div class="row grow">'+storyPane()+'</div>';
   }
   return '<div class="col" style="position:relative">'+top+body+'</div>'+(S.bgmOpen?bgmPanel():'')+(S.overlay?overlayView():'');
@@ -1798,7 +1804,7 @@ root.addEventListener('change',function(e){
     rd.readAsText(f);
   }
 });
-root.addEventListener('keydown',function(e){if(e.target&&e.target.id==='zjInput'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();S.input=e.target.value;send();}});
+root.addEventListener('keydown',function(e){if(e.target&&e.target.id==='zjInput'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();S.input=e.target.value;if(S.zen)S.zenInput=false;send();}});
 root.addEventListener('click',function(e){
   if(!BGM.started){BGM.started=true;if(!S.muted){if(S.screen==='title'){BGM.t0=0;bgmPlay(0);}else bgmPlay();}}
   var t=e.target;
@@ -1871,11 +1877,15 @@ root.addEventListener('click',function(e){
       else if(a==='zen'){
         var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
         function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
-        if(S.zen){S.zen=false;render();
+        if(S.zen){S.zen=false;S.zenInput=false;render();
           if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)'});});
         }else if(reducedMotion()){S.zen=true;render();}
         else{zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)'});});
           setTimeout(function(){S.zen=true;render();},295);}
+        return;}
+      else if(a==='zenInput'){S.zenInput=true;render();var zt=document.getElementById('zjInput');if(zt)zt.focus();return;}
+      else if(a==='zenWorld'){S.zen=false;S.zenInput=false;try{localStorage.removeItem('zj3d_hide');}catch(e){}if(SVGF){SVGF=false;try{localStorage.setItem('zj_svgfold','0');}catch(e){}}render();
+        if(!reducedMotion()){[['zjTopBar',-1],['zjSceneIsle',-1],['zjInWrap',1],['zjTabWrap',1]].forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate){var r=el.getBoundingClientRect();var dy=g[1]<0?-(r.bottom+26):(window.innerHeight-r.top+26);el.animate([{transform:'translateY('+dy+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)'});}});}
         return;}
       else if(a==='histmore'){S.histShow=(S.histShow||30)+30;S._stayTop=true;render();return;}
       else if(a==='closeov'){var cvk=S.overlay;var dm=document.getElementById('zjOvDim');if(dm){dm.style.pointerEvents='none';dm.style.webkitBackdropFilter='none';dm.style.backdropFilter='none';if(dm.animate)dm.animate([{opacity:1},{opacity:0}],{duration:280,easing:'ease',fill:'forwards'});dm.style.transition='opacity 280ms';dm.style.opacity='0';}morphClose('zjOvBox','[data-ov="'+cvk+'"]',function(){S.overlay=null;S.movePending=null;var ow=document.getElementById('zjOvWrap');if(ow&&ow.parentNode)ow.parentNode.removeChild(ow);else render();});}
