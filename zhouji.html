@@ -136,7 +136,8 @@ var clamp = function(n){return Math.max(0,Math.min(100,parseInt(n,10)||0));};
 /* ---------------- FX: typewriter / three.js / audio ---------------- */
 var typedSet = (typeof WeakSet!=='undefined')?new WeakSet():{has:function(){return true;},add:function(){},delete:function(){}};
 var TYPE = {msg:null,full:'',pos:0,timer:null};
-function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return t.split(/\n+/).filter(Boolean).map(function(p){return '<p style="margin:0 0 14px;font-size:16px;line-height:2.05;color:var(--ink);text-align:justify;text-wrap:pretty">'+esc(p)+'</p>';}).join('');}
+function dlgSpan(html){return String(html).replace(/(「[^」]{0,400}」|『[^』]{0,400}』|“[^”]{0,400}”|【[^】]{0,200}】|&quot;[^&]{0,400}?&quot;)/g,'<span style="color:#9fc0d8">$1</span>');}
+function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return t.split(/\n+/).filter(Boolean).map(function(p){return '<p style="margin:0 0 14px;font-size:16px;line-height:2.05;color:var(--ink);text-align:justify;text-wrap:pretty">'+dlgSpan(esc(p))+'</p>';}).join('');}
 function ensureTyping(){
   if(!TYPE.msg||typedSet.has(TYPE.msg)){return;}
   if(TYPE.timer){return;}
@@ -986,7 +987,7 @@ function apiModelsRun(){
 
 var LSK='zhouji_tavern_v1';
 function loadPref(){try{return JSON.parse(localStorage.getItem(LSK)||'{}');}catch(e){return {};}}
-function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN,dice:S.dice?1:0,sugg:S.sugg===false?0:1,chat:S.chatOnly?1:0,mic:S.micOn===false?0:1,last:Date.now()}));}catch(e){}}
+function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined,alts:(h.alts&&h.alts.length>1)?h.alts:undefined,altIx:h.altIx};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN,dice:S.dice?1:0,sugg:S.sugg===false?0:1,chat:S.chatOnly?1:0,mic:S.micOn===false?0:(S.micOn===true?1:undefined),last:Date.now()}));}catch(e){}}
 
 /* ---------------- 长程记忆 · 太史长卷 ----------------
    每轮世界回应自动摘为一条编年纪要（纪年·时地·天子之举·史笔），永久保存、
@@ -1034,7 +1035,7 @@ function memChronicle(){
 var pref = loadPref();
 var S = {
   screen: 'title', device: pref.device||'auto', openingId: pref.openingId||null,
-  history: [], input:'', mode:'say', thinking:false, aiLive:null, muted:pref.muted||false, dice:!!pref.dice, sugg:pref.sugg!==0, chatOnly:!!pref.chat, micOn:pref.mic!==0,
+  history: [], input:'', mode:'say', thinking:false, aiLive:null, muted:pref.muted||false, dice:!!pref.dice, sugg:pref.sugg!==0, chatOnly:!!pref.chat, micOn:(pref.mic===0?false:(pref.mic===1?true:null)),
   overlay:null, tab:'story', secC:true, secN:true, secW:true, secG:true, secA:false,
   codexCat:'核心', codexIdx:0, saves:pref.saves||[], connected:TH.available,
   mem:pref.mem||[], memOn:pref.memOn!==false, memN:pref.memN||0,
@@ -1210,7 +1211,7 @@ function worldCommand(raw){
 }
 function sendText(text){
   if(S.thinking||!S.history.length)return;
-  S.suggList=null;S._sugSeq=(S._sugSeq||0)+1;
+  S.suggList=null;S._sugSeq=(S._sugSeq||0)+1;S._swipeFrom=null;
   S.thinking=true;
   var base=S.history.slice();
   S.history=base.concat([{role:'user',text:text}]);render();
@@ -1239,6 +1240,7 @@ function driveTavern(text){
 function advanceLocal(base,text){
   var done=function(reply,live){
     var msg={role:'world',text:reply,panel:parseMvu(reply)};
+    if(S._swipeFrom){msg.alts=S._swipeFrom.concat([reply]).slice(-8);msg.altIx=msg.alts.length-1;S._swipeFrom=null;}
     S.thinking=false;S.aiLive=live;S.history=base.concat([{role:'user',text:text},msg]);render();savePref();
     if(live)genSuggestions();
   };
@@ -1256,6 +1258,7 @@ function advanceLocal(base,text){
       }).then(function(t){
         if(!t||!String(t).trim())throw new Error('接口返回了空回复');
         live.text=t;live.panel=parseMvu(t);S.thinking=false;S.aiLive=true;
+        if(S._swipeFrom){live.alts=S._swipeFrom.concat([t]).slice(-8);live.altIx=live.alts.length-1;S._swipeFrom=null;}
         if(!started)S.history=base.concat([{role:'user',text:text},live]);
         render();savePref();genSuggestions();
       }).catch(function(){
@@ -1285,6 +1288,8 @@ function reroll(){
   // local: need preceding user
   if(h.length<3||h[h.length-2].role!=='user')return;
   var user=h[h.length-2];var base=h.slice(0,h.length-2);
+  var oldW=h[h.length-1];
+  S._swipeFrom=(oldW.alts&&oldW.alts.length?oldW.alts.slice():[oldW.text]).slice(-7);
   S.thinking=true;S.history=h.slice(0,-1);render();
   advanceLocal(base,user.text);
 }
@@ -1695,7 +1700,14 @@ function storyPane(){
     }
     else if(typing){ if(TYPE.msg!==h){TYPE.msg=h;TYPE.full=text;TYPE.pos=0;} paras='<div id="zjTypeBox">'+worldParas(text,TYPE.pos)+'<span class="tcursor">▍</span></div>'; }
     else{ paras='<div>'+worldParas(text)+'</div>'; }
-    var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;gap:9px;align-items:center;margin-top:2px;flex-wrap:wrap"><div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div>'
+    var sw='';
+    if(isLast&&h.alts&&h.alts.length>1){
+      var six=(h.altIx==null?h.alts.length-1:h.altIx);
+      sw='<div class="btn obtn" data-act="swPrev" title="回看上一稿" style="font-size:12px;padding:6px 13px;'+(six<=0?'opacity:.35;':'')+'">◀</div>'
+        +'<div style="font-size:11.5px;color:var(--mut)">'+(six+1)+'／'+h.alts.length+'</div>'
+        +'<div class="btn obtn" data-act="swNext" title="'+(six>=h.alts.length-1?'再演新稿':'看下一稿')+'" style="font-size:12px;padding:6px 13px">'+(six>=h.alts.length-1?'▶＋':'▶')+'</div>';
+    }
+    var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;gap:9px;align-items:center;margin-top:2px;flex-wrap:wrap">'+sw+'<div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div>'
       +(imgReady()&&!h.img?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">✦ 绘此幕</div>'):'')
       +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停 诵</div>':'<div class="btn obtn" data-act="ttsScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">♪ 诵此幕</div>'):'')
       +(S.imgErr?'<div style="font-size:11.5px;color:#d9a06a">'+esc(S.imgErr)+'</div>':'')+'</div>':'';
@@ -1733,12 +1745,13 @@ function storyPane(){
   var son=S.sugg!==false;
   chips+='<div class="btn zjHl" data-act="suggTog" title="懒人四策：每幕后由 AI 拟四条可点选的下一步" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(son?'rgba(126,168,146,.7)':'rgba(255,238,205,.22)')+';color:'+(son?'#a9cbb8':'var(--mut)')+';background:'+(son?'linear-gradient(135deg,rgba(150,200,170,.14),rgba(80,120,95,.07))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?'策':'策 · 四策')+'</div>';
   var ph=MODE_PH[S.mode];
+  var sugOn=(S.suggList&&S.suggList.length&&!S.thinking)?1:0;
   var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(66px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none"><div style="max-width:860px;margin:0 auto">'
     +((S.suggList&&S.suggList.length&&!S.thinking)?'<div id="zjSuggRow" style="pointer-events:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'+S.suggList.map(function(sg,si){return '<div class="btn zjHl" data-sugg="'+si+'" style="cursor:pointer;font-size:'+(mob?'11px':'12px')+';line-height:1.5;letter-spacing:.02em;padding:'+(mob?'6px 10px':'6px 12px')+';border-radius:12px;color:#c8b48e;border:1px solid rgba(255,238,205,.18);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.03));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);box-shadow:inset 0 1px 0 rgba(255,242,214,.18),0 2px 8px rgba(0,0,0,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sg)+'</div>';}).join('')+'</div>':'')
     +'<div id="zjChipsRow" style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:8px;padding:2px 2px 3px;'+(mob?'overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch':'flex-wrap:wrap')+'">'+chips+'</div>'
     +'<div class="glass" style="pointer-events:auto;padding:'+(mob?'7px 9px 8px':'8px 12px 9px')+';border-radius:20px">'
     +'<div style="display:flex;gap:8px;align-items:stretch"><textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'" style="flex:1;resize:none;background:rgba(20,15,11,.28);border:1px solid rgba(201,160,99,.28);border-radius:12px;color:var(--gold3);font-size:16px;line-height:1.7;padding:'+(mob?'6px 10px':'6px 12px')+'">'+esc(S.input)+'</textarea>'
-    +((sttOK()&&S.micOn!==false)?'<button id="zjMicBtn" data-act="micTog" class="btn glass" title="语音输入（说完自动停）" style="flex:none;width:'+(mob?'38px':'44px')+';font-size:15px;color:'+(S.rec?'#e06a50':'var(--mut2)')+';border-color:'+(S.rec?'rgba(224,106,80,.65)':'rgba(255,238,205,.25)')+';border-radius:12px;cursor:pointer">'+(S.rec?'●':'声')+'</button>':'')
+    +((sttOK()&&(S.micOn===true||(S.micOn==null&&!mob)))?'<button id="zjMicBtn" data-act="micTog" class="btn glass" title="语音输入（说完自动停）" style="flex:none;width:'+(mob?'38px':'44px')+';font-size:15px;color:'+(S.rec?'#e06a50':'var(--mut2)')+';border-color:'+(S.rec?'rgba(224,106,80,.65)':'rgba(255,238,205,.25)')+';border-radius:12px;cursor:pointer">'+(S.rec?'●':'声')+'</button>':'')
     +'<button data-act="send" class="btn glass kai" style="flex:none;width:'+(mob?'44px':'56px')+';font-size:14px;letter-spacing:.15em;writing-mode:vertical-rl;color:var(--gold2);border-color:rgba(224,190,130,.5);border-radius:12px;cursor:pointer;opacity:'+(S.thinking?.5:1)+'">递呈</button></div>'+(S.cmdHint?'<div id="zjCmdHint" style="margin-top:7px;font-size:12.5px;line-height:1.6;color:#d9a06a">令未行：'+esc(S.cmdHint)+'</div>':'')+'</div></div></div>';
   if(S.worldFull){input='';}
   else if(S.zen){
@@ -1753,7 +1766,7 @@ function storyPane(){
       +'<span style="font-size:11px;letter-spacing:.22em;color:var(--gold2);font-family:var(--kai)">天下</span></div>';
     sceneH=16;
   }
-  return '<div class="col grow" style="position:relative">'+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?'calc(210px + env(safe-area-inset-bottom))':'160px'))+';background:rgba(23,18,12,.95)'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
+  return '<div class="col grow" style="position:relative">'+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?('calc('+(sugOn?294:210)+'px + env(safe-area-inset-bottom))'):(sugOn?'238px':'160px')))+';background:rgba(23,18,12,.95)'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
 }
 function gameView(){
   var mob=isMobile();var m=mood();
@@ -2232,7 +2245,7 @@ function fontPane(){
    +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">自动依屏幕宽窄选择版式；也可强制使用电脑或手机布局。</div>'
    +'<div class="glass" style="margin-top:28px;padding:16px 18px"><div class="kai" style="font-size:17px;color:var(--gold3)">预览 · 洛邑的冬夜</div><div id="zjFontPrev" data-zjzoom style="margin-top:8px;font-size:15px;line-height:2;color:#cfc0a0;zoom:'+FS+'">「撑过三年。」单穆公白着头发对你叩首时这么说，「三年后，从宗室里择一子过继，老臣以死谢罪。」</div></div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">输入栏功能</div>'
-   +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptMic" type="checkbox" style="accent-color:#c9a063"'+(S.micOn!==false?' checked':'')+'>「声」语音输入按钮（说话成文）</label>'
+   +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptMic" type="checkbox" style="accent-color:#c9a063"'+((S.micOn===true||(S.micOn==null&&!isMobile()))?' checked':'')+'>「声」语音输入按钮（说话成文；手机默认关，输入法自带语音）</label>'
    +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptSugg" type="checkbox" style="accent-color:#c9a063"'+(S.sugg!==false?' checked':'')+'>懒人四策：每幕后 AI 拟四条可点选项（每轮多一次杂务调用）</label>'
    +'<div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-top:4px">四策也可用输入栏上的「策」钮随时开关，两处同步。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">数据备份</div>'
@@ -2889,6 +2902,13 @@ root.addEventListener('click',function(e){
       else if(a==='continue'){if(TH.available)pullHistory();S.screen='game';render();}
       else if(a==='send'){var ta=document.getElementById('zjInput');if(ta)S.input=ta.value;send();}
       else if(a==='reroll'){reroll();}
+      else if(a==='swPrev'){var hsw=S.history[S.history.length-1];
+        if(hsw&&hsw.role==='world'&&hsw.alts&&!S.thinking){var ix0=(hsw.altIx==null?hsw.alts.length-1:hsw.altIx);
+          if(ix0>0){hsw.altIx=ix0-1;hsw.text=hsw.alts[hsw.altIx];hsw.panel=parseMvu(hsw.text);typedSet.add(hsw);S._noFade=true;savePref();render();}}}
+      else if(a==='swNext'){var hsn=S.history[S.history.length-1];
+        if(hsn&&hsn.role==='world'&&hsn.alts&&!S.thinking){var ix1=(hsn.altIx==null?hsn.alts.length-1:hsn.altIx);
+          if(ix1<hsn.alts.length-1){hsn.altIx=ix1+1;hsn.text=hsn.alts[hsn.altIx];hsn.panel=parseMvu(hsn.text);typedSet.add(hsn);S._noFade=true;savePref();render();}
+          else{reroll();}}}
       else if(a==='tgC'){S.secC=!S.secC;render();}
       else if(a==='tgN'){S.secN=!S.secN;render();}
       else if(a==='tgW'){S.secW=!S.secW;render();}
