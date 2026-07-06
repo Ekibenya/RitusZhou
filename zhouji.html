@@ -2034,8 +2034,8 @@ function graphInner(){
       +'<text x="'+x.toFixed(1)+'" y="'+(y-2).toFixed(1)+'" text-anchor="middle" font-size="12" fill="'+(sel?'#e0be82':'#d8c9a8')+'" font-family="var(--kai)" style="pointer-events:none">'+esc(String(o.name).slice(0,4))+'</text>'
       +'<text x="'+x.toFixed(1)+'" y="'+(y+11).toFixed(1)+'" text-anchor="middle" font-size="9" fill="'+col+'" style="pointer-events:none">'+fv+'</text></g>';
   });
-  var center='<circle cx="'+cx+'" cy="'+cy+'" r="26" fill="rgba(140,35,24,.25)" stroke="#e0be82" stroke-width="1.4"/>'
-    +'<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" font-size="14" fill="#e0be82" font-family="var(--kai)">'+(S.customRole?'吾':'朕')+'</text>';
+  var center='<g data-gcenter="1" style="cursor:grab"><circle cx="'+cx+'" cy="'+cy+'" r="26" fill="rgba(140,35,24,.25)" stroke="#e0be82" stroke-width="1.4"/>'
+    +'<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" font-size="14" fill="#e0be82" font-family="var(--kai)" style="pointer-events:none">'+(S.customRole?'吾':'朕')+'</text></g>';
   var card='';
   if(S.memNpc){
     var sel2=null;ns.forEach(function(o){if(o.name===S.memNpc)sel2=o;});
@@ -2064,9 +2064,19 @@ function graphHydrate(){
     var x=parseFloat(c.getAttribute('cx')),y=parseFloat(c.getAttribute('cy'));
     nodes.push({g:g,c:c,ts:g.querySelectorAll('text'),ln:ln,x0:x,y0:y,x:x,y:y,vx:0,vy:0,ox:0,oy:0});
   });
+  var allLn=[].slice.call(svg.querySelectorAll('line[data-ln]'));
+  var cg=svg.querySelector('g[data-gcenter]');
+  if(cg){var cc0=cg.querySelector('circle');
+    if(cc0){var cxx=parseFloat(cc0.getAttribute('cx')),cyy=parseFloat(cc0.getAttribute('cy'));
+      nodes.push({g:cg,c:cc0,ts:cg.querySelectorAll('text'),ln:null,lns:allLn,isC:true,x0:cxx,y0:cyy,x:cxx,y:cyy,vx:0,vy:0,ox:0,oy:0});}}
   if(!nodes.length)return;
   function apply(n){
     n.c.setAttribute('cx',n.x);n.c.setAttribute('cy',n.y);
+    if(n.isC){
+      if(n.ts[0]){n.ts[0].setAttribute('x',n.x);n.ts[0].setAttribute('y',n.y+5);}
+      if(n.lns)n.lns.forEach(function(l){l.setAttribute('x1',n.x);l.setAttribute('y1',n.y);});
+      return;
+    }
     if(n.ts[0]){n.ts[0].setAttribute('x',n.x);n.ts[0].setAttribute('y',n.y-2);}
     if(n.ts[1]){n.ts[1].setAttribute('x',n.x);n.ts[1].setAttribute('y',n.y+11);}
     if(n.ln){n.ln.setAttribute('x2',n.x);n.ln.setAttribute('y2',n.y);}
@@ -2086,7 +2096,7 @@ function graphHydrate(){
   function kick(){if(!GPH.raf)GPH.raf=requestAnimationFrame(step);}
   function pt(e){var q=svg.createSVGPoint();q.x=e.clientX;q.y=e.clientY;var m=svg.getScreenCTM();return m?q.matrixTransform(m.inverse()):{x:0,y:0};}
   svg.addEventListener('pointerdown',function(e){
-    var g=e.target&&e.target.closest?e.target.closest('g[data-npc]'):null;
+    var g=e.target&&e.target.closest?e.target.closest('g[data-npc],g[data-gcenter]'):null;
     if(!g)return;
     var n=null;nodes.forEach(function(x){if(x.g===g)n=x;});
     if(!n)return;
