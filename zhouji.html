@@ -627,7 +627,7 @@ function uloreParse(txt){
     var ordN=parseInt(it.order!=null?it.order:it.insertion_order,10);
     var prN=parseInt(it.prob!=null?it.prob:((it.useProbability||it.use_probability)?it.probability:NaN),10);
     var dpN=parseInt(it.depth!=null?it.depth:(it.scanDepth!=null?it.scanDepth:it.scan_depth),10);
-    out.push({title:t.slice(0,40),keys:ks.slice(0,20),keys2:k2.slice(0,20),content:c,constant:!!it.constant,on:it.disable?false:(it.on!==false),
+    out.push({title:t.slice(0,40),keys:ks.slice(0,20),keys2:k2.slice(0,20),content:c,constant:!!it.constant,on:(it.disable||it.enabled===false)?false:(it.on!==false),
       order:isFinite(ordN)?ordN:100,prob:(isFinite(prN)&&prN>=1&&prN<=99)?prN:null,depth:(isFinite(dpN)&&dpN>0&&dpN<=50)?dpN:null,
       exclR:!!(it.exclR||it.excludeRecursion||it.exclude_recursion),prevR:!!(it.prevR||it.preventRecursion||it.prevent_recursion)});
   }
@@ -641,6 +641,66 @@ function uloreImportText(txt){
   if(es.length){ULORE=ULORE.concat(es);uloreSave();S.loreMsg='\u5df2\u5bfc\u5165 '+es.length+' \u6761\u4e16\u754c\u4e66\u6761\u76ee';}
   else{S.loreMsg='\u65e0\u6cd5\u8bc6\u522b\uff1a\u9700\u4e3a SillyTavern \u4e16\u754c\u4e66 JSON\uff0c\u6216\u672c\u9875\u5bfc\u51fa\u7684\u6761\u76ee\u6587\u4ef6';}
   if(S.overlay)renderOverlay();else render();
+}
+/* ---------------- 角色卡导入（SillyTavern PNG tEXt / V2·V3 JSON） ---------------- */
+function pngTextChunks(buf){
+  var u=new Uint8Array(buf),out={};
+  if(!(u[0]===137&&u[1]===80&&u[2]===78&&u[3]===71))return out;
+  var i=8;
+  while(i+8<=u.length){
+    var len=((u[i]<<24)|(u[i+1]<<16)|(u[i+2]<<8)|u[i+3])>>>0;
+    var type=String.fromCharCode(u[i+4],u[i+5],u[i+6],u[i+7]);
+    if(type==='tEXt'&&i+8+len<=u.length){
+      var j=i+8,k=j;while(k<j+len&&u[k]!==0)k++;
+      var key='';for(var y=j;y<k;y++)key+=String.fromCharCode(u[y]);
+      var val='';for(var x=k+1;x<j+len;x++)val+=String.fromCharCode(u[x]);
+      out[key]=val;
+    }
+    if(type==='IEND')break;
+    i+=12+len;
+  }
+  return out;
+}
+function b64utf8(b64){
+  try{var bin=atob(String(b64||'').replace(/\s+/g,''));var u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new TextDecoder('utf-8').decode(u);}catch(e){return null;}
+}
+function cardImportJson(obj){
+  var d=obj&&(obj.data||obj);
+  if(!d||typeof d!=='object'||!(d.name||d.description||d.first_mes)){S.loreMsg='无法识别：不是角色卡（需 SillyTavern V2/V3 卡，或含 name/description 的 JSON）';if(S.overlay)renderOverlay();else render();return;}
+  var name=String(d.name||'无名角色').trim().slice(0,24)||'无名角色';
+  function cf(sx){return String(sx||'').split('{{char}}').join(name).split('{{user}}').join('天子').trim();}
+  var parts=[];
+  if(d.description)parts.push(cf(d.description));
+  if(d.personality)parts.push('【性格】'+cf(d.personality));
+  if(d.scenario)parts.push('【场景】'+cf(d.scenario));
+  if(d.first_mes)parts.push('【初见】'+cf(d.first_mes).slice(0,600));
+  var content=('此人乃外来角色卡人物「'+name+'」，正文提及时按以下设定演绎，并使其言行融入本朝背景：\n'+parts.join('\n')).slice(0,4000);
+  ULORE.push({title:('角色·'+name).slice(0,40),keys:[name],content:content,constant:false,on:true,order:50});
+  var extra=0;
+  try{
+    var bk=d.character_book;
+    if(bk&&bk.entries){var es=uloreParse(JSON.stringify({entries:bk.entries}));es.forEach(function(en){en.title=(name+'·'+en.title).slice(0,40);});ULORE=ULORE.concat(es);extra=es.length;}
+  }catch(e){}
+  uloreSave();
+  S.loreMsg='已导入角色卡「'+name+'」'+(extra?('，附带世界书 '+extra+' 条'):'')+'。正文提及其名即自动登场。';
+  if(S.overlay)renderOverlay();else render();
+}
+function cardImportFile(f){
+  if(/\.png$/i.test(f.name||'')){
+    var rd=new FileReader();
+    rd.onload=function(){
+      var tx=pngTextChunks(rd.result)||{};
+      var raw=tx.chara||tx.ccv3;
+      var js=raw?b64utf8(raw):null;var obj=null;try{obj=JSON.parse(js);}catch(e){}
+      if(!obj){S.loreMsg='这张 PNG 里没有角色卡数据（需 SillyTavern 导出的角色卡 PNG）';if(S.overlay)renderOverlay();else render();return;}
+      cardImportJson(obj);
+    };
+    rd.readAsArrayBuffer(f);
+  }else{
+    var rd2=new FileReader();
+    rd2.onload=function(){var obj=null;try{obj=JSON.parse(String(rd2.result||''));}catch(e){}cardImportJson(obj);};
+    rd2.readAsText(f);
+  }
 }
 /* ---------------- 玩家自定义预设 ---------------- */
 var PKEY='zhouji_preset_v1';
@@ -706,6 +766,7 @@ function buildSystem(history,userInput){
     '【世界书·激活条目】\n'+lore.map(function(e){return '『'+e.title+'』'+e.content;}).join('\n'),
     '【对话示例】\n'+fill(G.mes_example),
     '【输出格式·铁则】正文用现代白话轻小说笔法(2-6段)，停在需要天子表态处。末尾必须输出<mvu_panel>状态栏：<sec_char>含◆衣冠/持物/御体/观瞻/神格(0-100)/史笔；<sec_npc>每在场NPC一行◈名字|状态|好感(0-100)|心声；<sec_world>含◇纪年/时地/天气/安稳(0-100)/大势/将临。禁止<UpdateVariable>。若且仅若本轮叙事中天下有实际变动——天子下令兴建并落成、屋舍焚毁坍塌、人物来到或离去——则在<sec_world>之后增写<sec_deed>，每类一行：▣兴作|名目×数、▣毁损|名目×数、▣来者|人物、▣去者|人物；多项以、分隔。兴作与毁损名目仅限：马厩、酒楼、客栈、茶棚、书肆、药铺、布庄、铁匠铺、兵器铺、金铺、珠玉行、陶坊、铸坊、肉铺、杂货铺、粮行、货栈、官仓、官署、神祠、民居、宫室、凉亭、草棚、戏台、宝塔、石桥、牌楼、石雕、常青树、樱树、金枫、红枫、苍松、竹丛、花圃、灯柱、芦苇、露岩、假山、池塘、石板道、御道、夯土官道；人物仅限：士人、农人、匠人、商贾、官吏、将军、方士、乐师、史官、巫祝、游侠、儒生、墨者、说客、医者、卜者、渔父、樵夫。每轮兴作至多3件、毁损至多2件；只记实际发生者，无变动则不得输出<sec_deed>。',
+    S.dice?'【天命明骰】玩家言行末尾若附〔天命明骰 X／100 · 等级〕，此为本回合行动成效的既定天数，严格按等级裁定叙事，不得逆天改命：大凶(≤5)灾难性失败且有恶果；不利(≤35)事与愿违；平平(≤65)成败参半进展有限；顺遂(≤94)如愿达成；大吉(≥95)超乎所求另有意外之喜。骰记本身不是玩家说出的话，不要复述。':'',
     '【自查】'+fill(G.post_history_instructions)
   );
   if(post.length)arr.push('【玩家预设·末位指令】\n'+post.join('\n\n'));
@@ -878,12 +939,14 @@ function apiModelsRun(){
 
 var LSK='zhouji_tavern_v1';
 function loadPref(){try{return JSON.parse(localStorage.getItem(LSK)||'{}');}catch(e){return {};}}
-function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN}));}catch(e){}}
+function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN,dice:S.dice?1:0}));}catch(e){}}
 
 /* ---------------- 长程记忆 · 太史长卷 ----------------
    每轮世界回应自动摘为一条编年纪要（纪年·时地·天子之举·史笔），永久保存、
    每轮全量注入系统提示——正文历史再怎么被截断，既定事实也不会丢。 */
 function memFp(t){var h=5381,str=String(t||'').slice(0,120);for(var i=0;i<str.length;i++)h=((h<<5)+h+str.charCodeAt(i))|0;return h;}
+function worldOrdinal(i){var c=-1;for(var k=0;k<=i&&k<S.history.length;k++)if(S.history[k].role==='world')c++;return c;}
+function memWorldIdx(j){var c=-1;for(var i=0;i<S.mem.length;i++){if(!S.mem[i].manual){c++;if(c===j)return i;}}return -1;}
 function memEntryOf(worldMsg,actText){
   var p=worldMsg.panel||parseMvu(worldMsg.text);
   var line=(p&&p.char&&p.char['史笔'])||'';
@@ -924,7 +987,7 @@ function memChronicle(){
 var pref = loadPref();
 var S = {
   screen: 'title', device: pref.device||'auto', openingId: pref.openingId||null,
-  history: [], input:'', mode:'say', thinking:false, aiLive:null, muted:pref.muted||false,
+  history: [], input:'', mode:'say', thinking:false, aiLive:null, muted:pref.muted||false, dice:!!pref.dice,
   overlay:null, tab:'story', secC:true, secN:true, secW:true,
   codexCat:'核心', codexIdx:0, saves:pref.saves||[], connected:TH.available,
   mem:pref.mem||[], memOn:pref.memOn!==false, memN:pref.memN||0,
@@ -981,10 +1044,18 @@ if(TH.available && TH.eventOn){
 }
 
 /* ---------------- ACTIONS ---------------- */
+function diceRoll(){
+  var r=1+Math.floor(Math.random()*100),t;
+  if(r<=5)t='大凶';else if(r<=35)t='不利';else if(r<=65)t='平平';else if(r<=94)t='顺遂';else t='大吉';
+  return '\n〔天命明骰 '+r+'／100 · '+t+'〕';
+}
 function composed(raw){
-  if(S.mode==='say') return raw.charAt(0)==='「'?raw:'「'+raw+'」';
-  if(S.mode==='look') return '（孤凝神打量：'+raw+'）';
-  return raw;
+  var out;
+  if(S.mode==='say') out=raw.charAt(0)==='「'?raw:'「'+raw+'」';
+  else if(S.mode==='look') out='（孤凝神打量：'+raw+'）';
+  else out=raw;
+  if(S.dice&&S.mode!=='world'&&S.mode!=='look')out+=diceRoll();
+  return out;
 }
 function currentOpening(){if(S.openingId===0&&S.customOp)return S.customOp;for(var i=0;i<G.openings.length;i++)if(G.openings[i].id===S.openingId)return G.openings[i];return null;}
 function currentPanel(){for(var i=S.history.length-1;i>=0;i--){var m=S.history[i];if(m.role!=='world')continue;if(m.panel===undefined)m.panel=parseMvu(m.text);if(m.panel)return m.panel;}return null;}
@@ -1422,7 +1493,19 @@ function storyPane(){
   var older=hStart>0?'<div style="text-align:center;margin:0 0 24px"><div class="btn obtn" data-act="histmore" style="display:inline-block;font-size:12px;letter-spacing:.18em;padding:7px 18px;border-radius:9px">▲ 展开更早 '+Math.min(30,hStart)+' 幕</div><div style="font-size:11px;color:var(--mut);margin-top:7px;letter-spacing:.1em">其前 '+hStart+' 幕未载入以保流畅，剧情已尽录于太史长卷（忆）</div></div>':'';
   var items=older+S.history.slice(hStart).map(function(h,ri){var i=hStart+ri;
     if(h.role==='user'){
-      return '<div class="fade" style="display:flex;justify-content:flex-end;margin-bottom:22px"><div style="max-width:82%;border:1px solid rgba(166,59,38,.28);border-right:3px solid var(--red);border-radius:12px;background:linear-gradient(135deg,rgba(166,59,38,.11),rgba(166,59,38,.04));box-shadow:inset 0 1px 0 rgba(255,220,200,.1);padding:11px 15px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e3b6a0;white-space:pre-wrap">'+esc(h.text)+'</div></div></div>';
+      var utb='<div class="btn" data-mtool="'+(i+1)+'" title="修改或删去此言" style="flex:none;align-self:flex-end;color:var(--mut);opacity:.4;padding:2px 7px;font-size:15px;letter-spacing:1px">⋯</div>';
+      var ubody;
+      if(S.msgEdit===i){
+        ubody='<div style="max-width:82%;flex:1"><textarea id="zjMsgEditBox" style="width:100%;min-height:90px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:#e3b6a0;font-size:14px;line-height:1.8;padding:10px 13px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
+          +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:7px"><div class="btn obtn" data-act="mCancel" style="font-size:12px;padding:5px 14px">取消</div><div class="btn gbtn" data-act="mSave" style="font-size:12px;letter-spacing:.15em;padding:5px 16px">保存</div></div></div>';
+      }else{
+        ubody='<div style="max-width:82%;border:1px solid rgba(166,59,38,.28);border-right:3px solid var(--red);border-radius:12px;background:linear-gradient(135deg,rgba(166,59,38,.11),rgba(166,59,38,.04));box-shadow:inset 0 1px 0 rgba(255,220,200,.1);padding:11px 15px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e3b6a0;white-space:pre-wrap">'+esc(h.text)+'</div></div>';
+      }
+      var utools=(S.msgTools===i&&S.msgEdit!==i)?'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:7px">'
+        +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此言</div>'
+        +(i>0&&!S.thinking?'<div class="btn" data-act="mDel" style="cursor:pointer;font-size:12px;padding:5px 14px;background:transparent;border:1px solid rgba(166,59,38,.4);border-radius:9px;color:#b06a55">删</div>':'')
+        +'</div>':'';
+      return '<div class="fade" style="margin-bottom:22px"><div style="display:flex;justify-content:flex-end;gap:6px">'+utb+ubody+'</div>'+utools+'</div>';
     }
     var text=stripMvu(h.text);var chap='';
     var cotX=extractCoT(text);text=applyRegex(cotX.text,'display');
@@ -1444,7 +1527,18 @@ function storyPane(){
       +(imgReady()&&!h.img?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">✦ 绘此幕</div>'):'')
       +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停 诵</div>':'<div class="btn obtn" data-act="ttsScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">♪ 诵此幕</div>'):'')
       +(S.imgErr?'<div style="font-size:11.5px;color:#d9a06a">'+esc(S.imgErr)+'</div>':'')+'</div>':'';
-    return '<div class="fade" style="margin-bottom:24px">'+chap+illu+cotHtml+paras+retry+'</div>';
+    var wtb='<div class="btn" data-mtool="'+(i+1)+'" title="修改、删去或由此幕重来" style="position:absolute;top:-2px;right:-4px;color:var(--mut);opacity:.4;padding:2px 8px;font-size:15px;letter-spacing:1px;z-index:2">⋯</div>';
+    var wtools=(S.msgTools===i&&S.msgEdit!==i)?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px">'
+      +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此幕</div>'
+      +(i>0&&!S.thinking?'<div class="btn" data-act="mDel" style="cursor:pointer;font-size:12px;padding:5px 14px;background:transparent;border:1px solid rgba(166,59,38,.4);border-radius:9px;color:#b06a55">删此幕</div>':'')
+      +(i<S.history.length-1&&!S.thinking?'<div class="btn obtn" data-act="mRedo" style="font-size:12px;padding:5px 14px;color:#d9a06a;border-color:rgba(217,160,106,.4)">⟲ 由此幕重来</div>':'')
+      +'</div>':'';
+    if(S.msgEdit===i){
+      paras='<div><textarea id="zjMsgEditBox" style="width:100%;min-height:170px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:var(--ink);font-size:14px;line-height:1.8;padding:11px 14px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end;margin:7px 0 12px"><div class="btn obtn" data-act="mCancel" style="font-size:12px;padding:5px 14px">取消</div><div class="btn gbtn" data-act="mSave" style="font-size:12px;letter-spacing:.15em;padding:5px 16px">保存</div></div></div>';
+      illu='';cotHtml='';retry='';
+    }
+    return '<div class="fade" style="margin-bottom:24px;position:relative">'+wtb+chap+illu+cotHtml+wtools+paras+retry+'</div>';
   }).join('');
   var thinking=S.thinking?'<div style="display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px;letter-spacing:.25em;padding:4px 0 12px"><span>太史令执笔中</span><span style="animation:blink 1.2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .4s infinite;color:var(--gold)">●</span></div>':'';
   var HIDE3D=false;try{HIDE3D=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
@@ -1460,6 +1554,8 @@ function storyPane(){
     +'</div>';
   var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['look','观 · 察看'],['free','书 · 自由'],['world','令 · 天下']];
   var chips=MODES.map(function(md){var on=md[0]===S.mode;return '<div class="btn zjHl" data-mode="'+md[0]+'" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(on?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)')+';color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?md[1].replace(/\s/g,''):md[1])+'</div>';}).join('');
+  var don=!!S.dice;
+  chips+='<div class="btn zjHl" data-act="diceTog" title="天命明骰：曰／行／书递呈时掷骰定成败" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(don?'rgba(217,160,106,.8)':'rgba(255,238,205,.22)')+';color:'+(don?'#e8b77d':'var(--mut)')+';background:'+(don?'linear-gradient(135deg,rgba(233,180,110,.18),rgba(201,140,80,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?'骰':'骰 · 天命')+'</div>';
   var ph=MODE_PH[S.mode];
   var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(66px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none"><div style="max-width:860px;margin:0 auto">'
     +'<div style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:8px;padding:2px 2px 3px;'+(mob?'overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch':'flex-wrap:wrap')+'">'+chips+'</div>'
@@ -1829,7 +1925,8 @@ function lorePane(){
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:30px 0 12px">上传世界书</div>'
    +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
    +'<label class="btn glass" style="padding:9px 22px;cursor:pointer;color:var(--gold2);font-size:13.5px;letter-spacing:.1em">选择世界书文件<input id="zjLoreFile" type="file" accept=".json,.txt,application/json,text/plain" style="display:none"></label>'
-   +'<span style="font-size:12px;color:var(--mut)">支持 SillyTavern 世界书 JSON / 本页导出的备份</span></div>'
+   +'<label class="btn glass" style="padding:9px 22px;cursor:pointer;color:var(--gold2);font-size:13.5px;letter-spacing:.1em">导入角色卡 PNG / JSON<input id="zjCardFile" type="file" accept=".png,.json,image/png,application/json" style="display:none"></label>'
+   +'<span style="font-size:12px;color:var(--mut)">世界书：ST 世界书 JSON / 本页备份　·　角色卡：ST 导出的 V2/V3 卡，导入后成为可触发的世界书人物</span></div>'
    +msg+listBlock
    +'</div></div>';
 }
@@ -2255,6 +2352,10 @@ root.addEventListener('change',function(e){
     [].forEach.call(e.target.files,function(rf){var rr=new FileReader();rr.onload=function(){uregexImportText(String(rr.result||''));};rr.readAsText(rf);});
     return;
   }
+  if(e.target&&e.target.id==='zjCardFile'&&e.target.files&&e.target.files[0]){
+    cardImportFile(e.target.files[0]);
+    return;
+  }
   if(e.target&&e.target.id==='zjLoreFile'&&e.target.files&&e.target.files[0]){
     var lf=e.target.files[0];var lrd=new FileReader();
     lrd.onload=function(){uloreImportText(String(lrd.result||''));};
@@ -2299,6 +2400,7 @@ root.addEventListener('click',function(e){
         morphOpen('zjOvBox','[data-ov="'+ovK+'"]');codexPills();setPills();return;}
       if(t.getAttribute('data-prov')){readApiForm();API.provider=t.getAttribute('data-prov');S.apiModels=null;S.apiMsg=null;saveApi();renderOverlay();return;}
       if(t.getAttribute('data-setmodel')){apiCur().model=t.getAttribute('data-setmodel');saveApi();renderOverlay();return;}
+      if(t.getAttribute('data-mtool')){var mtix=parseInt(t.getAttribute('data-mtool'),10)-1;S.msgTools=(S.msgTools===mtix?null:mtix);S.msgEdit=null;S._noFade=true;render();return;}
       if(t.getAttribute('data-medit')){S.memEdit=parseInt(t.getAttribute('data-medit'),10)-1;renderOverlay();return;}
       if(t.getAttribute('data-mdel')){S.mem.splice(parseInt(t.getAttribute('data-mdel'),10),1);savePref();renderOverlay();return;}
       if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;renderOverlay();pillFlip('zjSetPill',spr);return;}
@@ -2459,6 +2561,7 @@ root.addEventListener('click',function(e){
       else if(a==='bgmnext'){bgmPlay(BGM.idx+1);render();}
       else if(a==='apiSave'){readApiForm();saveApi();S.apiMsg={t:'已保存。密钥仅存于此浏览器，不会上传。'+(apiReady()?'现在可以开局游玩了。':'还差密钥或模型名未填。'),c:apiReady()?'var(--grn2)':'var(--red2)'};render();}
       else if(a==='apiTest'){apiTestRun();}
+      else if(a==='diceTog'){S.dice=!S.dice;savePref();S._noFade=true;render();}
       else if(a==='memToggle'){S.memOn=S.memOn===false?true:false;savePref();render();}
       else if(a==='memClear'){if(S.mem.length&&!confirm('清空整卷长程记忆？此举不可复原。'))return;S.mem=[];savePref();render();}
       else if(a==='memAdd'){var mi=document.getElementById('zjMemAdd');var tv=mi?mi.value.trim():'';if(tv){S.mem.push({e:'',d:'',a:tv.slice(0,120),s:'',fp:0,manual:true});savePref();render();}}
@@ -2478,6 +2581,32 @@ root.addEventListener('click',function(e){
           if(S.loreEdit!=null&&ULORE[S.loreEdit]){var le0=ULORE[S.loreEdit];le0.title=lt.slice(0,40);le0.keys=lks.slice(0,20);le0.keys2=lks2.slice(0,20);le0.order=lord;le0.prob=lprob;le0.content=lc;le0.constant=lcons;S.loreMsg='已保存修改「'+lt.slice(0,40)+'」';S.loreEdit=null;}
           else{ULORE.push({title:lt.slice(0,40),keys:lks.slice(0,20),keys2:lks2.slice(0,20),order:lord,prob:lprob,content:lc,constant:lcons,on:true});S.loreMsg='已添加「'+lt.slice(0,40)+'」';}
           uloreSave();S.loreDelIx=null;renderOverlay();}}
+      else if(a==='mEdit'){var ei9=S.msgTools;if(ei9!=null&&S.history[ei9]){if(TYPE.msg===S.history[ei9]){typedSet.add(S.history[ei9]);TYPE.msg=null;}S.msgEdit=ei9;S._noFade=true;render();}}
+      else if(a==='mCancel'){S.msgEdit=null;S._noFade=true;render();}
+      else if(a==='mSave'){var sb9=document.getElementById('zjMsgEditBox');var si9=S.msgEdit;
+        if(sb9&&si9!=null&&S.history[si9]){var hh9=S.history[si9];hh9.text=sb9.value;
+          if(hh9.role==='world'){hh9.panel=parseMvu(hh9.text);typedSet.add(hh9);
+            var wj9=worldOrdinal(si9),wmi9=memWorldIdx(wj9);
+            if(wmi9>=0&&!S.mem[wmi9].manual)S.mem[wmi9]=memEntryOf(hh9,si9>0&&S.history[si9-1].role==='user'?S.history[si9-1].text:'');
+          }
+          S.msgEdit=null;S.msgTools=null;S._noFade=true;savePref();render();}}
+      else if(a==='mDel'){var di9=S.msgTools;
+        if(di9!=null&&S.history[di9]&&di9>0&&!S.thinking){
+          var dh9=S.history[di9];
+          if(!confirm(dh9.role==='world'?'删去此幕与所对应的王之言行？不可复原。':'删去此言与其引出的一幕？不可复原。'))return;
+          var from9=di9,cnt9=1;
+          if(dh9.role==='world'){var dj9=worldOrdinal(di9),dmi9=memWorldIdx(dj9);if(dmi9>=0)S.mem.splice(dmi9,1);S.memN=Math.max(0,(S.memN||0)-1);
+            if(S.history[di9-1]&&S.history[di9-1].role==='user'){from9=di9-1;cnt9=2;}}
+          else if(S.history[di9+1]&&S.history[di9+1].role==='world'){cnt9=2;var dj8=worldOrdinal(di9+1),dmi8=memWorldIdx(dj8);if(dmi8>=0)S.mem.splice(dmi8,1);S.memN=Math.max(0,(S.memN||0)-1);}
+          S.history.splice(from9,cnt9);
+          S.msgTools=null;S.msgEdit=null;S._noFade=true;savePref();render();}}
+      else if(a==='mRedo'){var ri9=S.msgTools;
+        if(ri9!=null&&S.history[ri9]&&S.history[ri9].role==='world'&&!S.thinking){
+          if(!confirm('自此幕之后的剧情将全部抹去，无法复原。确定由此幕重来？'))return;
+          var rj9=worldOrdinal(ri9),kept9=[],cw9=0;
+          S.mem.forEach(function(me9){if(me9.manual){kept9.push(me9);return;}if(cw9<=rj9)kept9.push(me9);cw9++;});
+          S.mem=kept9;S.history=S.history.slice(0,ri9+1);S.memN=rj9+1;
+          S.msgTools=null;S.msgEdit=null;S._noFade=true;savePref();render();}}
       else if(a==='loreCancel'){S.loreEdit=null;renderOverlay();}
       else if(a==='rxAdd'){var rnE=document.getElementById('zjRxName'),rfE=document.getElementById('zjRxFind'),rrE=document.getElementById('zjRxRep'),rbE=document.getElementById('zjRxBoth');
         var rf=rfE?rfE.value.trim():'';
