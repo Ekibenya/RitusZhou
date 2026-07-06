@@ -1159,9 +1159,8 @@ function composed(raw){
   var out;
   if(S.chatOnly&&S.mode!=='world') out=raw;
   else if(S.mode==='say') out=raw.charAt(0)==='「'?raw:'「'+raw+'」';
-  else if(S.mode==='look') out='（孤凝神打量：'+raw+'）';
   else out=raw;
-  if(S.dice&&S.mode!=='world'&&S.mode!=='look')out+=diceRoll();
+  if(S.dice&&S.mode!=='world')out+=diceRoll();
   return out;
 }
 function currentOpening(){if(S.openingId===0&&S.customOp)return S.customOp;for(var i=0;i<G.openings.length;i++)if(G.openings[i].id===S.openingId)return G.openings[i];return null;}
@@ -1648,7 +1647,7 @@ function sidebar(){
     +'<div class="glass" style="margin:11px 12px 14px;border-radius:14px">'+head(S.secA,'tgA','#9db8d8','编 年 史',S.secA)+(S.secA?'<div class="fade" style="padding:0 15px 16px">'+axisInner()+'</div>':'')+'</div>'
     +'</div>';
 }
-var MODE_PH={say:'以姬瑶之口开口说话……（自动加「」）',do:'写下孤的行动……',look:'孤想仔细打量什么……',free:'自由书写这一幕：言语、行动、内心……',world:'颁令于三维天下（游戏亲自执行）：起马厩×2 ／ 拆酒楼 ／ 攻打粮仓 ／ 寻老聃 ／ 去城南 ／ 移驾郢……'};
+var MODE_PH={say:'以姬瑶之口开口说话……（自动加「」）',do:'写下孤的行动……',free:'自由书写这一幕：言语、行动、内心……',world:'控制游戏（三维天下亲自执行）：起马厩×2 ／ 拆酒楼 ／ 攻打粮仓 ／ 寻老聃 ／ 去城南 ／ 移驾郢……'};
 var SVGF=false;try{SVGF=localStorage.getItem('zj_svgfold')==='1';}catch(e){}
 function storyPane(){
   var m=mood();var mob=isMobile();
@@ -1739,10 +1738,11 @@ function storyPane(){
     +(m.wx?'<div style="position:absolute;left:14px;bottom:'+((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded)?30:10)+'px;font-size:11px;letter-spacing:.2em;color:rgba(157,140,107,.9);background:rgba(13,10,8,.55);padding:4px 10px;border:1px solid rgba(201,160,99,.2);border-radius:8px">'+esc(m.wx)+'</div>':'')
     +((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded&&!S.worldFull)?'<div data-act="worldFull" class="btn zjHl" title="三维画面全屏" style="position:absolute;top:40px;left:10px;z-index:7;cursor:pointer;padding:3px 13px;border-radius:99px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em">全屏</div>':'')
     +'</div>';
-  var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['look','观 · 察看'],['free','书 · 自由'],['world','令 · 天下']];
-  var chips=MODES.map(function(md){var on=md[0]===S.mode;var dis=S.chatOnly&&md[0]!=='world';return '<div class="btn zjHl" data-mode="'+md[0]+'" style="cursor:'+(dis?'default':'pointer')+';opacity:'+(dis?'.35':'1')+';flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(on?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)')+';color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?md[1].replace(/\s/g,''):md[1])+'</div>';}).join('');
+  var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['free','书 · 自由'],['world','控制游戏']];
+  var modeChip=function(md){var on=md[0]===S.mode;var dis=S.chatOnly&&md[0]!=='world';return '<div class="btn zjHl" data-mode="'+md[0]+'" style="cursor:'+(dis?'default':'pointer')+';opacity:'+(dis?'.35':'1')+';flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(on?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)')+';color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?md[1].replace(/\s/g,''):md[1])+'</div>';};
+  var chips=MODES.slice(0,3).map(modeChip).join('');
   var con=!!S.chatOnly;
-  chips='<div class="btn zjHl" data-act="chatTog" title="聊天模式：不写旁白剧情，与在场之人像聊天软件一样快速对谈" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(con?'rgba(157,184,216,.75)':'rgba(255,238,205,.22)')+';color:'+(con?'#9db8d8':'var(--mut)')+';background:'+(con?'linear-gradient(135deg,rgba(157,184,216,.16),rgba(90,110,140,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">聊天模式</div>'+chips;
+  chips+='<div class="btn zjHl" data-act="chatTog" title="聊天模式：不写旁白剧情，与在场之人像聊天软件一样快速对谈" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(con?'rgba(157,184,216,.75)':'rgba(255,238,205,.22)')+';color:'+(con?'#9db8d8':'var(--mut)')+';background:'+(con?'linear-gradient(135deg,rgba(157,184,216,.16),rgba(90,110,140,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">聊天模式</div>'+modeChip(MODES[3]);
   var don=!!S.dice;
   chips+='<div class="btn zjHl" data-act="diceTog" title="天命明骰：曰／行／书递呈时掷骰定成败" style="cursor:pointer;flex:none;white-space:nowrap;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(don?'rgba(217,160,106,.8)':'rgba(255,238,205,.22)')+';color:'+(don?'#e8b77d':'var(--mut)')+';background:'+(don?'linear-gradient(135deg,rgba(233,180,110,.18),rgba(201,140,80,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?'骰':'骰 · 天命')+'</div>';
   var son=S.sugg!==false;
