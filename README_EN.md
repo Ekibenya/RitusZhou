@@ -135,6 +135,16 @@ Distributed via [GitHub Releases](../../releases). Each release ships:
 - `ZhouJi-QianNianTianXia-vX.X.X.html` — the game itself (download & play)
 - `ZhouJi-QianNianTianXia-vX.X.X.zip` — game + documentation bundle
 
+## ✦ Privacy & User Content
+
+> By using this game you agree to the full **[Terms of Use & Disclaimer (TERMS.md)](TERMS.md)**. The points below are a summary; the complete, legally binding terms are in TERMS.md.
+
+- **This project is a pure front-end static web page — no server-side business program, no database.** All of your **game data** — saves, chat history, long-term memory, worldbooks, presets, regex, scripts, illustrations, AI API keys and every setting — **is stored only in your own device's browser storage (localStorage / IndexedDB). Nothing is uploaded to this site, and the project and its author can neither collect nor view any of it.** "Clear local data" in settings wipes it at any time.
+- **The only game data that leaves your browser is the requests to the AI / image / TTS endpoints you configured yourself** — sent directly from your browser to the provider you chose; the project and its author never see or touch that content. Keys likewise live only on your device and are sent only to the address you entered.
+- **Visit analytics.** The online site may use privacy-friendly anonymous aggregate web analytics (e.g. Vercel Web Analytics) to gauge traffic — **no cookies, no personal identity, no cross-site tracking**, collecting only anonymous aggregate visit data, and **never touching your saves, chat, memory, keys or any game data**. Offline downloads contain no such analytics.
+- **All content a user inputs, generates, saves, exports or shares, and all gameplay conduct and manner of use, are performed by the user alone, at the user's sole legal and moral responsibility, and are entirely unrelated to this project or its author.** The author does not create, own, control, store, review or endorse any user-generated content. Users must comply with all applicable laws of their jurisdiction and the terms of any third-party provider they connect.
+- The game is provided **"AS IS"** without warranty of any kind; to the maximum extent permitted by law the author is not liable for any damages arising from use of the game, any user content, or third-party services connected. See [TERMS.md](TERMS.md).
+
 ## ✦ Assets & Disclaimer
 
 - The 3D models/textures are **runtime conversions** of commercial low-poly asset packs, consolidated into a single encoded data pack (`zjw.dat`) solely so the game can render in the browser; the source packages are not distributed with this repository — **unpacking, extracting, or any other use is prohibited**.
