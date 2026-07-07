@@ -21,8 +21,6 @@
 
 2.2 唯一离开使用者浏览器的**游戏数据**，是使用者**自行主动配置**的第三方 AI／绘图／语音接口请求，该请求由使用者浏览器**直接发往使用者自行选定的服务商**，其内容、用途、留存与合规性由该服务商及使用者负责，与本项目及作者无关。
 
-2.3 **访问统计**：为了解站点访问概况，本游戏的在线站点可能启用隐私友好型的**匿名聚合网页统计**（如 Vercel Web Analytics）。此类统计**不使用 Cookie、不识别个人身份、不进行跨站追踪**，仅采集匿名的聚合访问数据（如页面浏览量、来源、大致地区），且**绝不接触、不采集使用者的存档、聊天记录、记忆、密钥等任何游戏数据**（后者始终仅存于本机，见 2.1）。离线下载版不含任何此类统计。
-
 ### 3. 用户内容与行为
 
 3.1 **使用者在本游戏中输入、生成、保存、导出、分享的一切内容，以及使用者的一切游玩行为与使用方式，均由使用者独立完成、独立控制、独立负责，完全与本项目及作者无关。**
@@ -71,7 +69,6 @@ The game is a **pure front-end, static web application** with no server-side bus
 ### 2. Data & privacy
 **2.1** All *game data* the game produces — including but not limited to saves, chat history, long-term memory, worldbooks, presets, regex, scripts, illustrations, API keys, and all settings — **is stored solely in the user's own device browser storage (localStorage / IndexedDB)**. The project and its author **do not collect, receive, store, transmit, or review** any such game data; the hosting platform cannot read it either. "Clear local data" in settings wipes it at any time.
 **2.2** The only *game data* leaving the user's browser is requests to the third-party AI / image / TTS endpoints the user configured, sent **directly from the user's browser to the provider the user chose**; their content, use, retention, and compliance are the responsibility of that provider and the user, unrelated to this project or author.
-**2.3 Visit analytics.** To understand overall site traffic, the online site may use privacy-friendly **anonymous aggregate web analytics** (e.g. Vercel Web Analytics). Such analytics **use no cookies, identify no individual, and perform no cross-site tracking**; they collect only anonymous aggregate visit data (page views, referrer, coarse region) and **never touch or collect the user's saves, chat history, memory, keys, or any game data** (all of which stay on-device, see 2.1). Offline downloads contain no such analytics.
 
 ### 3. User content & conduct
 **All content a user inputs, generates, saves, exports, or shares, and all of a user's gameplay conduct and manner of use, are performed, controlled, and the responsibility of the user alone, and are entirely unrelated to this project or its author.** The project and author **do not create, own, control, store, review, or endorse** any user-generated content and make no representations and bear no liability regarding it. The user bears **sole legal and moral responsibility** for which AI they connect, what they input, what they generate, and how they use it, and must comply with all applicable laws of their jurisdiction and the terms of any third-party provider they connect.
