@@ -93,8 +93,3 @@ The author may update these Terms at any time; updates take effect upon publicat
 
 ### 10. Severability
 If any provision is held invalid or unenforceable, the remainder stays in effect and that provision shall be construed as closely as possible to its original intent.
-
----
-
-> 本文为使用条款模板，不构成法律意见。若你计划将本项目用于正式运营或有具体合规诉求，建议咨询所在司法管辖区的执业律师。
-> This document is a template and does not constitute legal advice. For formal operation or specific compliance needs, consult a licensed attorney in your jurisdiction.
