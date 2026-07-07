@@ -1064,7 +1064,14 @@ function memSync(){
     if(h.role==='world'){worlds.push(h);acts.push(i>0&&S.history[i-1].role==='user'?S.history[i-1].text:'');}
   }
   var n=S.memN||0;
-  if(worlds.length<n){S.memN=worlds.length;return;} // 历史被重开/回退
+  if(worlds.length<n){ // 历史被重开/回退（重演此幕、删幕、由此幕重来）
+    /* 裁掉末尾多出的非手记纪要，使其与世界回合数对齐；手记保留。
+       否则空回复重演等场景会残留孤儿纪要，与随后追加的新纪要重复并挤掉前一条真记忆 */
+    var nonM=0;for(var q=0;q<S.mem.length;q++)if(!S.mem[q].manual)nonM++;
+    var mch=false;
+    while(nonM>worlds.length){for(var r2=S.mem.length-1;r2>=0;r2--){if(!S.mem[r2].manual){S.mem.splice(r2,1);nonM--;mch=true;break;}}}
+    S.memN=worlds.length;if(mch)savePref();return;
+  }
   var changed=false;
   // 重演此幕：条数未增但末条内容换了 → 更新末条
   if(worlds.length===n&&n>0&&S.mem.length&&S.mem[S.mem.length-1].fp!==memFp(worlds[n-1].text)&&!S.mem[S.mem.length-1].manual){
