@@ -522,15 +522,20 @@ function ttsSpeak(i,sampleText){
       if(TTSP.seq!==my)return;
       if(ci>=chunks.length)return done();
       var base=String(TTS.url||'https://api.openai.com/v1').trim().replace(/\/+$/,'');
+      var mixed=(location.protocol==='https:'&&/^http:\/\//i.test(base));
       fetch(base+'/audio/speech',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TTS.key},body:JSON.stringify({model:TTS.model,voice:TTS.voice||'alloy',input:chunks[ci++],speed:Number(TTS.rate)||1})})
-        .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
+        .then(function(r){if(!r.ok)return r.text().then(function(tt){var m=tt;try{var j=JSON.parse(tt);m=(j.error&&(j.error.message||j.error.type))||j.message||tt;}catch(e){}throw new Error('HTTP '+r.status+'：'+String(m).slice(0,160));});return r.blob();})
         .then(function(b){
           if(TTSP.seq!==my)return;
+          if(b&&/json|text|xml/i.test(b.type||''))return b.text().then(function(tt){throw new Error('接口未返回音频（返回了文本/JSON，多半不是 OpenAI 兼容的语音接口）：'+String(tt).slice(0,150));});
+          if(b&&b.size<64)throw new Error('接口返回的音频为空');
           var u=URL.createObjectURL(b);var a=new Audio(u);TTSP.audio=a;
           a.onended=function(){URL.revokeObjectURL(u);next();};
-          a.onerror=function(){URL.revokeObjectURL(u);done();};
-          a.play()['catch'](done);
-        })['catch'](function(){if(TTSP.seq===my){S.cmdHint='朗读失败：TTS 接口不可用或跨域受限';done();}});
+          a.onerror=function(){URL.revokeObjectURL(u);if(TTSP.seq===my){S.cmdHint='朗读失败：返回的音频无法播放（需 mp3/opus/aac/wav 格式）';}done();};
+          a.play()['catch'](function(){URL.revokeObjectURL(u);done();});
+        })['catch'](function(err){if(TTSP.seq!==my)return;var msg=String(err&&err.message||err);
+          var hint=/HTTP \d/.test(msg)?msg:(/未返回音频|音频为空/.test(msg)?msg:(mixed?'接口是 http:// 而本页是 https://，被浏览器按「混合内容」拦截。请把 TTS 接口换成 https 地址，或改用「设备内置语音」。':'浏览器跨域被拦或网络不通——该语音服务多半未开放网页直连(CORS)，或地址/密钥有误。可改用「设备内置语音」，或换成允许跨域的 OpenAI 兼容语音接口。'));
+          S.cmdHint='朗读失败：'+hint;done();});
     })();
   }else if(window.speechSynthesis){
     var chunks2=ttsChunks(txt,180),cj=0;
@@ -1918,7 +1923,7 @@ function sidebar(){
   var worldRows=['纪年','时地','天气'].filter(function(k){return cw[k];}).map(function(k){return '<div style="display:flex;gap:12px;font-size:13px;line-height:1.7;margin:3px 0"><span style="flex:none;width:2.6em;color:var(--mut)">'+k+'</span><span style="flex:1;color:var(--ink2)">'+esc(cw[k])+'</span></div>';}).join('');
   var dashi=(cw['大势']||'').split(/[｜|]/).map(function(t){return t.trim();}).filter(Boolean).map(function(t){return '<div style="display:flex;gap:8px;font-size:12.5px;line-height:1.7;color:#b3a17d"><span style="color:var(--gold)">◦</span><span>'+esc(t)+'</span></div>';}).join('');
   function head(open,act,color,title,mark){return '<div class="btn" data-act="'+act+'" style="display:flex;align-items:center;gap:10px;padding:12px 15px;cursor:pointer"><span class="diamond" style="background:'+color+'"></span><span class="kai" style="font-size:16px;letter-spacing:.22em;color:var(--gold2);flex:1">'+title+'</span><span style="color:var(--mut);font-size:11px">'+(open?'▾ 收':'▸ 展')+'</span></div>';}
-  return '<div class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:rgba(26,20,14,.92);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(130%);backdrop-filter:blur(var(--zjblur,9px)) saturate(130%);zoom:'+FS+';padding-top:'+(isMobile()?'100px':'62px')+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
+  return '<div class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:transparent;zoom:'+FS+';padding-top:'+(isMobile()?'100px':'62px')+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
     +'<div style="padding:15px 15px 3px"><div class="kai" style="font-size:19px;letter-spacing:.26em;color:var(--gold2);text-align:center">太史简 · 起居注</div><div class="slip" style="margin-top:9px"></div></div>'
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secC,'tgC','var(--red)','王 · 起 居',S.secC)
       +(S.secC?'<div class="fade" style="padding:0 15px 16px">'+charRows
@@ -1934,6 +1939,17 @@ function sidebar(){
         +'</div>':'')+'</div>'
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secG,'tgG','#7ea892','人 物 图 谱',S.secG)+(S.secG?'<div class="fade" style="padding:0 15px 16px">'+graphInner()+'</div>':'')+'</div>'
     +'<div class="glass" style="margin:11px 12px 14px;border-radius:14px">'+head(S.secA,'tgA','#9db8d8','编 年 史',S.secA)+(S.secA?'<div class="fade" style="padding:0 15px 16px">'+axisInner()+'</div>':'')+'</div>'
+    +'<div class="glass" style="margin:11px 12px 16px;border-radius:14px;padding:13px 15px">'
+      +'<div class="kai" style="font-size:15px;letter-spacing:.2em;color:var(--gold2);margin-bottom:3px">本 机 数 据</div>'
+      +'<div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-bottom:11px">对话·存档·长卷·预设·世界书·接口皆只存于此浏览器。换设备或清数据前先备份。</div>'
+      +'<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">'
+        +'<div class="btn obtn" data-act="expAll" style="cursor:pointer;font-size:12px;letter-spacing:.12em;padding:7px 15px;color:var(--gold2)">⤓ 数据备份</div>'
+        +(S.wipeArm
+          ?'<div class="btn" data-act="wipeAll" style="cursor:pointer;font-size:12px;letter-spacing:.1em;padding:7px 15px;background:rgba(166,59,38,.32);border:1px solid rgba(166,59,38,.85);border-radius:9px;color:#efb3a0">确认清除·不可撤销</div>'
+          :'<div class="btn" data-act="wipeAll" style="cursor:pointer;font-size:12px;letter-spacing:.1em;padding:7px 15px;background:transparent;border:1px solid rgba(166,59,38,.45);border-radius:9px;color:#b06a55">清除本机数据…</div>')
+        +'<div class="btn" data-act="openDataSet" style="cursor:pointer;font-size:11.5px;color:var(--mut2);padding:7px 6px">分项导出 →</div>'
+      +'</div>'
+    +'</div>'
     +'</div>';
 }
 var MODE_PH={say:'以姬瑶之口开口说话……（自动加「」）',do:'写下孤的行动……',free:'自由书写这一幕：言语、行动、内心……',world:'控制游戏（三维天下亲自执行）：起马厩×2 ／ 拆酒楼 ／ 攻打粮仓 ／ 寻老聃 ／ 去城南 ／ 移驾郢……'};
@@ -1999,9 +2015,9 @@ function storyPane(){
         +'<div class="btn obtn" data-act="swNext" title="'+(six>=h.alts.length-1?'再演新稿':'看下一稿')+'" style="font-size:12px;padding:6px 13px">'+(six>=h.alts.length-1?'▶＋':'▶')+'</div>';
     }
     var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;gap:9px;align-items:center;margin-top:2px;flex-wrap:wrap">'+sw+'<div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div>'
-      +(imgReady()&&!h.img?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">✦ 绘此幕</div>'):'')
+      +(imgReady()?(!h.img?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">✦ 绘此幕</div>'):''):'<div class="btn obtn" data-act="openImgSet" title="配置生图接口后即可为此幕绘制插画" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold3)">✦ 生图设置</div>')
       +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停 诵</div>':'<div class="btn obtn" data-act="ttsScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">♪ 诵此幕</div>'):'')
-      +(S.imgErr?'<div style="font-size:11.5px;color:#d9a06a">'+esc(S.imgErr)+'</div>':'')+'</div>':'';
+      +(S.imgErr?'<div style="font-size:11.5px;color:#d9a06a">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="font-size:11.5px;letter-spacing:.15em;padding:5px 12px;color:var(--gold3)">⚙ 生图设置</div>':'')+'</div>':'';
     var wtb='<div class="btn" data-mtool="'+(i+1)+'" title="修改、删去或由此幕重来" style="position:absolute;top:-2px;right:-4px;color:var(--mut);opacity:.4;padding:2px 8px;font-size:15px;letter-spacing:1px;z-index:2">⋯</div>';
     var wtools=(S.msgTools===i&&S.msgEdit!==i)?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px">'
       +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此幕</div>'
@@ -2057,7 +2073,10 @@ function storyPane(){
       +'<span style="font-size:11px;letter-spacing:.22em;color:var(--gold2);font-family:var(--kai)">天下</span></div>';
     sceneH=16;
   }
-  return '<div class="col grow" style="position:relative">'+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?'calc(210px + env(safe-area-inset-bottom))':'160px'))+';background:rgba(23,18,12,.9);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(118%);backdrop-filter:blur(var(--zjblur,9px)) saturate(118%)'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
+  /* 背景毛玻璃独立成非滚动层：backdrop-filter 一旦置于滚动容器(#zjStory)上，
+     安卓 Chromium 合成器会漏绘/残影，导致正文缺字。此层不随内容滚动，规避该 bug。 */
+  var blurLayer='<div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none;background:rgba(23,18,12,.9);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(118%);backdrop-filter:blur(var(--zjblur,9px)) saturate(118%)"></div>';
+  return '<div class="col grow" style="position:relative">'+blurLayer+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?'calc(210px + env(safe-area-inset-bottom))':'160px'))+';background:transparent'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
 }
 function gameView(){
   var mob=isMobile();var m=mood();
@@ -2100,12 +2119,12 @@ function gameView(){
   }
   var body;
   if(mob){
-    body='<div class="grow zjPane" style="position:relative;min-height:0">'+(S.tab==='story'?storyPane():'<div style="height:100%;overflow:hidden">'+sidebar()+'</div>')
+    body='<div class="grow zjPane" style="position:relative;min-height:0">'+(S.tab==='story'?storyPane():'<div style="height:100%;overflow:hidden;position:relative;background:rgba(26,20,14,.92);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(130%);backdrop-filter:blur(var(--zjblur,9px)) saturate(130%)">'+sidebar()+'</div>')
       +'<div id="zjTabWrap" style="position:absolute;left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:6;pointer-events:none"><div class="glass" style="pointer-events:auto;position:relative;max-width:420px;margin:0 auto;height:50px;display:flex;padding:6px;border-radius:99px">'
       +'<div id="zjTabPill" class="zjPillHl" style="top:6px;bottom:6px;width:calc(50% - 9px);left:'+(S.tab==='story'?'6px':'calc(50% + 3px)')+';border-radius:99px"></div>'
       +[['story','叙 事'],['panel','太史简']].map(function(t){var on=S.tab===t[0];return '<div class="btn" data-tab="'+t[0]+'" style="flex:1;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:var(--kai);font-size:16px;letter-spacing:.28em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('')+'</div></div></div>';
   }else{
-    body='<div class="row grow">'+storyPane()+'<div style="flex:none;width:348px;border-left:1px solid rgba(201,160,99,.2)">'+sidebar()+'</div></div>';
+    body='<div class="row grow">'+storyPane()+'<div style="flex:none;width:348px;border-left:1px solid rgba(201,160,99,.2);position:relative;background:rgba(26,20,14,.92);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(130%);backdrop-filter:blur(var(--zjblur,9px)) saturate(130%)">'+sidebar()+'</div></div>';
   }
   if(S.zen){
     top='<div style="position:absolute;top:'+(mob?'10px':'12px')+';right:12px;z-index:8;display:flex;gap:8px;align-items:stretch">'
@@ -2866,6 +2885,7 @@ function voicePane(){
      ?'<div style="margin-top:12px"><input id="zjTtsUrl" '+inp+' value="'+esc(TTS.url)+'" placeholder="接口地址：https://api.openai.com/v1（或中转）"></div>'
       +'<div style="margin-top:9px"><input id="zjTtsKey" type="password" '+inp+' value="'+esc(TTS.key)+'" placeholder="TTS 密钥 sk-…"></div>'
       +'<div style="margin-top:9px"><input id="zjTtsModel" '+inp+' value="'+esc(TTS.model)+'" placeholder="模型：如 tts-1 / gpt-4o-mini-tts"></div>'
+      +'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:9px;border:1px solid rgba(201,160,99,.18);border-radius:9px;padding:8px 12px">须是 <b style="color:#e8b77d">OpenAI 兼容</b>的 <b style="color:#e8b77d">/audio/speech</b> 语音接口（直接返回音频文件）。三点常见坑：① 地址须 <b style="color:#e8b77d">https</b>（本页是 https，填 http 会被浏览器按混合内容拦掉）；② 该服务须<b style="color:#e8b77d">允许网页跨域(CORS)</b>，很多厂商的语音接口只给服务器调、不给网页直连；③ 若接口返回的是 JSON/文本而非音频文件，则不兼容。不确定就用上面的「设备内置语音」，零配置。</div>'
      :'')
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:26px 0 12px">朗读范围</div>'
    +seg([['all','全 读'],['dialog','仅对话'],['narr','仅旁白']],'data-ttsscope',TTS.scope)
@@ -2953,7 +2973,8 @@ function apiBody(){
     +lbl('接口地址（Base URL）')+'<input id="zjApiUrl" '+inp+' value="'+esc(c.url)+'" placeholder="'+esc(def.url)+'"><div style="font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1.7">'+esc(def.hint)+'；留空即使用默认地址。</div>'
     +lbl('API 密钥（API Key）')+'<input id="zjApiKey" type="password" '+inp+' value="'+esc(c.key)+'" placeholder="sk-…">'
     +lbl('模型名')+'<div style="display:flex;gap:10px"><input id="zjApiModel" '+inp+' value="'+esc(c.model)+'" placeholder="如 deepseek-chat / claude-sonnet-4-5 / gemini-2.5-pro"><button data-act="apiModels" class="obtn btn" style="flex:none;font-size:13px;letter-spacing:.1em;padding:0 18px;white-space:nowrap">拉取模型</button></div>'+models
-    +lbl('绘图（生图）')+'<div style="font-size:12.5px;color:var(--mut);line-height:1.8">生图接口与全部参数已独立到左侧『<b style="color:var(--gold2)">图 · 生图</b>』标签页：支持接口风格、采样器、噪点表、引导/重缩放、步数、尺寸、种子、固定正负提示词、角色参考与生图世界书。</div>'
+    +lbl('绘图（生图）')+'<div style="font-size:12.5px;color:var(--mut);line-height:1.8">生图接口与全部参数已独立到『<b style="color:var(--gold2)">图 · 生图</b>』标签页：支持接口风格、采样器、噪点表、引导/重缩放、步数、尺寸、种子、固定正负提示词、角色参考与生图世界书。</div>'
+    +'<div style="margin-top:10px"><button data-act="openImgSet" class="gbtn btn" style="font-size:13px;letter-spacing:.14em;padding:9px 20px;border-radius:10px">→ 打开生图设置</button></div>'
     +lbl('副模型 · 杂务分工（可选 · OpenAI 兼容）')+'<input id="zjAuxUrl" '+inp+' value="'+esc(API.aux.url)+'" placeholder="接口地址：https://api.openai.com/v1（或中转）">'
     +'<div style="margin-top:9px"><input id="zjAuxKey" type="password" '+inp+' value="'+esc(API.aux.key)+'" placeholder="密钥 sk-…（可与主接口相同）"></div>'
     +'<div style="margin-top:9px"><input id="zjAuxModel" '+inp+' value="'+esc(API.aux.model)+'" placeholder="便宜快模型：如 deepseek-chat / gpt-4o-mini"></div>'
@@ -3514,6 +3535,8 @@ root.addEventListener('click',function(e){
       else if(a==='tgA'){S.secA=!S.secA;render();}
       else if(a==='savenow'){saveNow();}
       else if(a==='editlore'){S.setTab='lore';S.overlay='set';renderOverlay();}
+      else if(a==='openImgSet'){S.setTab='img';S.overlay='set';S.wipeArm=false;renderOverlay();return;}
+      else if(a==='openDataSet'){S.setTab='font';S.overlay='set';S.wipeArm=false;renderOverlay();return;}
       else if(a==='zen'){
         var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
         function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
@@ -3692,7 +3715,7 @@ root.addEventListener('click',function(e){
       else if(a==='expAll'){try{var xo={__app:'周纪·千年天下',__type:'zhouji-full-backup',__version:1,data:{}};
         for(var xi=0;xi<localStorage.length;xi++){var xk=localStorage.key(xi);if(xk&&/^(zhouji_|zj3d_|zj_)/.test(xk))xo.data[xk]=localStorage.getItem(xk);}
         var xb=new Blob([JSON.stringify(xo,null,1)],{type:'application/json'});var xu=URL.createObjectURL(xb);var xa=document.createElement('a');xa.href=xu;xa.download='周纪全部数据备份.json';document.body.appendChild(xa);xa.click();document.body.removeChild(xa);setTimeout(function(){URL.revokeObjectURL(xu);},4000);}catch(e){}}
-      else if(a==='wipeAll'){if(!S.wipeArm){S.wipeArm=true;renderOverlay();}else{try{var wks=[];for(var wi=0;wi<localStorage.length;wi++){var wk=localStorage.key(wi);if(wk&&/^(zhouji_|zj3d_|zj_)/.test(wk))wks.push(wk);}wks.forEach(function(k){try{localStorage.removeItem(k);}catch(e2){}});}catch(e){}try{indexedDB.deleteDatabase('zhouji_img');}catch(e4){}location.reload();}}
+      else if(a==='wipeAll'){if(!S.wipeArm){S.wipeArm=true;S._noFade=true;render();}else{try{var wks=[];for(var wi=0;wi<localStorage.length;wi++){var wk=localStorage.key(wi);if(wk&&/^(zhouji_|zj3d_|zj_)/.test(wk))wks.push(wk);}wks.forEach(function(k){try{localStorage.removeItem(k);}catch(e2){}});}catch(e){}try{indexedDB.deleteDatabase('zhouji_img');}catch(e4){}location.reload();}}
       else if(a==='fontReset'){try{localStorage.removeItem('zhouji_font_v1');}catch(e){}FONTC=null;var frs=document.documentElement.style;frs.removeProperty('--serif');frs.removeProperty('--kai');renderOverlay();}
       else if(a==='memSave'){if(S.memEdit!=null&&S.mem[S.memEdit]){var me0=S.mem[S.memEdit];
         var gv=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
