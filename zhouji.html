@@ -1049,6 +1049,10 @@ function imgFetchBlob(url,hdr,body){
   return fetch(url,{method:'POST',headers:hdr,body:JSON.stringify(body)}).then(function(r){
     if(!r.ok)return r.text().then(function(t){throw new Error('HTTP '+r.status+'：'+String(t).slice(0,180));});
     return r.arrayBuffer();
+  },function(e){
+    /* fetch 直接被拒(Failed to fetch)＝跨域被拦/连不上，几乎必是「接口地址」没填对 */
+    var hint='连不上「接口地址」（'+(e&&e.message||'Failed to fetch')+'）。NovelAI 必须经中转：请确认「接口地址」填的是你的 <b>Cloudflare Worker 网址</b>（形如 https://xxx.workers.dev），而不是 image.novelai.net——NAI 官网地址已写死在 Worker 里、游戏里不用填。若已是 Worker 网址仍报此错：多半网址有误、或 Worker 转发时抛异常（去 Cloudflare 看实时日志）。';
+    throw new Error(hint);
   }).then(function(buf){return zipExtractPng(buf);});
 }
 function comfyBuildWorkflow(pos,neg){
@@ -3095,8 +3099,12 @@ function imgPane(){
     +lbl('接口风格')+seg([['openai','OpenAI 兼容'],['novelai','NovelAI 官方'],['sd','SD · A1111'],['comfyui','本地 ComfyUI'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')+(C.style==='comfyui'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">本地 ComfyUI：启动时加 <b style="color:#e8b77d">--enable-cors-header "*"</b> 允许网页调用（127.0.0.1 不受 https 混合内容限制）。「接口地址」填 <b style="color:#e8b77d">http://127.0.0.1:8188</b>，「模型」填 checkpoint 文件名（如 sd_xl_base_1.0.safetensors），采样器/步数/CFG/尺寸/种子照常填。<br>进阶：下方可粘贴你自己的 <b style="color:#e8b77d">API 格式</b>工作流（ComfyUI 里 Save (API Format) 导出），用 %prompt% %negative% %seed% %steps% %cfg% %width% %height% %sampler% %scheduler% %ckpt% 作占位符；留空则用内置默认 txt2img。若最新 Chrome 因 Private Network Access 拦截，可改用本地打开游戏。</div><textarea id="zjImgComfyWf" rows="4" placeholder="（可选）粘贴 ComfyUI API 格式工作流 JSON，含 %prompt% 等占位符" style="width:100%;margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(201,160,99,.3);color:var(--ink2);font-size:11px;font-family:monospace;line-height:1.5;padding:8px;resize:vertical">'+esc(C.comfyWorkflow||'')+'</textarea>':'')
     +lbl('接口地址')+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="如 https://api.openai.com/v1 或 http://127.0.0.1:7860">'
     +lbl('密钥（本地 SD 可留空）')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(C.key)+'" placeholder="sk-…">'
-    +lbl('模型')+'<input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="如 dall-e-3 / gpt-image-1 / nai-diffusion-3 / flux">'
-    +(C.style==='novelai'?'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:5px">NAI 模型名须精确：<b style="color:var(--gold3)">nai-diffusion-3</b>（V3）／<b style="color:var(--gold3)">nai-diffusion-4-5-full</b>·<b style="color:var(--gold3)">nai-diffusion-4-5-curated</b>·<b style="color:var(--gold3)">nai-diffusion-4-full</b>（V4.5/V4，需 Opus）。填错或留空即报 500。V3、V4 的请求体本游戏已自动区分。</div>':'')
+    +lbl('模型')
+    +(C.style==='novelai'
+      ? seg([['nai-diffusion-4-5-full','V4.5 Full'],['nai-diffusion-4-5-curated','V4.5 Curated'],['nai-diffusion-4-full','V4 Full'],['nai-diffusion-3','V3（旧版）']],'imgmodel',C.model)
+        +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:6px">点选即可，免打字免出错。<b style="color:#e8b77d">V4.5/V4 需 NAI Opus 订阅</b>；没订阅就选 <b style="color:var(--gold3)">V3（旧版）</b>。V3/V4 的请求体本游戏已自动区分。</div>'
+        +'<details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px;color:var(--mut)">要填别的模型名？点这手动输入</summary><div style="margin-top:6px"><input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="手动填写 NAI 模型名"></div></details>'
+      : '<input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="如 dall-e-3 / gpt-image-1 / nai-diffusion-3 / flux">')
     +lbl('采样与画质')+'<div style="margin:-2px 0 7px"><span class="btn" data-act="imgReset" style="cursor:pointer;font-size:11.5px;color:var(--gold3);border:1px solid rgba(201,160,99,.3);border-radius:7px;padding:3px 11px">↺ 用本接口推荐默认</span><span style="font-size:11px;color:var(--mut);margin-left:8px">看不懂就用推荐值，直接能出图</span></div>'
     +'<div style="display:flex;gap:9px;flex-wrap:wrap"><input id="zjImgSampler" '+half+' value="'+esc(C.sampler)+'" placeholder="采样器 sampler 如 k_euler_ancestral"><input id="zjImgNoise" '+half+' value="'+esc(C.noise)+'" placeholder="噪点表 noise 如 karras/native"></div>'
     +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:9px"><input id="zjImgSteps" '+half+' value="'+esc(C.steps)+'" placeholder="步数 steps 如 28"><input id="zjImgGuid" '+half+' value="'+esc(C.guidance)+'" placeholder="提示词引导 guidance/CFG 如 5"><input id="zjImgRescale" '+half+' value="'+esc(C.rescale)+'" placeholder="引导重缩放 rescale 如 0.2"></div>'
@@ -3485,6 +3493,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-sugg')!=null&&t.getAttribute('data-sugg')!==''){if(S.thinking)return;var sgi=parseInt(t.getAttribute('data-sugg'),10);var sgt=(S.suggList||[])[sgi];if(sgt){S.suggList=null;sendText(S.dice?sgt+diceRoll():sgt);}return;}
       if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;renderOverlay();pillFlip('zjSetPill',spr);return;}
       if(t.getAttribute('data-imgstyle')){syncImgForm();var oldSt=IMGCFG.style,newSt=t.getAttribute('data-imgstyle');var od=imgDefaults(oldSt),nd=imgDefaults(newSt);IMGSAMPFIELDS.forEach(function(k){if(!IMGCFG[k]||IMGCFG[k]===od[k])IMGCFG[k]=nd[k];});IMGCFG.style=newSt;imgCfgSave();renderOverlay();return;}
+      if(t.getAttribute('data-imgmodel')){syncImgForm();IMGCFG.model=t.getAttribute('data-imgmodel');imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgloretog')!=null&&t.getAttribute('data-imgloretog')!==''){syncImgForm();var it=+t.getAttribute('data-imgloretog');if(IMGLORE[it])IMGLORE[it].on=(IMGLORE[it].on===false);imgLoreSave();renderOverlay();return;}
       if(t.getAttribute('data-imgloredel')!=null&&t.getAttribute('data-imgloredel')!==''){syncImgForm();var idl=+t.getAttribute('data-imgloredel');IMGLORE.splice(idl,1);imgLoreSave();renderOverlay();return;}
       if(t.getAttribute('data-cat')){var ncat=t.getAttribute('data-cat');if(ncat===S.codexCat)return;var corder=[].map.call(document.querySelectorAll('[data-cat]'),function(x){return x.getAttribute('data-cat');});var cpo=document.getElementById('zjCatPill');var cpr=cpo&&cpo.getBoundingClientRect();var epo=document.getElementById('zjEntPill');var epr=epo&&epo.getBoundingClientRect();
@@ -3627,6 +3636,7 @@ root.addEventListener('click',function(e){
       else if(a==='imgTest'){
         syncImgForm();imgCfgSave();imgLoreSave();
         if(!imgReady()){S.imgSetMsg='请先填好接口地址/密钥/模型';S.imgSetMsgC='var(--red2)';renderOverlay();return;}
+        if(IMGCFG.style==='novelai'&&/novelai\.(net|ai)/i.test(IMGCFG.url||'')){S.imgSetMsg='「接口地址」不能填 NovelAI 官网（image.novelai.net）——浏览器跨域必被拦（Failed to fetch）。这里要填你的 Cloudflare Worker 网址（形如 https://xxx.workers.dev）；NAI 官网地址已内置在 Worker 里，不用你填。';S.imgSetMsgC='var(--red2)';renderOverlay();return;}
         S.imgSetMsg='正在测试生图……';S.imgSetMsgC='var(--mut2)';renderOverlay();
         var tpos=[IMGCFG.pos,'ancient Chinese palace hall at dusk, cinematic lighting, highly detailed, test'].filter(Boolean).join(', ');
         imgGenBlob(tpos,IMGCFG.neg).then(function(blob){if(blob&&blob.size){S.imgSetMsg='✓ 测试生图成功，接口可用';S.imgSetMsgC='var(--grn2)';}else throw new Error('接口未返回图像');renderOverlay();})['catch'](function(err){var em=String(err&&err.message||err);var extra='';if(IMGCFG.style==='novelai'&&/(500|Internal Server)/.test(em))extra=' ｜ NAI 500 十有八九是「模型名」不对：请精确填 nai-diffusion-3（V3）或 nai-diffusion-4-5-full / nai-diffusion-4-5-curated / nai-diffusion-4-full（V4.5/V4，需 Opus 订阅），不要留空、不要写别名。';S.imgSetMsg='测试失败：'+em.slice(0,170)+extra;S.imgSetMsgC='var(--red2)';renderOverlay();});
