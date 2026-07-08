@@ -1616,6 +1616,30 @@ function ensureComplete(sys,msgs,t){
     return panelComplete(merged)?merged:t; /* 补全仍失败则保留原文，绝不劣化 */
   },function(){S.fixing=false;return t;});
 }
+/* 手动重 roll 格式：仅据本幕正文重新生成结尾状态栏，正文一字不动。掉格式时用。 */
+function rerollPanel(idx){
+  if(S.fixing||S.thinking)return;
+  var h=S.history[idx]; if(!h||h.role!=='world'){var li=-1;for(var k=S.history.length-1;k>=0;k--){if(S.history[k].role==='world'){li=k;break;}}if(li<0)return;idx=li;h=S.history[idx];}
+  if(!apiReady()){S.apiMsg={t:'请先在「链」配置 AI 接口。',c:'var(--red2)'};render();return;}
+  var uIsPrev=(idx>0&&S.history[idx-1].role==='user');
+  var text=uIsPrev?S.history[idx-1].text:'（承接上文）';
+  var base=S.history.slice(0,uIsPrev?idx-1:idx);
+  var sys=buildSystem(base,text),msgs=buildMessages(base,text);
+  var narr=stripMvu(h.text).replace(/\s+$/,'');
+  var ask='（请仅据这一幕正文，重新输出【完整准确】的结尾状态栏 <mvu_panel>：<sec_char>含◆衣冠/持物/御体/观瞻/神格(0-100)/史笔；<sec_npc>每在场者一行◈名字|状态|好感(0-100)|心声|身份|所在|年龄|性别；<sec_world>含◇纪年/时地/天气/安稳(0-100)/大势/将临。只输出 <mvu_panel>…</mvu_panel> 本身，不要正文、不要解释、不要复述正文。）';
+  var cont=msgs.concat([{role:'assistant',content:h.text},{role:'user',content:ask}]);
+  S.fixing=true;S._noFade=true;render();
+  callCustomAI(sys,cont).then(function(t2){
+    S.fixing=false;
+    var s2=String(t2||'');
+    var m=/<mvu_panel>[\s\S]*?<\/mvu_panel>/.exec(s2);
+    var panelTxt=m?m[0]:(/<sec_(?:char|npc|world)>/.test(s2)?('<mvu_panel>\n'+s2.replace(/^[\s\S]*?(?=<sec_)/,'').replace(/<\/mvu_panel>[\s\S]*$/,'').trim()+'\n</mvu_panel>'):null);
+    if(panelTxt){var newText=narr+'\n'+panelTxt;var p=parseMvu(newText);
+      if(p&&p.world&&Object.keys(p.world).length&&p.char&&Object.keys(p.char).length){h.text=newText;h.panel=p;try{memSync();}catch(e){}savePref();}
+    }
+    S._noFade=true;render();
+  },function(){S.fixing=false;S._noFade=true;render();});
+}
 function advanceLocal(base,text){
   var done=function(reply,live){
     reply=deLoop(reply);
@@ -2142,6 +2166,7 @@ function storyPane(){
         +'<div class="btn obtn" data-act="swNext" title="'+(six>=h.alts.length-1?'再演新稿':'看下一稿')+'" style="font-size:12px;padding:6px 13px;line-height:1">'+chev(1)+(six>=h.alts.length-1?'<span style="vertical-align:1px">＋</span>':'')+'</div>';
     }
     var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;gap:9px;align-items:center;margin-top:2px;flex-wrap:wrap">'+sw+'<div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div>'
+      +(S.chatOnly?'':(S.fixing?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">补状态栏<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="rerollFmt" title="只重新生成本幕状态栏，正文不变（掉格式时用）" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">⟲ '+(panelComplete(h.text)?'重出状态栏':'补状态栏')+'</div>'))
       +(imgReady()?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">'+(h.img?'⟲ 重绘':'✦ 绘此幕')+'</div>'):'<div class="btn obtn" data-act="openImgSet" title="配置生图接口后即可为此幕绘制插画" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold3)">✦ 生图设置</div>')
       +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停 诵</div>':'<div class="btn obtn" data-act="ttsScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">♪ 诵此幕</div>'):'')
       +(S.imgErr?'<div style="font-size:11.5px;color:#d9a06a">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="font-size:11.5px;letter-spacing:.15em;padding:5px 12px;color:var(--gold3)">⚙ 生图设置</div>':'')+'</div>':'';
@@ -3738,6 +3763,7 @@ root.addEventListener('click',function(e){
       else if(a==='continue'){if(TH.available)pullHistory();S.screen='game';render();}
       else if(a==='send'){var ta=document.getElementById('zjInput');if(ta)S.input=ta.value;send();}
       else if(a==='reroll'){reroll();}
+      else if(a==='rerollFmt'){var _rfi=-1;for(var _rk=S.history.length-1;_rk>=0;_rk--){if(S.history[_rk].role==='world'){_rfi=_rk;break;}}if(_rfi>=0)rerollPanel(_rfi);return;}
       else if(a==='swPrev'){var hsw=S.history[S.history.length-1];
         if(hsw&&hsw.role==='world'&&hsw.alts&&!S.thinking){var ix0=(hsw.altIx==null?hsw.alts.length-1:hsw.altIx);
           if(ix0>0){hsw.altIx=ix0-1;hsw.text=hsw.alts[hsw.altIx];hsw.panel=parseMvu(hsw.text);typedSet.add(hsw);S._noFade=true;savePref();render();}}}
