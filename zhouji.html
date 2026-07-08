@@ -165,7 +165,7 @@ function dlgApply(prev){
     el.style.color=on?'var(--gold2)':'var(--mut2)';
   });
 }
-function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return t.split(/\n+/).filter(Boolean).map(function(p){return '<p style="margin:0 0 14px;font-size:16px;line-height:2.05;color:var(--ink);text-align:justify;text-wrap:pretty">'+dlgSpan(esc(p))+'</p>';}).join('');}
+function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return t.split(/\n+/).filter(Boolean).map(function(p){return '<p style="margin:0 0 14px;font-size:16px;line-height:2.05;color:var(--ink);text-align:justify">'+dlgSpan(esc(p))+'</p>';}).join('');}
 function ensureTyping(){
   if(!TYPE.msg||typedSet.has(TYPE.msg)){return;}
   if(TYPE.timer){return;}
@@ -2104,13 +2104,13 @@ function gameView(){
   if(mob){
     // 手机端双行头：一行状态，一行功能键，九键尽显不再溢出
     top='<div id="zjTopBar" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:22px">'
-      +'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.84) 0%,rgba(12,8,5,.5) 58%,rgba(12,8,5,0) 100%);-webkit-backdrop-filter:blur(5px) saturate(135%);backdrop-filter:blur(5px) saturate(135%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>'
+      +'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.84) 0%,rgba(12,8,5,.5) 58%,rgba(12,8,5,0) 100%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>'
       +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;gap:7px;padding:6px 10px 0">'+logo+eraDiv+conn+'</div>'
       +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:3px;padding:7px 10px 6px">'+topBtns+'</div>'
       +'</div>';
   }else{
     top='<div id="zjTopBar" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:20px">'
-      +'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.84) 0%,rgba(12,8,5,.5) 58%,rgba(12,8,5,0) 100%);-webkit-backdrop-filter:blur(5px) saturate(135%);backdrop-filter:blur(5px) saturate(135%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>'
+      +'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.84) 0%,rgba(12,8,5,.5) 58%,rgba(12,8,5,0) 100%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>'
       +'<div style="position:relative;pointer-events:auto;height:56px;display:flex;align-items:center;gap:9px;padding:4px 12px 0">'
       +logo
       +'<div class="kai" style="font-size:16px;letter-spacing:.12em;color:var(--gold2);white-space:nowrap">周纪·千年天下</div>'
@@ -2203,7 +2203,7 @@ function codexBody(){
   var list=entries.map(function(e,i){var on=i===ci;return '<div class="btn" data-cidx="'+i+'" style="position:relative;z-index:1;cursor:pointer;padding:8px 12px;font-size:13px;line-height:1.45;color:'+(on?'var(--gold3)':'#8f7f61')+'">'+esc(e.title)+'</div>';}).join('');
   var cur=entries[ci];
   var keys=cur?(cur.keys||[]).slice(0,6).map(function(k){return '<span style="font-size:11px;color:var(--mut);border:1px solid rgba(201,160,99,.25);padding:3px 9px">'+esc(k)+'</span>';}).join(''):'';
-  var detail='<div class="grow bamboo zjPaneD" data-zjzoom style="overflow-y:auto;padding:24px 30px;zoom:'+FS+'"><div class="kai" style="font-size:24px;color:var(--gold2)">'+esc(cur?cur.title:'')+'</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:11px">'+keys+'</div><div style="margin-top:16px;font-size:15px;line-height:2.15;color:var(--ink2);white-space:pre-wrap;text-wrap:pretty">'+esc(cur?cur.content:'')+'</div></div>';
+  var detail='<div class="grow bamboo zjPaneD" data-zjzoom style="overflow-y:auto;padding:24px 30px;zoom:'+FS+'"><div class="kai" style="font-size:24px;color:var(--gold2)">'+esc(cur?cur.title:'')+'</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:11px">'+keys+'</div><div style="margin-top:16px;font-size:15px;line-height:2.15;color:var(--ink2);white-space:pre-wrap">'+esc(cur?cur.content:'')+'</div></div>';
   if(mob){
     return '<div class="col grow" style="min-height:0"><div id="zjCatBar" style="position:relative;flex:none;display:flex;overflow-x:auto;border-bottom:1px solid rgba(201,160,99,.18)">'+cats+'</div><div class="col grow zjPane" style="min-height:0"><div id="zjEntList" style="position:relative;flex:none;max-height:34%;overflow-y:auto;border-bottom:1px solid rgba(201,160,99,.18);padding:6px">'+list+'</div>'+detail+'</div></div>';
   }
