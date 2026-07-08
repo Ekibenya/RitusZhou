@@ -419,7 +419,13 @@ function parseMvu(text){
   var npcs = lines(sec('npc'),'◈').map(function(p){return {name:p[0]||'',state:p[1]||'',favor:parseInt(p[2],10)||0,thought:p[3]||'',role:p[4]||'',place:p[5]||'',age:p[6]||'',sex:p[7]||''};});
   return {char:char,npcs:npcs,world:world};
 }
-function stripMvu(t){return String(t||'').replace(/<mvu_panel>[\s\S]*?<\/mvu_panel>/g,'').replace(/<UpdateVariable>[\s\S]*?<\/UpdateVariable>/g,'').trim();}
+function stripMvu(t){return String(t||'')
+  .replace(/<mvu_panel>[\s\S]*?<\/mvu_panel>/g,'')            /* 完整状态栏 */
+  .replace(/<UpdateVariable>[\s\S]*?<\/UpdateVariable>/g,'')
+  .replace(/<mvu_panel>[\s\S]*$/,'')                          /* 流式：尚未闭合的半截状态栏 */
+  .replace(/<sec_[a-z]*>[\s\S]*$/i,'')                        /* 流式：漏了外层包裹、直冒出的 <sec_…> */
+  .replace(/\n*<\/?[a-z_]{0,14}$/i,'')                        /* 流式：末尾正在逐字成形的半个标签，如 <mvu_pane */
+  .trim();}
 /* 去复读退化：Gemini 等模型偶发"极其极其极其…"式无尽复读，客户端兜底压平 */
 function deLoop(t){
   t=String(t||'');
