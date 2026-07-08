@@ -2907,6 +2907,14 @@ function imgPane(){
   var refPrev=C.refImg?'<div style="margin-top:8px;display:flex;align-items:center;gap:12px"><img src="'+esc(C.refImg)+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid rgba(201,160,99,.35)"><span class="btn" data-act="imgRefClear" style="cursor:pointer;font-size:12.5px;color:#b06a55">移除参考图</span></div>':'';
   var msg=S.imgSetMsg?'<span style="font-size:13px;color:'+(S.imgSetMsgC||'var(--gold3)')+'">'+esc(S.imgSetMsg)+'</span>':'';
   return '<div class="grow bambooV" style="overflow-y:auto;padding:20px 26px">'
+    +'<div style="border:1.5px solid rgba(224,190,130,.75);border-radius:13px;background:linear-gradient(135deg,rgba(201,140,80,.18),rgba(166,59,38,.09));box-shadow:0 3px 16px rgba(201,160,99,.2),inset 0 1px 0 rgba(255,242,214,.28);padding:15px 17px;margin-bottom:16px">'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><span style="font-family:var(--kai);font-size:12.5px;letter-spacing:.14em;color:#231a0c;background:linear-gradient(135deg,#f0c98a,#c98c50);border-radius:99px;padding:4px 13px">NovelAI 必做</span><span class="kai" style="font-size:17px;color:var(--gold2);letter-spacing:.05em">先建你的专属中转</span></div>'
+      +'<div style="font-size:13px;line-height:1.9;color:var(--ink2)">用 NovelAI 官网出图，<b style="color:#e8b77d">这一步必做</b>：NovelAI 不允许网页直接连（浏览器会拦掉），<b style="color:#e8b77d">不做就一张图都看不到</b>。<br>中转建在<b style="color:#e8b77d">你自己的账号</b>里——你的 token 与图片只走<b style="color:#e8b77d">你专属的通道，更安全</b>，不经任何人转手。</div>'
+      +'<div style="display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin-top:12px">'
+        +'<a href="https://deploy.workers.cloudflare.com/?url=https://github.com/Ekibenya/RitusZhou/tree/main/proxy" target="_blank" rel="noopener" class="gbtn btn" style="text-decoration:none;font-size:14.5px;letter-spacing:.1em;padding:11px 22px;display:inline-flex;align-items:center;gap:7px;box-shadow:0 2px 10px rgba(201,140,80,.4)">\u26a1 \u4e00\u952e\u90e8\u7f72\u6211\u7684\u4e13\u5c5e\u4e2d\u8f6c</a>'
+        +'<span style="font-size:11.5px;color:var(--mut);line-height:1.7">\u514d\u8d39\u00b7\u8de8\u5168\u5e73\u53f0\u3002\u70b9\u5f00 \u2192 \u767b\u5f55/\u6ce8\u518c Cloudflare \u2192 \u70b9\u90e8\u7f72 \u2192 \u628a\u751f\u6210\u7684\u7f51\u5740\u590d\u5236\u5230\u4e0b\u9762\u300c\u63a5\u53e3\u5730\u5740\u300d</span>'
+      +'</div>'
+    +'</div>'
     +'<div style="font-size:12.5px;line-height:1.85;color:var(--ink2)">给每幕正文配 AI 插画。接口、密钥与参数只存本机浏览器。开「每幕自动生图」后每出一幕自动作画，并<b style="color:var(--gold2)">检测本轮图是否真出来、失败自动重试</b>。</div>'
     +tog('zjImgOn',C.on,'启用生图功能')
     +tog('zjImgAuto',C.auto,'每幕自动生图（关则手动点正文下的「✦ 绘此幕」）')
