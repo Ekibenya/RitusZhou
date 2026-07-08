@@ -946,7 +946,8 @@ function profSave(){try{localStorage.setItem(PROFK,JSON.stringify(PROFILES));}ca
 function apiReady(){var c=apiCur();return !!(c.key&&c.model);}
 /* ---------------- 生图设置（接口/采样/提示词预设/参考图/生图世界书；仅存本机） ---------------- */
 var IMGCFGKEY='zhouji_imgcfg_v1';
-var IMGCFG={on:true,auto:false,url:'',key:'',model:'',style:'openai',sampler:'',noise:'',steps:'',guidance:'',rescale:'',width:'',height:'',size:'1024x1024',seed:'-1',pos:'',neg:'',charRef:false,refImg:null,comfyWorkflow:''};
+var IMGCFG={on:true,auto:false,url:'',key:'',model:'',style:'openai',sampler:'',noise:'',steps:'',guidance:'',rescale:'',width:'',height:'',size:'1024x1024',seed:'-1',pos:'',neg:'',charRef:false,refImg:null,comfyWorkflow:'',count:1,cam:'auto'};
+var IMGCAM={auto:{label:'自动',frag:''},cinematic:{label:'电影感',frag:'cinematic film still, dramatic volumetric lighting, shallow depth of field, anamorphic widescreen, color graded, movie scene'},illust:{label:'插画',frag:'detailed anime illustration, painterly, vivid colors, clean lineart, official art'},ink:{label:'水墨',frag:'traditional chinese ink wash painting, sumi-e, rice paper texture, flowing brushstrokes'},fpv:{label:'第一人称',frag:'first-person POV, seen through the protagonist own eyes, immersive, own hands and sleeves visible in frame'},god:{label:'上帝视角',frag:"bird's-eye view, high-angle top-down aerial perspective, overhead, vast scale"},real:{label:'写实',frag:'photorealistic, ultra realistic, cinematic photography, detailed skin and fabric, natural light'}};
 try{var _ic=JSON.parse(localStorage.getItem(IMGCFGKEY)||'null');if(_ic&&typeof _ic==='object')Object.assign(IMGCFG,_ic);}catch(e){}
 try{if(!IMGCFG.url&&!IMGCFG.key&&!IMGCFG.model&&API.img&&(API.img.url||API.img.key||API.img.model)){IMGCFG.url=API.img.url||'';IMGCFG.key=API.img.key||'';IMGCFG.model=API.img.model||'';}}catch(e){}
 function imgCfgSave(){try{localStorage.setItem(IMGCFGKEY,JSON.stringify(IMGCFG));}catch(e){}}
@@ -1135,23 +1136,39 @@ function drawWorld(idx,tries){
   S.imgBusy=idx;S.imgErr=null;S._noFade=true;render();
   var dTxt=stripCoT(stripMvu(S.history[idx].text)).slice(0,1200);
   var loreStr=imgActiveLore(dTxt);
+  var cam=(IMGCAM[IMGCFG.cam]||IMGCAM.auto).frag;
+  var count=Math.max(1,Math.min(6,parseInt(IMGCFG.count,10)||1));
   var AUX='你是绘画提示词工程师。把给定的中国古代场景描写浓缩为一条英文AI绘画提示词：主体人物、环境、光线、氛围，风格 ancient Chinese period illustration, cinematic lighting, highly detailed。只输出提示词，勿加引号与解释，80词以内。';
-  var mk=apiReady()?callAuxAI(AUX,[{role:'user',content:dTxt}]).then(function(t){return String(t||'').trim().slice(0,700)||('ancient Chinese Zhou dynasty scene: '+dTxt.slice(0,140));}):Promise.resolve('ancient Chinese Zhou dynasty scene, cinematic lighting, highly detailed illustration: '+dTxt.slice(0,160));
-  mk.then(function(scene){
-    var pos=[IMGCFG.pos,scene,loreStr].filter(Boolean).join(', ');
-    return imgGenBlob(pos,IMGCFG.neg);
-  }).then(function(blob){
-    if(!blob||!blob.size)throw new Error('图像为空（本轮图未出）');
-    var iid='img_'+Date.now()+'_'+Math.floor(Math.random()*10000);
-    idbPut(iid,blob,function(okp){
-      if(okp&&S.history[idx]){var _h=S.history[idx];if(!_h.imgs)_h.imgs=_h.img?[_h.img]:[];_h.imgs.push(iid);if(_h.imgs.length>8)_h.imgs=_h.imgs.slice(-8);_h.img=iid;_h.imgIx=_h.imgs.length-1;savePref();idbPrune(isMobile()?16:40);S.imgErr=null;}
-      else S.imgErr='插画存储失败（浏览器不支持或空间不足）';
-      S.imgBusy=null;S._noFade=true;render();});
+  var fallback='ancient Chinese Zhou dynasty scene, cinematic lighting, highly detailed illustration: '+dTxt.slice(0,160);
+  var promptsP;
+  if(count>1&&apiReady()){
+    var MAUX='你是分镜师。据给定的中国古代场景，生成 '+count+' 条【互不相同】的英文AI绘画提示词，从不同切入点取材：主场景全景／某在场人物的面部特写与神情／此刻不在场但与剧情相关的NPC正在别处做什么／不同摄像机机位(俯瞰、仰视、过肩、极近特写、远景)／平行视角或环境细节等，尽量各异。每条独立成行，只输出提示词本身，勿编号勿解释，每条80词内，统一风格 ancient Chinese period illustration, highly detailed。';
+    promptsP=callAuxAI(MAUX,[{role:'user',content:dTxt}]).then(function(t){var ls=String(t||'').split(/\n+/).map(function(x){return x.replace(/^\s*[0-9.、)\-\u2014]+\s*/,'').trim();}).filter(Boolean);if(!ls.length)ls=[fallback];return ls.slice(0,count);},function(){return [fallback];});
+  }else if(apiReady()){
+    promptsP=callAuxAI(AUX,[{role:'user',content:dTxt}]).then(function(t){return [String(t||'').trim().slice(0,700)||fallback];},function(){return [fallback];});
+  }else{promptsP=Promise.resolve([fallback]);}
+  promptsP.then(function(prompts){
+    var made=0,lastErr=null;
+    (function genOne(i,retry){
+      if(!prompts||i>=prompts.length||S.imgBusy!==idx){
+        S.imgBusy=null;
+        if(!made){if((tries||0)<1){setTimeout(function(){drawWorld(idx,(tries||0)+1);},900);return;}S.imgErr='本轮生图失败（已重试）：'+String((lastErr&&lastErr.message)||lastErr||'未知').slice(0,120)+' · 可点「✦ 绘此幕」再试';}
+        S._noFade=true;render();return;
+      }
+      var pos=[IMGCFG.pos,cam,prompts[i],loreStr].filter(Boolean).join(', ');
+      imgGenBlob(pos,IMGCFG.neg).then(function(blob){
+        if(!blob||!blob.size)throw new Error('图像为空');
+        var iid='img_'+Date.now()+'_'+i+'_'+Math.floor(Math.random()*10000);
+        idbPut(iid,blob,function(okp){
+          if(okp&&S.history[idx]){var _h=S.history[idx];if(!_h.imgs)_h.imgs=_h.img?[_h.img]:[];_h.imgs.push(iid);if(_h.imgs.length>8)_h.imgs=_h.imgs.slice(-8);_h.img=iid;_h.imgIx=_h.imgs.length-1;made++;savePref();idbPrune(isMobile()?16:40);S.imgErr=null;}
+          S._noFade=true;render();genOne(i+1,0);
+        });
+      })['catch'](function(err){lastErr=err;if((retry||0)<1){setTimeout(function(){genOne(i,1);},900);return;}genOne(i+1,0);});
+    })(0,0);
   })['catch'](function(err){
     S.imgBusy=null;
-    if((tries||0)<1){setTimeout(function(){drawWorld(idx,(tries||0)+1);},900);return;} /* 本轮一定要出图：重试一次 */
-    S.imgErr='本轮生图失败（已重试）：'+String(err&&err.message||err).slice(0,120)+' · 可点「✦ 绘此幕」再试';
-    S._noFade=true;render();
+    if((tries||0)<1){setTimeout(function(){drawWorld(idx,(tries||0)+1);},900);return;}
+    S.imgErr='本轮生图失败（已重试）：'+String(err&&err.message||err).slice(0,120);S._noFade=true;render();
   });
 }
 function maybeAutoDraw(){
@@ -1582,7 +1599,7 @@ function advanceLocal(base,text){
         if(!started){started=true;S.thinking=false;S.aiLive=true;S.history=base.concat([{role:'user',text:text},live]);render();lastR=Date.now();}
         else if(Date.now()-lastR>650){lastR=Date.now();renderSoft();}
         /* 早启生图：正文还在流式输出时，一旦场景文字够了就先动手画，不等整段写完，抵消生图延迟 */
-        if(started&&IMGCFG.on&&IMGCFG.auto&&imgReady()&&!live._earlyDraw&&S.imgBusy==null){
+        if(started&&IMGCFG.on&&IMGCFG.auto&&imgReady()&&!live._earlyDraw&&S.imgBusy==null&&(parseInt(IMGCFG.count,10)||1)<=1){
           var _nar=stripCoT(stripMvu(full)).replace(/^【[^】]*】/,'').replace(/\s/g,'');
           if(_nar.length>=90){live._earlyDraw=true;var _lx=S.history.indexOf(live);if(_lx>=0)drawWorld(_lx);}
         }
@@ -2018,7 +2035,7 @@ function storyPane(){
       if(h.imgs&&h.imgs.length>1){var _im=h.imgs.length,_ix=(h.imgIx==null?_im-1:h.imgIx);
         illu+='<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin:0 0 14px">'
           +'<div class="btn obtn" data-imgprev="'+i+'" style="font-size:13px;padding:3px 13px;'+(_ix<=0?'opacity:.35;':'')+'">◀</div>'
-          +'<span style="font-size:11.5px;color:var(--mut);letter-spacing:.08em">第 '+(_ix+1)+' / '+_im+' 稿</span>'
+          +'<span style="font-size:11.5px;color:var(--mut);letter-spacing:.08em">第 '+(_ix+1)+' / '+_im+' 张</span>'
           +'<div class="btn obtn" data-imgnext="'+i+'" style="font-size:13px;padding:3px 13px;'+(_ix>=_im-1?'opacity:.35;':'')+'">▶</div>'
           +'</div>';}
     }
@@ -3136,6 +3153,9 @@ function imgPane(){
     +'<div style="font-size:12.5px;line-height:1.85;color:var(--ink2)">给每幕正文配 AI 插画。接口、密钥与参数只存本机浏览器。开「每幕自动生图」后每出一幕自动作画，并<b style="color:var(--gold2)">检测本轮图是否真出来、失败自动重试</b>。</div>'
     +tog('zjImgOn',C.on,'启用生图功能')
     +tog('zjImgAuto',C.auto,'每幕自动生图（关则手动点正文下的「✦ 绘此幕」）')
+    +lbl('每轮生几张（多张＝不同角度/人物/视角，图下用 ◀▶ 翻看）')+seg([['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],'imgcount',String(C.count||1))
+    +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:5px">超过 1 张时，由副模型据本幕剧情拆出多个<b style="color:var(--gold3)">不同切入点</b>（主场景 / 人物特写 / 在别处的相关 NPC / 不同摄像机机位 / 平行视角），各生一张，非同图重复。需配好 AI 接口。</div>'
+    +lbl('镜头 · 风格（内置提示词，套在每张最前）')+seg([['auto','自动'],['cinematic','电影感'],['illust','插画'],['ink','水墨'],['fpv','第一人称'],['god','上帝视角'],['real','写实']],'imgcam',C.cam||'auto')
     +lbl('接口风格')+seg([['openai','OpenAI 兼容'],['novelai','NovelAI 官方'],['sd','SD · A1111'],['comfyui','本地 ComfyUI'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')+(C.style==='comfyui'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">本地 ComfyUI：启动时加 <b style="color:#e8b77d">--enable-cors-header "*"</b> 允许网页调用（127.0.0.1 不受 https 混合内容限制）。「接口地址」填 <b style="color:#e8b77d">http://127.0.0.1:8188</b>，「模型」填 checkpoint 文件名（如 sd_xl_base_1.0.safetensors），采样器/步数/CFG/尺寸/种子照常填。<br>进阶：下方可粘贴你自己的 <b style="color:#e8b77d">API 格式</b>工作流（ComfyUI 里 Save (API Format) 导出），用 %prompt% %negative% %seed% %steps% %cfg% %width% %height% %sampler% %scheduler% %ckpt% 作占位符；留空则用内置默认 txt2img。若最新 Chrome 因 Private Network Access 拦截，可改用本地打开游戏。</div><textarea id="zjImgComfyWf" rows="4" placeholder="（可选）粘贴 ComfyUI API 格式工作流 JSON，含 %prompt% 等占位符" style="width:100%;margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(201,160,99,.3);color:var(--ink2);font-size:11px;font-family:monospace;line-height:1.5;padding:8px;resize:vertical">'+esc(C.comfyWorkflow||'')+'</textarea>':'')
     +(C.style==='novelai'?'<div style="border:1px solid rgba(201,160,99,.32);border-radius:12px;padding:12px 13px;margin-top:14px;background:rgba(255,255,255,.015)">'+'<div style="font-size:12px;letter-spacing:.22em;color:var(--gold);margin-bottom:7px">接口地址</div>'+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="粘贴你的 Worker 网址（找不到 Cloudflare 链接？用下面的懒人拼网址）">'+'<div style="border-top:1px dashed rgba(201,160,99,.28);margin:13px 0 11px"></div>'+'<div style="font-size:12.5px;color:var(--grn2);letter-spacing:.03em;margin-bottom:8px">\u270e 懒人拼网址（懒得找那条长链接，就填下面的子域名/GitHub 用户名框就好）</div>'+'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--mut2)">https://<input id="zjNaiName" placeholder="nai-proxy（默认留空）" autocomplete="off" spellcheck="false" style="width:150px;background:rgba(255,255,255,.04);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:6px 8px;font-size:13px">.<input id="zjNaiSub" placeholder="子域名/GitHub用户名" autocomplete="off" spellcheck="false" style="width:150px;background:rgba(255,255,255,.04);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:6px 8px;font-size:13px">.workers.dev</div>'+'<div style="font-size:11px;color:var(--mut);margin-top:8px;line-height:1.75">左框＝Worker 名，部署没改名就留空（默认 <b style="color:var(--gold3)">nai-proxy</b>）；右框＝你的 <b style="color:var(--gold3)">workers.dev 子域名</b>（就是 <b>xxx</b>.workers.dev 里的 xxx，部署成功页 / Cloudflare 面板右上角可见；很多人与 GitHub 用户名一致，可先按用户名试）。填好自动写进上面「接口地址」。</div>'+'</div>':lbl('接口地址')+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="如 https://api.openai.com/v1 或 http://127.0.0.1:7860">')
     +lbl('密钥（本地 SD 可留空）')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(C.key)+'" placeholder="sk-…">'
@@ -3552,6 +3572,8 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;renderOverlay();pillFlip('zjSetPill',spr);return;}
       if(t.getAttribute('data-imgstyle')){syncImgForm();var oldSt=IMGCFG.style,newSt=t.getAttribute('data-imgstyle');var od=imgDefaults(oldSt),nd=imgDefaults(newSt);IMGSAMPFIELDS.forEach(function(k){if(!IMGCFG[k]||IMGCFG[k]===od[k])IMGCFG[k]=nd[k];});IMGCFG.style=newSt;imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgmodel')){syncImgForm();IMGCFG.model=t.getAttribute('data-imgmodel');imgCfgSave();renderOverlay();return;}
+      if(t.getAttribute('data-imgcount')){syncImgForm();IMGCFG.count=Math.max(1,Math.min(6,parseInt(t.getAttribute('data-imgcount'),10)||1));imgCfgSave();renderOverlay();return;}
+      if(t.getAttribute('data-imgcam')){syncImgForm();IMGCFG.cam=t.getAttribute('data-imgcam');imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgloretog')!=null&&t.getAttribute('data-imgloretog')!==''){syncImgForm();var it=+t.getAttribute('data-imgloretog');if(IMGLORE[it])IMGLORE[it].on=(IMGLORE[it].on===false);imgLoreSave();renderOverlay();return;}
       if(t.getAttribute('data-imgloredel')!=null&&t.getAttribute('data-imgloredel')!==''){syncImgForm();var idl=+t.getAttribute('data-imgloredel');IMGLORE.splice(idl,1);imgLoreSave();renderOverlay();return;}
       if(t.getAttribute('data-cat')){var ncat=t.getAttribute('data-cat');if(ncat===S.codexCat)return;var corder=[].map.call(document.querySelectorAll('[data-cat]'),function(x){return x.getAttribute('data-cat');});var cpo=document.getElementById('zjCatPill');var cpr=cpo&&cpo.getBoundingClientRect();var epo=document.getElementById('zjEntPill');var epr=epo&&epo.getBoundingClientRect();
