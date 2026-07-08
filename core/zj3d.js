@@ -3004,6 +3004,7 @@
   var bHud = { wrap: null, goldChip: null, viewBtn: null, trayBtn: null, tray: null, tabsEl: null, listEl: null, ghostBar: null, selBar: null, tab: 0, thumbQ: null };
   function ensureBuildHud(host) {
     if (bHud.wrap && bHud.wrap.parentNode === hud) return;
+    bHud._openedSession = false; // 新建/重建 HUD 时复位，好让「进营造自动弹清单」对新托盘重新生效
     var w = document.createElement('div');
     w.style.cssText = 'position:absolute;inset:0;pointer-events:none';
     // 国库
@@ -3183,7 +3184,10 @@
       bHud.reportBtn.style.display = (on && lc > 0) ? 'block' : 'none';
       bHud.reportBtn.textContent = isTouch() ? ('奏报·' + lc + '（发AI）') : ('奏报·' + lc + '（发送给AI）');
     }
-    if (!on) { bHud.tray.style.display = 'none'; }
+    /* 一进营造（本会话内 inBuild 首次成立）就自动弹出建造清单，让人一眼看出这是盖房子的游戏；
+       离开营造(on=false)复位，下次再进会重新弹出。用户在营造中手动收起后不会再被强开。抗城景加载时的 on 抖动。 */
+    if (on) { if (!bHud._openedSession) { bHud._openedSession = true; bHud.tray.style.display = 'block'; try { fillTray(); } catch (e) {} } }
+    else { bHud._openedSession = false; bHud.tray.style.display = 'none'; }
     bHud.viewBtn.style.display = (Z.expanded && (Z.mode === 'city' || Z.intPlan)) ? 'block' : 'none';
     bHud.viewBtn.textContent = Z.intPlan ? '出 · 回城' : (Z.view === 'build' ? '游历' : '营造');
     // 操作条贴近底部，托盘展开时抬升避让
@@ -4379,7 +4383,7 @@
     try { localStorage.setItem('zj3d_expand', Z.expanded ? '1' : '0'); } catch (e) { }
     Z.camDist = Z.mode === 'interior' ? 7 : 12;
     if (window.ZJ3D_onExpand) window.ZJ3D_onExpand();
-    updateHud();
+    updateHud(); if (bHud.wrap) updateBuildHud();
   };
   Z.setLow = function (on) { PERF.low = !!on; perfSave(); applyPerf(); if (Z._lowBtn) Z._lowBtn(); };
   Z.isLow = function () { return PERF.low; };
