@@ -967,7 +967,7 @@ function profSave(){try{localStorage.setItem(PROFK,JSON.stringify(PROFILES));}ca
 function apiReady(){var c=apiCur();return !!(c.key&&c.model);}
 /* ---------------- 生图设置（接口/采样/提示词预设/参考图/生图世界书；仅存本机） ---------------- */
 var IMGCFGKEY='zhouji_imgcfg_v1';
-var IMGCFG={on:true,auto:false,url:'',key:'',model:'',style:'openai',sampler:'',noise:'',steps:'',guidance:'',rescale:'',width:'',height:'',size:'1024x1024',seed:'-1',pos:'',neg:'',charRef:false,refImg:null,comfyWorkflow:'',count:1,cam:'auto',disp:'lg',grid:'auto'};
+var IMGCFG={on:true,auto:false,url:'',key:'',model:'',style:'novelai',sampler:'',noise:'',steps:'',guidance:'',rescale:'',width:'',height:'',size:'1024x1024',seed:'-1',pos:'',neg:'',charRef:false,refImg:null,comfyWorkflow:'',count:1,cam:'auto',disp:'lg',grid:'auto'};
 var IMGCAM={auto:{label:'自动',frag:''},cinematic:{label:'电影感',frag:'cinematic film still, dramatic volumetric lighting, shallow depth of field, anamorphic widescreen, color graded, movie scene'},illust:{label:'插画',frag:'detailed anime illustration, painterly, vivid colors, clean lineart, official art'},ink:{label:'水墨',frag:'traditional chinese ink wash painting, sumi-e, rice paper texture, flowing brushstrokes'},fpv:{label:'第一人称',frag:'first-person POV, seen through the protagonist own eyes, immersive, own hands and sleeves visible in frame'},god:{label:'上帝视角',frag:"bird's-eye view, high-angle top-down aerial perspective, overhead, vast scale"},real:{label:'写实',frag:'photorealistic, ultra realistic, cinematic photography, detailed skin and fabric, natural light'}};
 try{var _ic=JSON.parse(localStorage.getItem(IMGCFGKEY)||'null');if(_ic&&typeof _ic==='object')Object.assign(IMGCFG,_ic);}catch(e){}
 try{if(!IMGCFG.url&&!IMGCFG.key&&!IMGCFG.model&&API.img&&(API.img.url||API.img.key||API.img.model)){IMGCFG.url=API.img.url||'';IMGCFG.key=API.img.key||'';IMGCFG.model=API.img.model||'';}}catch(e){}
@@ -2401,6 +2401,7 @@ function savesBody(){
     +'<div style="font-size:12px;color:var(--mut);line-height:1.8;margin-bottom:12px">对话·存档·太史长卷·预设·世界书·字体与接口配置皆只存于此浏览器。换设备或清数据前先备份。</div>'
     +'<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'
       +'<button data-act="expAll" class="gbtn btn" style="font-size:13px;letter-spacing:.14em;padding:9px 20px;border-radius:10px">⤓ 导出全部数据备份</button>'
+      +'<label class="gbtn btn" style="cursor:pointer;font-size:13px;letter-spacing:.14em;padding:9px 20px;border-radius:10px">⤒ 一键导入全部数据<input id="zjImportAll" type="file" accept=".json,application/json" style="display:none"></label>'
       +'<button data-act="expChat" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 15px">导出聊天记录</button>'
       +'<button data-act="bookExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 15px;color:var(--gold2)">成书导出</button>'
       +'<button data-act="memExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 15px">导出记忆长卷</button>'
@@ -2886,7 +2887,8 @@ function fontPane(){
    +'<button data-act="memExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出记忆长卷</button>'
    +'<button data-act="loreExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出世界书</button>'
    +'<button data-act="pExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出预设</button>'
-   +'<button data-act="expAll" class="gbtn btn" style="font-size:12.5px;letter-spacing:.15em;padding:8px 20px;border-radius:10px">导出全部数据</button></div>'
+   +'<button data-act="expAll" class="gbtn btn" style="font-size:12.5px;letter-spacing:.15em;padding:8px 20px;border-radius:10px">⤓ 导出全部数据</button>'
+   +'<label class="gbtn btn" style="cursor:pointer;font-size:12.5px;letter-spacing:.15em;padding:8px 20px;border-radius:10px">⤒ 一键导入全部数据<input id="zjImportAll" type="file" accept=".json,application/json" style="display:none"></label></div>'
    +'<div class="kai" style="font-size:19px;color:#c9705a;letter-spacing:.15em;margin:34px 0 10px">清除本机数据</div>'
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键抹掉此浏览器里的全部游戏数据：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体、AI 接口配置、三维天下营造记录与全部缓存。不可恢复，清除后页面自动重载如初见。</div>'
    +(S.wipeArm
@@ -3198,7 +3200,7 @@ function imgPane(){
     +(_dispRestrict?'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:5px">当前每轮 '+(parseInt(C.count,10)||1)+' 张，手机上多图固定小图并排；<b style="color:var(--gold3)">改回每轮 1 张</b>才可选大 / 中（电脑网页版不受限）。</div>':'')
     +lbl('多图并排密度（那一轮 2 张以上时）')+seg([['auto','自动'],['c2','一排两张'],['c3','一排三张·迷你']],'imggrid',C.grid||'auto')
     +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:5px">自动：2–4 张一排两张，<b style="color:var(--gold3)">5–6 张一排三张（迷你）</b>。也可固定为两张或迷你三张。</div>'
-    +lbl('接口风格')+seg([['openai','OpenAI 兼容'],['novelai','NovelAI 官方'],['sd','SD · A1111'],['comfyui','本地 ComfyUI'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')+(C.style==='comfyui'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">本地 ComfyUI：启动时加 <b style="color:#e8b77d">--enable-cors-header "*"</b> 允许网页调用（127.0.0.1 不受 https 混合内容限制）。「接口地址」填 <b style="color:#e8b77d">http://127.0.0.1:8188</b>，「模型」填 checkpoint 文件名（如 sd_xl_base_1.0.safetensors），采样器/步数/CFG/尺寸/种子照常填。<br>进阶：下方可粘贴你自己的 <b style="color:#e8b77d">API 格式</b>工作流（ComfyUI 里 Save (API Format) 导出），用 %prompt% %negative% %seed% %steps% %cfg% %width% %height% %sampler% %scheduler% %ckpt% 作占位符；留空则用内置默认 txt2img。若最新 Chrome 因 Private Network Access 拦截，可改用本地打开游戏。</div><textarea id="zjImgComfyWf" rows="4" placeholder="（可选）粘贴 ComfyUI API 格式工作流 JSON，含 %prompt% 等占位符" style="width:100%;margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(201,160,99,.3);color:var(--ink2);font-size:11px;font-family:monospace;line-height:1.5;padding:8px;resize:vertical">'+esc(C.comfyWorkflow||'')+'</textarea>':'')
+    +lbl('接口风格')+seg([['novelai','NovelAI 官方'],['comfyui','本地 ComfyUI'],['openai','OpenAI 兼容'],['sd','SD · A1111'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')+(C.style==='comfyui'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">本地 ComfyUI：启动时加 <b style="color:#e8b77d">--enable-cors-header "*"</b> 允许网页调用（127.0.0.1 不受 https 混合内容限制）。「接口地址」填 <b style="color:#e8b77d">http://127.0.0.1:8188</b>，「模型」填 checkpoint 文件名（如 sd_xl_base_1.0.safetensors），采样器/步数/CFG/尺寸/种子照常填。<br>进阶：下方可粘贴你自己的 <b style="color:#e8b77d">API 格式</b>工作流（ComfyUI 里 Save (API Format) 导出），用 %prompt% %negative% %seed% %steps% %cfg% %width% %height% %sampler% %scheduler% %ckpt% 作占位符；留空则用内置默认 txt2img。若最新 Chrome 因 Private Network Access 拦截，可改用本地打开游戏。</div><textarea id="zjImgComfyWf" rows="4" placeholder="（可选）粘贴 ComfyUI API 格式工作流 JSON，含 %prompt% 等占位符" style="width:100%;margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(201,160,99,.3);color:var(--ink2);font-size:11px;font-family:monospace;line-height:1.5;padding:8px;resize:vertical">'+esc(C.comfyWorkflow||'')+'</textarea>':'')
     +(C.style==='novelai'?'<div style="border:1px solid rgba(201,160,99,.32);border-radius:12px;padding:12px 13px;margin-top:14px;background:rgba(255,255,255,.015)">'+'<div style="font-size:12px;letter-spacing:.22em;color:var(--gold);margin-bottom:7px">接口地址</div>'+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="粘贴你的 Worker 网址（找不到 Cloudflare 链接？用下面的懒人拼网址）">'+'<div style="border-top:1px dashed rgba(201,160,99,.28);margin:13px 0 11px"></div>'+'<div style="font-size:12.5px;color:var(--grn2);letter-spacing:.03em;margin-bottom:8px">\u270e 懒人拼网址（懒得找那条长链接，就填下面的子域名/GitHub 用户名框就好）</div>'+'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--mut2)">https://<input id="zjNaiName" placeholder="nai-proxy（默认留空）" autocomplete="off" spellcheck="false" style="width:150px;background:rgba(255,255,255,.04);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:6px 8px;font-size:13px">.<input id="zjNaiSub" placeholder="子域名/GitHub用户名" autocomplete="off" spellcheck="false" style="width:150px;background:rgba(255,255,255,.04);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:6px 8px;font-size:13px">.workers.dev</div>'+'<div style="font-size:11px;color:var(--mut);margin-top:8px;line-height:1.75">左框＝Worker 名，部署没改名就留空（默认 <b style="color:var(--gold3)">nai-proxy</b>）；右框＝你的 <b style="color:var(--gold3)">workers.dev 子域名</b>（就是 <b>xxx</b>.workers.dev 里的 xxx，部署成功页 / Cloudflare 面板右上角可见；很多人与 GitHub 用户名一致，可先按用户名试）。填好自动写进上面「接口地址」。</div>'+'</div>':lbl('接口地址')+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="如 https://api.openai.com/v1 或 http://127.0.0.1:7860">')
     +lbl('密钥（本地 SD 可留空）')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(C.key)+'" placeholder="sk-…">'
     +lbl('模型')
@@ -3548,6 +3550,24 @@ root.addEventListener('change',function(e){
     var f=e.target.files[0];var rd=new FileReader();
     rd.onload=function(){importPresetText(String(rd.result||''),f.name.replace(/\.[^.]+$/,''));};
     rd.readAsText(f);
+  }
+  if(e.target&&e.target.id==='zjImportAll'&&e.target.files&&e.target.files[0]){
+    var af=e.target.files[0];var ard=new FileReader();
+    ard.onload=function(){var okA=false;
+      try{var ao=JSON.parse(String(ard.result||''));
+        if(ao&&ao.data&&typeof ao.data==='object'&&(ao.__type==='zhouji-full-backup'||Object.keys(ao.data).some(function(k){return /^zhouji_/.test(k);}))){
+          if(!confirm('导入将用此备份覆盖本浏览器当前的全部数据（对话 / 存档 / 记忆 / 世界书 / 预设 / 接口与显示配置），不可撤销。确定继续？')){af.value='';return;}
+          var rm=[];for(var i=0;i<localStorage.length;i++){var kk=localStorage.key(i);if(kk&&/^(zhouji_|zj3d_|zj_)/.test(kk))rm.push(kk);}
+          rm.forEach(function(kk){try{localStorage.removeItem(kk);}catch(e2){}});
+          Object.keys(ao.data).forEach(function(kk){try{localStorage.setItem(kk,ao.data[kk]);}catch(e2){}});
+          okA=true;
+        }
+      }catch(e3){}
+      if(okA){alert('全部数据已导入，即将重载页面。');location.reload();}
+      else{alert('导入失败：这不是有效的「周纪全部数据备份」文件。');}
+    };
+    ard.readAsText(af);
+    return;
   }
 });
 root.addEventListener('focusout',function(){if(softPend){softPend=false;setTimeout(function(){var ae=document.activeElement;if(!(ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='INPUT')))render();},120);}});
