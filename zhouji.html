@@ -1039,13 +1039,23 @@ function zipExtractPng(buf){
   if(u8.length>8&&u8[0]===0x89&&u8[1]===0x50&&u8[2]===0x4E&&u8[3]===0x47)return Promise.resolve(new Blob([u8],{type:'image/png'}));
   if(!(u8[0]===0x50&&u8[1]===0x4B&&u8[2]===0x03&&u8[3]===0x04))return Promise.reject(new Error('返回既非 PNG 亦非 zip（可能是错误信息或被拦截）'));
   var dv=new DataView(buf);
-  var method=dv.getUint16(8,true),compSize=dv.getUint32(18,true),nameLen=dv.getUint16(26,true),extraLen=dv.getUint16(28,true);
-  var start=30+nameLen+extraLen,dataEnd;
-  if(compSize>0){dataEnd=start+compSize;}
-  else{var eocd=-1;for(var i=u8.length-22;i>=0;i--){if(u8[i]===0x50&&u8[i+1]===0x4B&&u8[i+2]===0x05&&u8[i+3]===0x06){eocd=i;break;}}dataEnd=eocd>=0?dv.getUint32(eocd+16,true):u8.length;}
-  var data=u8.subarray(start,dataEnd);
+  /* 以中央目录为准取压缩法与精确长度：NAI 的 zip 为流式写入（bit3 数据描述符），
+     本地文件头里长度为 0；若按「切到目录区为止」会把尾部数据描述符一并喂给解压器，
+     Chrome 报 Junk found after end of compressed data（并经 Response 转成 Failed to fetch） */
+  var method,start,dataEnd;
+  var eocd=-1;for(var i=u8.length-22;i>=0;i--){if(u8[i]===0x50&&u8[i+1]===0x4B&&u8[i+2]===0x05&&u8[i+3]===0x06){eocd=i;break;}}
+  if(eocd>=0){var cd=dv.getUint32(eocd+16,true);
+    if(cd+46<=u8.length&&dv.getUint32(cd,true)===0x02014b50){
+      method=dv.getUint16(cd+10,true);
+      var csize=dv.getUint32(cd+20,true),lho=dv.getUint32(cd+42,true);
+      var nl=dv.getUint16(lho+26,true),el=dv.getUint16(lho+28,true);
+      start=lho+30+nl+el;dataEnd=start+csize;}}
+  if(start==null){method=dv.getUint16(8,true);
+    var nameLen=dv.getUint16(26,true),extraLen=dv.getUint16(28,true);
+    start=30+nameLen+extraLen;var cs0=dv.getUint32(18,true);dataEnd=cs0>0?start+cs0:u8.length;}
+  var data=u8.subarray(start,Math.min(dataEnd,u8.length));
   if(method===0)return Promise.resolve(new Blob([data],{type:'image/png'}));
-  if(method===8&&typeof DecompressionStream!=='undefined'){var ds=new DecompressionStream('deflate-raw');var wr=ds.writable.getWriter();wr.write(data);wr.close();return new Response(ds.readable).arrayBuffer().then(function(ab){return new Blob([ab],{type:'image/png'});});}
+  if(method===8&&typeof DecompressionStream!=='undefined'){var ds=new DecompressionStream('deflate-raw');var wr=ds.writable.getWriter();wr.write(data)['catch'](function(){});wr.close()['catch'](function(){});return new Response(ds.readable).arrayBuffer().then(function(ab){return new Blob([ab],{type:'image/png'});},function(e){throw new Error('zip 解压失败：'+String(e&&e.message||e).slice(0,80));});}
   return Promise.reject(new Error('zip 压缩方式不支持（method '+method+'）'));
 }
 function imgFetchBlob(url,hdr,body){
