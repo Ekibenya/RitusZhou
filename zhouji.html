@@ -934,7 +934,7 @@ function profSave(){try{localStorage.setItem(PROFK,JSON.stringify(PROFILES));}ca
 function apiReady(){var c=apiCur();return !!(c.key&&c.model);}
 /* ---------------- 生图设置（接口/采样/提示词预设/参考图/生图世界书；仅存本机） ---------------- */
 var IMGCFGKEY='zhouji_imgcfg_v1';
-var IMGCFG={on:true,auto:false,url:'',key:'',model:'',style:'openai',sampler:'',noise:'',steps:'',guidance:'',rescale:'',width:'',height:'',size:'1024x1024',seed:'-1',pos:'',neg:'',charRef:false,refImg:null};
+var IMGCFG={on:true,auto:false,url:'',key:'',model:'',style:'openai',sampler:'',noise:'',steps:'',guidance:'',rescale:'',width:'',height:'',size:'1024x1024',seed:'-1',pos:'',neg:'',charRef:false,refImg:null,comfyWorkflow:''};
 try{var _ic=JSON.parse(localStorage.getItem(IMGCFGKEY)||'null');if(_ic&&typeof _ic==='object')Object.assign(IMGCFG,_ic);}catch(e){}
 try{if(!IMGCFG.url&&!IMGCFG.key&&!IMGCFG.model&&API.img&&(API.img.url||API.img.key||API.img.model)){IMGCFG.url=API.img.url||'';IMGCFG.key=API.img.key||'';IMGCFG.model=API.img.model||'';}}catch(e){}
 function imgCfgSave(){try{localStorage.setItem(IMGCFGKEY,JSON.stringify(IMGCFG));}catch(e){}}
@@ -954,7 +954,7 @@ export default {
 var IMGLOREKEY='zhouji_imglore_v1';
 var IMGLORE=[];try{IMGLORE=JSON.parse(localStorage.getItem(IMGLOREKEY)||'[]')||[];}catch(e){}if(!Array.isArray(IMGLORE))IMGLORE=[];
 function imgLoreSave(){try{localStorage.setItem(IMGLOREKEY,JSON.stringify(IMGLORE));}catch(e){}}
-function imgReady(){if(!IMGCFG.on)return false;if(IMGCFG.style==='sd')return !!IMGCFG.url;if(IMGCFG.style==='novelai')return !!(IMGCFG.url&&IMGCFG.key);return !!(IMGCFG.key&&IMGCFG.model);}
+function imgReady(){if(!IMGCFG.on)return false;if(IMGCFG.style==='sd'||IMGCFG.style==='comfyui')return !!IMGCFG.url;if(IMGCFG.style==='novelai')return !!(IMGCFG.url&&IMGCFG.key);return !!(IMGCFG.key&&IMGCFG.model);}
 function imgBase(){return String(IMGCFG.url||'https://api.openai.com/v1').trim().replace(/\/+$/,'');}
 function imgActiveLore(text){var out=[];(IMGLORE||[]).forEach(function(e){if(e.on===false||!e.content)return;var ks=e.keys||[];if(!ks.length||ks.some(function(k){return k&&text.indexOf(k)>=0;}))out.push(e.content);});return out.join(', ');}
 function imgSize(){var w=parseInt(IMGCFG.width,10)||0,h=parseInt(IMGCFG.height,10)||0;if(w&&h)return w+'x'+h;return IMGCFG.size||'1024x1024';}
@@ -1019,8 +1019,50 @@ function imgFetchBlob(url,hdr,body){
     return r.arrayBuffer();
   }).then(function(buf){return zipExtractPng(buf);});
 }
+function comfyBuildWorkflow(pos,neg){
+  var C=IMGCFG,w=parseInt(C.width,10)||512,h=parseInt(C.height,10)||512,seed=imgSeed();if(seed<0)seed=Math.floor(Math.random()*1e15);
+  var steps=parseInt(C.steps,10)||20,cfg=parseFloat(C.guidance)||7,sampler=C.sampler||'euler',sched=C.noise||'normal',ckpt=C.model||'';
+  if(C.comfyWorkflow&&C.comfyWorkflow.trim()){
+    var t=C.comfyWorkflow,sub=function(k,v){t=t.split(k).join(String(v).replace(/\\/g,'\\\\').replace(/"/g,'\\"'));};
+    sub('%prompt%',pos);sub('%negative%',neg||'');sub('%seed%',seed);sub('%steps%',steps);sub('%cfg%',cfg);sub('%width%',w);sub('%height%',h);sub('%sampler%',sampler);sub('%scheduler%',sched);sub('%ckpt%',ckpt);
+    return JSON.parse(t);
+  }
+  return {"3":{"class_type":"KSampler","inputs":{"seed":seed,"steps":steps,"cfg":cfg,"sampler_name":sampler,"scheduler":sched,"denoise":1,"model":["4",0],"positive":["6",0],"negative":["7",0],"latent_image":["5",0]}},
+    "4":{"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":ckpt}},
+    "5":{"class_type":"EmptyLatentImage","inputs":{"width":w,"height":h,"batch_size":1}},
+    "6":{"class_type":"CLIPTextEncode","inputs":{"text":pos,"clip":["4",1]}},
+    "7":{"class_type":"CLIPTextEncode","inputs":{"text":neg||"","clip":["4",1]}},
+    "8":{"class_type":"VAEDecode","inputs":{"samples":["3",0],"vae":["4",2]}},
+    "9":{"class_type":"SaveImage","inputs":{"filename_prefix":"zhouji","images":["8",0]}}};
+}
+function comfyGenerate(pos,neg){
+  var base=imgBase(),cid='zhouji_'+Date.now()+'_'+Math.floor(Math.random()*100000),wf;
+  try{wf=comfyBuildWorkflow(pos,neg);}catch(e){return Promise.reject(new Error('ComfyUI 工作流 JSON 有误：'+(e&&e.message||e)));}
+  return fetch(base+'/prompt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:wf,client_id:cid})}).then(function(r){
+    if(!r.ok)return r.text().then(function(t){throw new Error('ComfyUI /prompt HTTP '+r.status+'：'+String(t).slice(0,200));});
+    return r.json();
+  }).then(function(j){
+    var pid=j&&j.prompt_id;if(!pid)throw new Error('ComfyUI 未返回 prompt_id（工作流可能有误）');
+    return new Promise(function(resolve,reject){
+      var tries=0,MAX=160;
+      (function poll(){
+        if(++tries>MAX){reject(new Error('ComfyUI 生成超时（约3分钟未出图）'));return;}
+        fetch(base+'/history/'+pid).then(function(r){return r.ok?r.json():{};}).then(function(hh){
+          var rec=hh&&hh[pid];
+          if(rec&&rec.outputs){
+            var img=null;Object.keys(rec.outputs).forEach(function(nid){var o=rec.outputs[nid];if(o&&o.images&&o.images[0]&&!img)img=o.images[0];});
+            if(img){var q='/view?filename='+encodeURIComponent(img.filename)+'&subfolder='+encodeURIComponent(img.subfolder||'')+'&type='+encodeURIComponent(img.type||'output');
+              fetch(base+q).then(function(r){if(!r.ok)throw new Error('ComfyUI 取图 HTTP '+r.status);return r.blob();}).then(resolve,reject);return;}
+          }
+          setTimeout(poll,1200);
+        },function(){setTimeout(poll,1200);});
+      })();
+    });
+  });
+}
 function imgGenBlob(pos,neg){
   var hdr={'Content-Type':'application/json'};if(IMGCFG.key)hdr['Authorization']='Bearer '+IMGCFG.key;
+  if(IMGCFG.style==='comfyui')return comfyGenerate(pos,neg);
   if(IMGCFG.style==='novelai')return imgFetchBlob(imgEndpoint(),hdr,imgBuildBody(pos,neg));
   return apiHttp(imgEndpoint(),{method:'POST',headers:hdr,body:JSON.stringify(imgBuildBody(pos,neg))}).then(function(j){
     var r=imgParseResult(j);
@@ -2898,6 +2940,7 @@ function syncImgForm(){
   if((m=v('zjImgSeed'))!=null)IMGCFG.seed=m;
   if((m=v('zjImgPos'))!=null)IMGCFG.pos=m;
   if((m=v('zjImgNeg'))!=null)IMGCFG.neg=m;
+  var cwf=document.getElementById('zjImgComfyWf');if(cwf)IMGCFG.comfyWorkflow=cwf.value;
   var sz=document.getElementById('zjImgSize');if(sz)IMGCFG.size=sz.value;
   var a;if((a=ck('zjImgOn'))!=null)IMGCFG.on=a;if((a=ck('zjImgAuto'))!=null)IMGCFG.auto=a;if((a=ck('zjImgCharRef'))!=null)IMGCFG.charRef=a;
   [].forEach.call(document.querySelectorAll('[data-imglorek]'),function(el){var i=+el.getAttribute('data-imglorek');if(IMGLORE[i])IMGLORE[i].keys=el.value.split(/[、,，;；]/).map(function(x){return x.trim();}).filter(Boolean);});
@@ -2943,7 +2986,7 @@ function imgPane(){
     +'<div style="font-size:12.5px;line-height:1.85;color:var(--ink2)">给每幕正文配 AI 插画。接口、密钥与参数只存本机浏览器。开「每幕自动生图」后每出一幕自动作画，并<b style="color:var(--gold2)">检测本轮图是否真出来、失败自动重试</b>。</div>'
     +tog('zjImgOn',C.on,'启用生图功能')
     +tog('zjImgAuto',C.auto,'每幕自动生图（关则手动点正文下的「✦ 绘此幕」）')
-    +lbl('接口风格')+seg([['openai','OpenAI 兼容'],['novelai','NovelAI 官方'],['sd','SD · A1111'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')
+    +lbl('接口风格')+seg([['openai','OpenAI 兼容'],['novelai','NovelAI 官方'],['sd','SD · A1111'],['comfyui','本地 ComfyUI'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')+(C.style==='comfyui'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">本地 ComfyUI：启动时加 <b style="color:#e8b77d">--enable-cors-header "*"</b> 允许网页调用（127.0.0.1 不受 https 混合内容限制）。「接口地址」填 <b style="color:#e8b77d">http://127.0.0.1:8188</b>，「模型」填 checkpoint 文件名（如 sd_xl_base_1.0.safetensors），采样器/步数/CFG/尺寸/种子照常填。<br>进阶：下方可粘贴你自己的 <b style="color:#e8b77d">API 格式</b>工作流（ComfyUI 里 Save (API Format) 导出），用 %prompt% %negative% %seed% %steps% %cfg% %width% %height% %sampler% %scheduler% %ckpt% 作占位符；留空则用内置默认 txt2img。若最新 Chrome 因 Private Network Access 拦截，可改用本地打开游戏。</div><textarea id="zjImgComfyWf" rows="4" placeholder="（可选）粘贴 ComfyUI API 格式工作流 JSON，含 %prompt% 等占位符" style="width:100%;margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(201,160,99,.3);color:var(--ink2);font-size:11px;font-family:monospace;line-height:1.5;padding:8px;resize:vertical">'+esc(C.comfyWorkflow||'')+'</textarea>':'')
     +lbl('接口地址')+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="如 https://api.openai.com/v1 或 http://127.0.0.1:7860">'
     +lbl('密钥（本地 SD 可留空）')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(C.key)+'" placeholder="sk-…">'
     +lbl('模型')+'<input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="如 dall-e-3 / gpt-image-1 / nai-diffusion-3 / flux">'
