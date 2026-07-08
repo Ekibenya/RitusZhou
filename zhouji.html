@@ -938,6 +938,18 @@ var IMGCFG={on:true,auto:false,url:'',key:'',model:'',style:'openai',sampler:'',
 try{var _ic=JSON.parse(localStorage.getItem(IMGCFGKEY)||'null');if(_ic&&typeof _ic==='object')Object.assign(IMGCFG,_ic);}catch(e){}
 try{if(!IMGCFG.url&&!IMGCFG.key&&!IMGCFG.model&&API.img&&(API.img.url||API.img.key||API.img.model)){IMGCFG.url=API.img.url||'';IMGCFG.key=API.img.key||'';IMGCFG.model=API.img.model||'';}}catch(e){}
 function imgCfgSave(){try{localStorage.setItem(IMGCFGKEY,JSON.stringify(IMGCFG));}catch(e){}}
+var IMGDEFAULTS={
+  openai:{sampler:'',noise:'',steps:'',guidance:'',rescale:'',width:'',height:'',size:'1024x1024'},
+  novelai:{sampler:'k_euler_ancestral',noise:'native',steps:'28',guidance:'5',rescale:'0',width:'832',height:'1216',size:''},
+  sd:{sampler:'DPM++ 2M',noise:'Karras',steps:'28',guidance:'7',rescale:'0',width:'768',height:'1152',size:''},
+  comfyui:{sampler:'dpmpp_2m',noise:'karras',steps:'25',guidance:'7',rescale:'',width:'768',height:'1024',size:''},
+  custom:{sampler:'euler',noise:'',steps:'28',guidance:'7',rescale:'',width:'',height:'',size:'1024x1024'}
+};
+function imgDefaults(st){return IMGDEFAULTS[st]||IMGDEFAULTS.openai;}
+var IMGSAMPFIELDS=['sampler','noise','steps','guidance','rescale','width','height','size'];
+function imgFillEmpty(st){var d=imgDefaults(st);IMGSAMPFIELDS.forEach(function(k){if(!IMGCFG[k])IMGCFG[k]=d[k];});}
+function imgResetDefaults(st){var d=imgDefaults(st);IMGSAMPFIELDS.forEach(function(k){IMGCFG[k]=d[k];});}
+try{imgFillEmpty(IMGCFG.style);imgCfgSave();}catch(e){}
 var NAI_WORKER_CODE=`const UPSTREAM='https://image.novelai.net';
 export default {
   async fetch(request){
@@ -2953,6 +2965,7 @@ function syncImgForm(){
   [].forEach.call(document.querySelectorAll('[data-imglorec]'),function(el){var i=+el.getAttribute('data-imglorec');if(IMGLORE[i])IMGLORE[i].content=el.value.trim();});
 }
 function imgPane(){
+  imgFillEmpty(IMGCFG.style);
   var C=IMGCFG;
   var inp='style="width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:9px 11px;font-size:13.5px" autocomplete="off" spellcheck="false"';
   var half='style="flex:1;min-width:120px;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:9px 11px;font-size:13.5px" inputmode="decimal"';
@@ -2996,7 +3009,7 @@ function imgPane(){
     +lbl('接口地址')+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="如 https://api.openai.com/v1 或 http://127.0.0.1:7860">'
     +lbl('密钥（本地 SD 可留空）')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(C.key)+'" placeholder="sk-…">'
     +lbl('模型')+'<input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="如 dall-e-3 / gpt-image-1 / nai-diffusion-3 / flux">'
-    +lbl('采样与画质')
+    +lbl('采样与画质')+'<div style="margin:-2px 0 7px"><span class="btn" data-act="imgReset" style="cursor:pointer;font-size:11.5px;color:var(--gold3);border:1px solid rgba(201,160,99,.3);border-radius:7px;padding:3px 11px">↺ 用本接口推荐默认</span><span style="font-size:11px;color:var(--mut);margin-left:8px">看不懂就用推荐值，直接能出图</span></div>'
     +'<div style="display:flex;gap:9px;flex-wrap:wrap"><input id="zjImgSampler" '+half+' value="'+esc(C.sampler)+'" placeholder="采样器 sampler 如 k_euler_ancestral"><input id="zjImgNoise" '+half+' value="'+esc(C.noise)+'" placeholder="噪点表 noise 如 karras/native"></div>'
     +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:9px"><input id="zjImgSteps" '+half+' value="'+esc(C.steps)+'" placeholder="步数 steps 如 28"><input id="zjImgGuid" '+half+' value="'+esc(C.guidance)+'" placeholder="提示词引导 guidance/CFG 如 5"><input id="zjImgRescale" '+half+' value="'+esc(C.rescale)+'" placeholder="引导重缩放 rescale 如 0.2"></div>'
     +lbl('尺寸')
@@ -3383,7 +3396,7 @@ root.addEventListener('click',function(e){
         return;}
       if(t.getAttribute('data-sugg')!=null&&t.getAttribute('data-sugg')!==''){if(S.thinking)return;var sgi=parseInt(t.getAttribute('data-sugg'),10);var sgt=(S.suggList||[])[sgi];if(sgt){S.suggList=null;sendText(S.dice?sgt+diceRoll():sgt);}return;}
       if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;renderOverlay();pillFlip('zjSetPill',spr);return;}
-      if(t.getAttribute('data-imgstyle')){syncImgForm();IMGCFG.style=t.getAttribute('data-imgstyle');imgCfgSave();renderOverlay();return;}
+      if(t.getAttribute('data-imgstyle')){syncImgForm();var oldSt=IMGCFG.style,newSt=t.getAttribute('data-imgstyle');var od=imgDefaults(oldSt),nd=imgDefaults(newSt);IMGSAMPFIELDS.forEach(function(k){if(!IMGCFG[k]||IMGCFG[k]===od[k])IMGCFG[k]=nd[k];});IMGCFG.style=newSt;imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgloretog')!=null&&t.getAttribute('data-imgloretog')!==''){syncImgForm();var it=+t.getAttribute('data-imgloretog');if(IMGLORE[it])IMGLORE[it].on=(IMGLORE[it].on===false);imgLoreSave();renderOverlay();return;}
       if(t.getAttribute('data-imgloredel')!=null&&t.getAttribute('data-imgloredel')!==''){syncImgForm();var idl=+t.getAttribute('data-imgloredel');IMGLORE.splice(idl,1);imgLoreSave();renderOverlay();return;}
       if(t.getAttribute('data-cat')){var ncat=t.getAttribute('data-cat');if(ncat===S.codexCat)return;var corder=[].map.call(document.querySelectorAll('[data-cat]'),function(x){return x.getAttribute('data-cat');});var cpo=document.getElementById('zjCatPill');var cpr=cpo&&cpo.getBoundingClientRect();var epo=document.getElementById('zjEntPill');var epr=epo&&epo.getBoundingClientRect();
@@ -3519,6 +3532,7 @@ root.addEventListener('click',function(e){
         drawWorld(dli);
         return;}
       else if(a==='imgCopyWorker'){var okc=function(){S.imgSetMsg='✓ 中转代码已复制！去 Cloudflare 新建 Worker 粘贴（见方法二步骤）';S.imgSetMsgC='var(--grn2)';renderOverlay();};var noc=function(){S.imgSetMsg='复制受限，请点下方「手动全选复制」展开后长按/右键复制';S.imgSetMsgC='var(--red2)';renderOverlay();};try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(NAI_WORKER_CODE).then(okc,noc);}else{noc();}}catch(e){noc();}return;}
+      else if(a==='imgReset'){syncImgForm();imgResetDefaults(IMGCFG.style);imgCfgSave();S.imgSetMsg='已填入本接口的推荐默认值';S.imgSetMsgC='var(--grn2)';renderOverlay();return;}
       else if(a==='imgSave'){syncImgForm();imgCfgSave();imgLoreSave();S.imgSetMsg='已保存。'+(imgReady()?'现在可生图了。':'还差接口地址/密钥/模型。');S.imgSetMsgC=imgReady()?'var(--grn2)':'var(--red2)';renderOverlay();return;}
       else if(a==='imgTest'){
         syncImgForm();imgCfgSave();imgLoreSave();
