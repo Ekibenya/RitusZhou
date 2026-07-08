@@ -1955,7 +1955,7 @@ function sidebar(){
   var worldRows=['纪年','时地','天气'].filter(function(k){return cw[k];}).map(function(k){return '<div style="display:flex;gap:12px;font-size:13px;line-height:1.7;margin:3px 0"><span style="flex:none;width:2.6em;color:var(--mut)">'+k+'</span><span style="flex:1;color:var(--ink2)">'+esc(cw[k])+'</span></div>';}).join('');
   var dashi=(cw['大势']||'').split(/[｜|]/).map(function(t){return t.trim();}).filter(Boolean).map(function(t){return '<div style="display:flex;gap:8px;font-size:12.5px;line-height:1.7;color:#b3a17d"><span style="color:var(--gold)">◦</span><span>'+esc(t)+'</span></div>';}).join('');
   function head(open,act,color,title,mark){return '<div class="btn" data-act="'+act+'" style="display:flex;align-items:center;gap:10px;padding:12px 15px;cursor:pointer"><span class="diamond" style="background:'+color+'"></span><span class="kai" style="font-size:16px;letter-spacing:.22em;color:var(--gold2);flex:1">'+title+'</span><span style="color:var(--mut);font-size:11px">'+(open?'▾ 收':'▸ 展')+'</span></div>';}
-  return '<div class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:transparent;zoom:'+FS+';padding-top:'+(isMobile()?'100px':'62px')+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
+  return '<div id="zjPanelScroll" class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:transparent;zoom:'+FS+';padding-top:'+(isMobile()?'100px':'62px')+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
     +'<div style="padding:15px 15px 3px"><div class="kai" style="font-size:19px;letter-spacing:.26em;color:var(--gold2);text-align:center">太史简 · 起居注</div><div class="slip" style="margin-top:9px"></div></div>'
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secC,'tgC','var(--red)','王 · 起 居',S.secC)
       +(S.secC?'<div class="fade" style="padding:0 15px 16px">'+charRows
@@ -3205,6 +3205,7 @@ function render(){
   var chipsEl=document.getElementById('zjChipsRow');
   var chipsL=chipsEl?chipsEl.scrollLeft:null;
   var pw=document.getElementById('zjWizScroll');var wizPos=pw?pw.scrollTop:null;
+  var ppnl=document.getElementById('zjPanelScroll');var panelPos=ppnl?ppnl.scrollTop:null;
   var noF=S._noFade;S._noFade=false;
   if(noF)root.classList.add('zjNoFade');
   root.innerHTML=view();
@@ -3214,6 +3215,7 @@ function render(){
   if(story){if(S._stayTop)story.scrollTop=0;else if(keepPos!=null)story.scrollTop=keepPos;else story.scrollTop=story.scrollHeight;S._stayTop=false;}
   if(chipsL){var chipsEl2=document.getElementById('zjChipsRow');if(chipsEl2)chipsEl2.scrollLeft=chipsL;}
   if(S._wizKeep){var pw2=document.getElementById('zjWizScroll');if(pw2&&wizPos!=null)pw2.scrollTop=wizPos;}S._wizKeep=false;
+  if(S._panelKeep){var ppnl2=document.getElementById('zjPanelScroll');if(ppnl2&&panelPos!=null)ppnl2.scrollTop=panelPos;}S._panelKeep=false;
   if(focused){var ta=document.getElementById('zjInput');if(ta){ta.focus();try{ta.setSelectionRange(selStart,selStart);}catch(e){}}}
   try{
     if(S.thinking&&!SBX.thinking){SBX.thinking=true;sbxEmit('GENERATION_STARTED',null);}
@@ -3588,11 +3590,11 @@ root.addEventListener('click',function(e){
         if(hsn&&hsn.role==='world'&&hsn.alts&&!S.thinking){var ix1=(hsn.altIx==null?hsn.alts.length-1:hsn.altIx);
           if(ix1<hsn.alts.length-1){hsn.altIx=ix1+1;hsn.text=hsn.alts[hsn.altIx];hsn.panel=parseMvu(hsn.text);typedSet.add(hsn);S._noFade=true;savePref();render();}
           else{reroll();}}}
-      else if(a==='tgC'){S.secC=!S.secC;render();}
-      else if(a==='tgN'){S.secN=!S.secN;render();}
-      else if(a==='tgW'){S.secW=!S.secW;render();}
-      else if(a==='tgG'){S.secG=!S.secG;render();}
-      else if(a==='tgA'){S.secA=!S.secA;render();}
+      else if(a==='tgC'){S.secC=!S.secC;S._noFade=true;S._panelKeep=true;render();}
+      else if(a==='tgN'){S.secN=!S.secN;S._noFade=true;S._panelKeep=true;render();}
+      else if(a==='tgW'){S.secW=!S.secW;S._noFade=true;S._panelKeep=true;render();}
+      else if(a==='tgG'){S.secG=!S.secG;S._noFade=true;S._panelKeep=true;render();}
+      else if(a==='tgA'){S.secA=!S.secA;S._noFade=true;S._panelKeep=true;render();}
       else if(a==='savenow'){saveNow();}
       else if(a==='editlore'){S.setTab='lore';S.overlay='set';renderOverlay();}
       else if(a==='openImgSet'){S.setTab='img';S.overlay='set';S.wipeArm=false;renderOverlay();return;}
