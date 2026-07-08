@@ -2044,6 +2044,7 @@ function storyPane(){
       +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此幕</div>'
       +(i>0&&!S.thinking?'<div class="btn" data-act="mDel" style="cursor:pointer;font-size:12px;padding:5px 14px;background:transparent;border:1px solid rgba(166,59,38,.4);border-radius:9px;color:#b06a55">删此幕</div>':'')
       +(i<S.history.length-1&&!S.thinking?'<div class="btn obtn" data-act="mRedo" style="font-size:12px;padding:5px 14px;color:#d9a06a;border-color:rgba(217,160,106,.4)">⟲ 由此幕重来</div>':'')
+      +(S.imgBusy===i?'<div style="font-size:12px;color:var(--gold);padding:5px 10px">✦ 绘制中…</div>':((imgReady()&&S.imgBusy==null)?'<div class="btn obtn" data-drawidx="'+i+'" style="font-size:12px;padding:5px 14px;color:var(--gold3)">'+(h.img?'⟲ 重绘插画':'✦ 绘此幕')+'</div>':''))
       +'</div>':'';
     if(S.msgEdit===i){
       paras='<div><textarea id="zjMsgEditBox" style="width:100%;min-height:170px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:var(--ink);font-size:14px;line-height:1.8;padding:11px 14px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
@@ -3460,6 +3461,7 @@ root.addEventListener('click',function(e){
   while(t&&t!==root){
     var a=t.getAttribute&&t.getAttribute('data-act');
     if(t.getAttribute){
+      if(t.getAttribute('data-drawidx')!=null&&t.getAttribute('data-drawidx')!==''){var _di=parseInt(t.getAttribute('data-drawidx'),10);if(S.imgBusy==null&&imgReady()&&S.history[_di]&&S.history[_di].role==='world')drawWorld(_di);return;}
       if(t.getAttribute('data-imgfull')&&t.getAttribute('src')){var _fu=t.getAttribute('src');var _ov=document.createElement('div');_ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.93);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:12px';var _im=document.createElement('img');_im.src=_fu;_im.style.cssText='max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6)';_ov.appendChild(_im);_ov.addEventListener('click',function(){_ov.remove();});document.body.appendChild(_ov);return;}
       if(t.getAttribute('data-start')){startOpening(parseInt(t.getAttribute('data-start'),10));return;}
       if(t.getAttribute('data-wz-era')!=null&&t.getAttribute('data-wz-era')!==''){S.wiz.era=parseInt(t.getAttribute('data-wz-era'),10);S._wizKeep=true;S._noFade=true;render();return;}
