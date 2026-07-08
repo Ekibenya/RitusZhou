@@ -960,12 +960,15 @@ export default {
   async fetch(request){
     const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'authorization, content-type','Access-Control-Max-Age':'86400'};
     if(request.method==='OPTIONS')return new Response(null,{headers:cors});
-    if(request.method!=='POST')return new Response('NovelAI proxy running.',{headers:cors});
+    if(request.method!=='POST')return new Response('NovelAI proxy is running. Point the game here.',{headers:cors});
     const url=new URL(request.url);
-    const upstream=await fetch(UPSTREAM+url.pathname+url.search,{method:'POST',headers:{'authorization':request.headers.get('authorization')||'','content-type':request.headers.get('content-type')||'application/json','accept':'application/x-zip-compressed'},body:await request.arrayBuffer()});
-    const headers=new Headers(upstream.headers);
-    for(const [k,v] of Object.entries(cors))headers.set(k,v);
-    return new Response(upstream.body,{status:upstream.status,headers});
+    try{
+      const upstream=await fetch(UPSTREAM+url.pathname+url.search,{method:'POST',headers:{'authorization':request.headers.get('authorization')||'','content-type':request.headers.get('content-type')||'application/json','accept':'application/x-zip-compressed'},body:await request.arrayBuffer()});
+      const buf=await upstream.arrayBuffer();
+      return new Response(buf,{status:upstream.status,headers:{...cors,'content-type':upstream.headers.get('content-type')||'application/octet-stream'}});
+    }catch(e){
+      return new Response('proxy error: '+((e&&e.message)||String(e)),{status:502,headers:cors});
+    }
   }
 };`;
 var IMGLOREKEY='zhouji_imglore_v1';
@@ -1048,7 +1051,7 @@ function zipExtractPng(buf){
 function imgFetchBlob(url,hdr,body){
   return fetch(url,{method:'POST',headers:hdr,body:JSON.stringify(body)}).then(function(r){
     if(!r.ok)return r.text().then(function(t){throw new Error('HTTP '+r.status+'：'+String(t).slice(0,180));});
-    return r.arrayBuffer();
+    return r.arrayBuffer().then(null,function(){throw new Error('图片下载到一半被切断——你的中转还是旧版脚本。请更新：一键部署的等 1 分钟自动更新后重试；手动粘贴的请用方法二最新代码覆盖后 Deploy。');});
   },function(e){
     /* fetch 直接被拒(Failed to fetch)＝跨域被拦/连不上，几乎必是「接口地址」没填对 */
     var hint='连不上「接口地址」（'+(e&&e.message||'Failed to fetch')+'）。NovelAI 必须经中转：请确认「接口地址」填的是你的 <b>Cloudflare Worker 网址</b>（形如 https://xxx.workers.dev），而不是 image.novelai.net——NAI 官网地址已写死在 Worker 里、游戏里不用填。若已是 Worker 网址仍报此错：多半网址有误、或 Worker 转发时抛异常（去 Cloudflare 看实时日志）。';
@@ -3643,7 +3646,7 @@ root.addEventListener('click',function(e){
         if(IMGCFG.style==='novelai'){
           /* 分段自检：先 GET 探中转（无预检，等价手动打开网页），再发真正的生图 POST */
           fetch(imgBase()+'/',{method:'GET'}).then(function(r){return r.text();}).then(function(t){
-            if(/proxy is running/i.test(t)){S.imgSetMsg='第①步通过：中转在线。正在生图（第②步）……';S.imgSetMsgC='var(--mut2)';renderOverlay();runGen();}
+            if(/proxy.*running/i.test(t)){S.imgSetMsg='第①步通过：中转在线。正在生图（第②步）……';S.imgSetMsgC='var(--mut2)';renderOverlay();runGen();}
             else{S.imgSetMsg='第①步失败：「接口地址」能连上，但它不是本游戏的 NAI 中转（返回内容不对，开头：'+String(t).replace(/\s+/g,' ').slice(0,60)+'…）。请确认填的是你部署的 Worker 网址。';S.imgSetMsgC='var(--red2)';renderOverlay();}
           },function(){S.imgSetMsg='第①步失败：这台浏览器根本连不到「接口地址」（连最简单的 GET 都不通）。可能：网址有误、此网络或浏览器插件拦截了 *.workers.dev。请试：换浏览器（Chrome 无痕）、关广告拦截/省流模式、换 Wi-Fi/流量。';S.imgSetMsgC='var(--red2)';renderOverlay();});
         }else runGen();
