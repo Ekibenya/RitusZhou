@@ -3117,6 +3117,10 @@ function imgPane(){
       ? seg([['nai-diffusion-4-5-full','V4.5 Full'],['nai-diffusion-4-5-curated','V4.5 Curated'],['nai-diffusion-4-full','V4 Full'],['nai-diffusion-3','V3（旧版）']],'imgmodel',C.model)
         +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:6px">点选即可，免打字免出错。<b style="color:#e8b77d">V4.5/V4 需 NAI Opus 订阅</b>；没订阅就选 <b style="color:var(--gold3)">V3（旧版）</b>。V3/V4 的请求体本游戏已自动区分。</div>'
         +'<details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px;color:var(--mut)">要填别的模型名？点这手动输入</summary><div style="margin-top:6px"><input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="手动填写 NAI 模型名"></div></details>'
+      : C.style==='comfyui'
+      ? '<div style="display:flex;gap:10px"><input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="checkpoint 文件名，或点右侧一键拉取"><button data-act="imgComfyModels" class="obtn btn" style="flex:none;font-size:13px;letter-spacing:.1em;padding:0 16px;white-space:nowrap">拉取模型</button></div>'
+        +((S.imgComfyModels&&S.imgComfyModels.length)?seg(S.imgComfyModels.map(function(m){return [m,m];}),'imgmodel',C.model):'')
+        +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:6px">点「拉取模型」自动列出你 ComfyUI 里的全部 checkpoint，点选即可（需先填好接口地址、且 ComfyUI 启动带 <b style="color:#e8b77d">--enable-cors-header "*"</b>）。</div>'
       : '<input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="如 dall-e-3 / gpt-image-1 / nai-diffusion-3 / flux">')
     +lbl('采样与画质')+'<div style="margin:-2px 0 7px"><span class="btn" data-act="imgReset" style="cursor:pointer;font-size:11.5px;color:var(--gold3);border:1px solid rgba(201,160,99,.3);border-radius:7px;padding:3px 11px">↺ 用本接口推荐默认</span><span style="font-size:11px;color:var(--mut);margin-left:8px">看不懂就用推荐值，直接能出图</span></div>'
     +'<div style="display:flex;gap:9px;flex-wrap:wrap"><input id="zjImgSampler" '+half+' value="'+esc(C.sampler)+'" placeholder="采样器 sampler 如 k_euler_ancestral"><input id="zjImgNoise" '+half+' value="'+esc(C.noise)+'" placeholder="噪点表 noise 如 karras/native"></div>'
@@ -3662,6 +3666,16 @@ root.addEventListener('click',function(e){
             else{S.imgSetMsg='第①步失败：「接口地址」能连上，但它不是本游戏的 NAI 中转（返回内容不对，开头：'+String(t).replace(/\s+/g,' ').slice(0,60)+'…）。请确认填的是你部署的 Worker 网址。';S.imgSetMsgC='var(--red2)';renderOverlay();}
           },function(){S.imgSetMsg='第①步失败：这台浏览器根本连不到「接口地址」（连最简单的 GET 都不通）。可能：网址有误、此网络或浏览器插件拦截了 *.workers.dev。请试：换浏览器（Chrome 无痕）、关广告拦截/省流模式、换 Wi-Fi/流量。';S.imgSetMsgC='var(--red2)';renderOverlay();});
         }else runGen();
+        return;}
+      else if(a==='imgComfyModels'){syncImgForm();
+        if(!IMGCFG.url){S.imgSetMsg='请先填 ComfyUI 接口地址（如 http://127.0.0.1:8188）';S.imgSetMsgC='var(--red2)';renderOverlay();return;}
+        S.imgSetMsg='正在拉取 ComfyUI 模型列表……';S.imgSetMsgC='var(--mut2)';renderOverlay();
+        fetch(imgBase()+'/object_info/CheckpointLoaderSimple').then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(j){
+          var arr=null;try{arr=j.CheckpointLoaderSimple.input.required.ckpt_name[0];}catch(e){}
+          if(arr&&arr.length){S.imgComfyModels=arr;if(!IMGCFG.model&&arr[0]){IMGCFG.model=arr[0];imgCfgSave();}S.imgSetMsg='已拉取 '+arr.length+' 个模型，下面点选即可';S.imgSetMsgC='var(--grn2)';}
+          else{S.imgSetMsg='没拉到 checkpoint（ComfyUI 的 models/checkpoints 里没有模型？）';S.imgSetMsgC='var(--red2)';}
+          renderOverlay();
+        })['catch'](function(err){S.imgSetMsg='拉取失败：'+String(err&&err.message||err).slice(0,130)+'（确认 ComfyUI 已启动、接口地址对、且启动参数带 --enable-cors-header "*"）';S.imgSetMsgC='var(--red2)';renderOverlay();});
         return;}
       else if(a==='imgLoreAdd'){syncImgForm();IMGLORE.push({keys:[],content:'',on:true});imgLoreSave();renderOverlay();return;}
       else if(a==='imgLoreDel'){return;}
