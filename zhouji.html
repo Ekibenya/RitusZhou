@@ -1581,6 +1581,11 @@ function advanceLocal(base,text){
         live.text=full;
         if(!started){started=true;S.thinking=false;S.aiLive=true;S.history=base.concat([{role:'user',text:text},live]);render();lastR=Date.now();}
         else if(Date.now()-lastR>650){lastR=Date.now();renderSoft();}
+        /* 早启生图：正文还在流式输出时，一旦场景文字够了就先动手画，不等整段写完，抵消生图延迟 */
+        if(started&&IMGCFG.on&&IMGCFG.auto&&imgReady()&&!live._earlyDraw&&S.imgBusy==null){
+          var _nar=stripCoT(stripMvu(full)).replace(/^【[^】]*】/,'').replace(/\s/g,'');
+          if(_nar.length>=90){live._earlyDraw=true;var _lx=S.history.indexOf(live);if(_lx>=0)drawWorld(_lx);}
+        }
       }).then(function(t){
         if(!t||!String(t).trim())throw new Error('接口返回了空回复');
         return ensureComplete(sys,msgs,t).then(function(t3){
