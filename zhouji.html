@@ -166,6 +166,8 @@ function dlgApply(prev){
   });
 }
 function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return t.split(/\n+/).filter(Boolean).map(function(p){return '<p style="margin:0 0 14px;font-size:16px;line-height:2.05;color:var(--ink);text-align:justify">'+dlgSpan(esc(p))+'</p>';}).join('');}
+/* iOS 风描边 chevron 图标（替代会被移动端渲染成彩色 emoji 的实心三角字符），d<0 左 / d>0 右 */
+function chev(d,sz){var s=sz||11;return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px">'+(d<0?'<path d="M15 4 7 12 15 20"/>':'<path d="M9 4 17 12 9 20"/>')+'</svg>';}
 function ensureTyping(){
   if(!TYPE.msg||typedSet.has(TYPE.msg)){return;}
   if(TYPE.timer){return;}
@@ -2034,9 +2036,9 @@ function storyPane(){
         +'</div>';
       if(h.imgs&&h.imgs.length>1){var _im=h.imgs.length,_ix=(h.imgIx==null?_im-1:h.imgIx);
         illu+='<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin:0 0 14px">'
-          +'<div class="btn obtn" data-imgprev="'+i+'" style="font-size:13px;padding:3px 13px;'+(_ix<=0?'opacity:.35;':'')+'">◀</div>'
+          +'<div class="btn obtn" data-imgprev="'+i+'" style="font-size:13px;padding:3px 13px;line-height:1;'+(_ix<=0?'opacity:.35;':'')+'">'+chev(-1,12)+'</div>'
           +'<span style="font-size:11.5px;color:var(--mut);letter-spacing:.08em">第 '+(_ix+1)+' / '+_im+' 张</span>'
-          +'<div class="btn obtn" data-imgnext="'+i+'" style="font-size:13px;padding:3px 13px;'+(_ix>=_im-1?'opacity:.35;':'')+'">▶</div>'
+          +'<div class="btn obtn" data-imgnext="'+i+'" style="font-size:13px;padding:3px 13px;line-height:1;'+(_ix>=_im-1?'opacity:.35;':'')+'">'+chev(1,12)+'</div>'
           +'</div>';}
     }
     var cotHtml=cotX.cot?'<details class="zjCot" style="margin:0 0 12px"><summary style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:12px;letter-spacing:.14em;color:var(--mut);border:1px solid rgba(201,160,99,.25);border-radius:99px;padding:5px 14px;background:rgba(255,255,255,.02)">✦ 推演之思</summary><div style="margin-top:8px;border-left:3px solid rgba(201,160,99,.3);border-radius:8px;background:rgba(255,255,255,.018);padding:10px 13px;font-size:13px;line-height:1.9;color:#9d8c6b;white-space:pre-wrap">'+esc(cotX.cot)+'</div></details>':'';
@@ -2066,9 +2068,9 @@ function storyPane(){
     var sw='';
     if(isLast&&h.alts&&h.alts.length>1){
       var six=(h.altIx==null?h.alts.length-1:h.altIx);
-      sw='<div class="btn obtn" data-act="swPrev" title="回看上一稿" style="font-size:12px;padding:6px 13px;'+(six<=0?'opacity:.35;':'')+'">◀</div>'
+      sw='<div class="btn obtn" data-act="swPrev" title="回看上一稿" style="font-size:12px;padding:6px 13px;line-height:1;'+(six<=0?'opacity:.35;':'')+'">'+chev(-1)+'</div>'
         +'<div style="font-size:11.5px;color:var(--mut)">'+(six+1)+'／'+h.alts.length+'</div>'
-        +'<div class="btn obtn" data-act="swNext" title="'+(six>=h.alts.length-1?'再演新稿':'看下一稿')+'" style="font-size:12px;padding:6px 13px">'+(six>=h.alts.length-1?'▶＋':'▶')+'</div>';
+        +'<div class="btn obtn" data-act="swNext" title="'+(six>=h.alts.length-1?'再演新稿':'看下一稿')+'" style="font-size:12px;padding:6px 13px;line-height:1">'+chev(1)+(six>=h.alts.length-1?'<span style="vertical-align:1px">＋</span>':'')+'</div>';
     }
     var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;gap:9px;align-items:center;margin-top:2px;flex-wrap:wrap">'+sw+'<div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div>'
       +(imgReady()?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">'+(h.img?'⟲ 重绘':'✦ 绘此幕')+'</div>'):'<div class="btn obtn" data-act="openImgSet" title="配置生图接口后即可为此幕绘制插画" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold3)">✦ 生图设置</div>')
@@ -3153,7 +3155,7 @@ function imgPane(){
     +'<div style="font-size:12.5px;line-height:1.85;color:var(--ink2)">给每幕正文配 AI 插画。接口、密钥与参数只存本机浏览器。开「每幕自动生图」后每出一幕自动作画，并<b style="color:var(--gold2)">检测本轮图是否真出来、失败自动重试</b>。</div>'
     +tog('zjImgOn',C.on,'启用生图功能')
     +tog('zjImgAuto',C.auto,'每幕自动生图（关则手动点正文下的「✦ 绘此幕」）')
-    +lbl('每轮生几张（多张＝不同角度/人物/视角，图下用 ◀▶ 翻看）')+seg([['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],'imgcount',String(C.count||1))
+    +lbl('每轮生几张（多张＝不同角度/人物/视角，图下用 '+chev(-1,10)+chev(1,10)+' 翻看）')+seg([['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],'imgcount',String(C.count||1))
     +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:5px">超过 1 张时，由副模型据本幕剧情拆出多个<b style="color:var(--gold3)">不同切入点</b>（主场景 / 人物特写 / 在别处的相关 NPC / 不同摄像机机位 / 平行视角），各生一张，非同图重复。需配好 AI 接口。</div>'
     +lbl('镜头 · 风格（内置提示词，套在每张最前）')+seg([['auto','自动'],['cinematic','电影感'],['illust','插画'],['ink','水墨'],['fpv','第一人称'],['god','上帝视角'],['real','写实']],'imgcam',C.cam||'auto')
     +lbl('接口风格')+seg([['openai','OpenAI 兼容'],['novelai','NovelAI 官方'],['sd','SD · A1111'],['comfyui','本地 ComfyUI'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')+(C.style==='comfyui'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">本地 ComfyUI：启动时加 <b style="color:#e8b77d">--enable-cors-header "*"</b> 允许网页调用（127.0.0.1 不受 https 混合内容限制）。「接口地址」填 <b style="color:#e8b77d">http://127.0.0.1:8188</b>，「模型」填 checkpoint 文件名（如 sd_xl_base_1.0.safetensors），采样器/步数/CFG/尺寸/种子照常填。<br>进阶：下方可粘贴你自己的 <b style="color:#e8b77d">API 格式</b>工作流（ComfyUI 里 Save (API Format) 导出），用 %prompt% %negative% %seed% %steps% %cfg% %width% %height% %sampler% %scheduler% %ckpt% 作占位符；留空则用内置默认 txt2img。若最新 Chrome 因 Private Network Access 拦截，可改用本地打开游戏。</div><textarea id="zjImgComfyWf" rows="4" placeholder="（可选）粘贴 ComfyUI API 格式工作流 JSON，含 %prompt% 等占位符" style="width:100%;margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(201,160,99,.3);color:var(--ink2);font-size:11px;font-family:monospace;line-height:1.5;padding:8px;resize:vertical">'+esc(C.comfyWorkflow||'')+'</textarea>':'')
