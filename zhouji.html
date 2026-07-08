@@ -2342,12 +2342,17 @@ function savesBody(){
   var dataBox='<div style="margin-top:26px;border-top:1px solid rgba(201,160,99,.2);padding-top:18px">'
     +'<div class="kai" style="font-size:17px;letter-spacing:.2em;color:var(--gold2);margin-bottom:5px">本 机 数 据</div>'
     +'<div style="font-size:12px;color:var(--mut);line-height:1.8;margin-bottom:12px">对话·存档·太史长卷·预设·世界书·字体与接口配置皆只存于此浏览器。换设备或清数据前先备份。</div>'
-    +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+    +'<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'
       +'<button data-act="expAll" class="gbtn btn" style="font-size:13px;letter-spacing:.14em;padding:9px 20px;border-radius:10px">⤓ 导出全部数据备份</button>'
-      +(S.wipeArm
+      +'<button data-act="expChat" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 15px">导出聊天记录</button>'
+      +'<button data-act="bookExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 15px;color:var(--gold2)">成书导出</button>'
+      +'<button data-act="memExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 15px">导出记忆长卷</button>'
+      +'<button data-act="loreExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 15px">导出世界书</button>'
+      +'<button data-act="pExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 15px">导出预设</button>'
+    +'</div>'
+    +'<div>'+(S.wipeArm
         ?'<button data-act="wipeAll" class="btn" style="cursor:pointer;font-size:13px;letter-spacing:.12em;padding:9px 20px;border-radius:10px;background:rgba(166,59,38,.32);border:1px solid rgba(166,59,38,.85);color:#efb3a0">确认清除——不可撤销</button>'
         :'<button data-act="wipeAll" class="btn" style="cursor:pointer;font-size:13px;letter-spacing:.12em;padding:9px 20px;border-radius:10px;background:transparent;border:1px solid rgba(166,59,38,.45);color:#b06a55">清除本机全部数据…</button>')
-      +'<div class="btn" data-act="openDataSet" style="cursor:pointer;font-size:12px;color:var(--mut2);padding:9px 8px">分项导出（对话/长卷/世界书/预设）→</div>'
     +'</div></div>';
   return '<div class="grow" style="overflow-y:auto;padding:18px 24px"><div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap"><button data-act="savenow" class="gbtn btn" style="font-size:15px;letter-spacing:.15em;padding:9px 22px">存于新简</button><div style="font-size:12px;color:var(--mut)">最多十二枚简册，存于此浏览器。</div></div>'+rows+dataBox+'</div>';
 }
@@ -3821,7 +3826,7 @@ root.addEventListener('click',function(e){
       else if(a==='expAll'){try{var xo={__app:'周纪·千年天下',__type:'zhouji-full-backup',__version:1,data:{}};
         for(var xi=0;xi<localStorage.length;xi++){var xk=localStorage.key(xi);if(xk&&/^(zhouji_|zj3d_|zj_)/.test(xk))xo.data[xk]=localStorage.getItem(xk);}
         var xb=new Blob([JSON.stringify(xo,null,1)],{type:'application/json'});var xu=URL.createObjectURL(xb);var xa=document.createElement('a');xa.href=xu;xa.download='周纪全部数据备份.json';document.body.appendChild(xa);xa.click();document.body.removeChild(xa);setTimeout(function(){URL.revokeObjectURL(xu);},4000);}catch(e){}}
-      else if(a==='wipeAll'){if(!S.wipeArm){S.wipeArm=true;S._noFade=true;render();}else{try{var wks=[];for(var wi=0;wi<localStorage.length;wi++){var wk=localStorage.key(wi);if(wk&&/^(zhouji_|zj3d_|zj_)/.test(wk))wks.push(wk);}wks.forEach(function(k){try{localStorage.removeItem(k);}catch(e2){}});}catch(e){}try{indexedDB.deleteDatabase('zhouji_img');}catch(e4){}location.reload();}}
+      else if(a==='wipeAll'){if(!S.wipeArm){S.wipeArm=true;[].forEach.call(document.querySelectorAll('[data-act="wipeAll"]'),function(el){el.textContent='确认清除——不可撤销';el.style.background='rgba(166,59,38,.32)';el.style.borderColor='rgba(166,59,38,.85)';el.style.color='#efb3a0';});return;}else{try{var wks=[];for(var wi=0;wi<localStorage.length;wi++){var wk=localStorage.key(wi);if(wk&&/^(zhouji_|zj3d_|zj_)/.test(wk))wks.push(wk);}wks.forEach(function(k){try{localStorage.removeItem(k);}catch(e2){}});}catch(e){}try{indexedDB.deleteDatabase('zhouji_img');}catch(e4){}location.reload();}}
       else if(a==='fontReset'){try{localStorage.removeItem('zhouji_font_v1');}catch(e){}FONTC=null;var frs=document.documentElement.style;frs.removeProperty('--serif');frs.removeProperty('--kai');renderOverlay();}
       else if(a==='memSave'){if(S.memEdit!=null&&S.mem[S.memEdit]){var me0=S.mem[S.memEdit];
         var gv=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
