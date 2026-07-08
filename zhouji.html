@@ -1906,7 +1906,7 @@ function sidebar(){
   var worldRows=['纪年','时地','天气'].filter(function(k){return cw[k];}).map(function(k){return '<div style="display:flex;gap:12px;font-size:13px;line-height:1.7;margin:3px 0"><span style="flex:none;width:2.6em;color:var(--mut)">'+k+'</span><span style="flex:1;color:var(--ink2)">'+esc(cw[k])+'</span></div>';}).join('');
   var dashi=(cw['大势']||'').split(/[｜|]/).map(function(t){return t.trim();}).filter(Boolean).map(function(t){return '<div style="display:flex;gap:8px;font-size:12.5px;line-height:1.7;color:#b3a17d"><span style="color:var(--gold)">◦</span><span>'+esc(t)+'</span></div>';}).join('');
   function head(open,act,color,title,mark){return '<div class="btn" data-act="'+act+'" style="display:flex;align-items:center;gap:10px;padding:12px 15px;cursor:pointer"><span class="diamond" style="background:'+color+'"></span><span class="kai" style="font-size:16px;letter-spacing:.22em;color:var(--gold2);flex:1">'+title+'</span><span style="color:var(--mut);font-size:11px">'+(open?'▾ 收':'▸ 展')+'</span></div>';}
-  return '<div class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:rgba(26,20,14,.92);-webkit-backdrop-filter:blur(9px) saturate(130%);backdrop-filter:blur(9px) saturate(130%);zoom:'+FS+';padding-top:'+(isMobile()?'100px':'62px')+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
+  return '<div class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:rgba(26,20,14,.92);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(130%);backdrop-filter:blur(var(--zjblur,9px)) saturate(130%);zoom:'+FS+';padding-top:'+(isMobile()?'100px':'62px')+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
     +'<div style="padding:15px 15px 3px"><div class="kai" style="font-size:19px;letter-spacing:.26em;color:var(--gold2);text-align:center">太史简 · 起居注</div><div class="slip" style="margin-top:9px"></div></div>'
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secC,'tgC','var(--red)','王 · 起 居',S.secC)
       +(S.secC?'<div class="fade" style="padding:0 15px 16px">'+charRows
@@ -2045,7 +2045,7 @@ function storyPane(){
       +'<span style="font-size:11px;letter-spacing:.22em;color:var(--gold2);font-family:var(--kai)">天下</span></div>';
     sceneH=16;
   }
-  return '<div class="col grow" style="position:relative">'+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?'calc(210px + env(safe-area-inset-bottom))':'160px'))+';background:rgba(23,18,12,.95)'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
+  return '<div class="col grow" style="position:relative">'+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?'calc(210px + env(safe-area-inset-bottom))':'160px'))+';background:rgba(23,18,12,.9);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(118%);backdrop-filter:blur(var(--zjblur,9px)) saturate(118%)'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
 }
 function gameView(){
   var mob=isMobile();var m=mood();
@@ -2595,6 +2595,9 @@ function memScrollBody(){
     +rows+'</div>';
 }
 var FS=1;try{FS=Math.max(.85,Math.min(1.6,parseFloat(localStorage.getItem('zhouji_fs'))||1));}catch(e){}
+var BGBLUR=9;try{var _bb=parseInt(localStorage.getItem('zhouji_bgblur'),10);if(isFinite(_bb))BGBLUR=Math.max(0,Math.min(24,_bb));}catch(e){}
+function applyBgBlur(){try{if(document.documentElement)document.documentElement.style.setProperty('--zjblur',BGBLUR+'px');}catch(e){}}
+applyBgBlur();
 var FONTC=null;try{FONTC=JSON.parse(localStorage.getItem('zhouji_font_v1')||'null');}catch(e){}
 function fontApply(){
   if(!FONTC||!FONTC.b64)return;
@@ -2658,6 +2661,9 @@ function fontPane(){
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin-bottom:14px">字号</div>'
    +'<div style="display:flex;align-items:center;gap:14px"><input id="zjFsRange" type="range" min="85" max="160" step="5" value="'+pct+'" style="flex:1;accent-color:#c9a063;border:none;background:transparent;padding:0"><div id="zjFsVal" style="width:56px;text-align:right;font-size:15px;color:var(--gold3)">'+pct+'%</div></div>'
    +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">拖动即时生效，作用于正文、太史简与典的正文。</div>'
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:32px 0 14px">背景模糊</div>'
+   +'<div style="display:flex;align-items:center;gap:14px"><input id="zjBlurRange" type="range" min="0" max="24" step="1" value="'+BGBLUR+'" style="flex:1;accent-color:#c9a063;border:none;background:transparent;padding:0"><div id="zjBlurVal" style="width:56px;text-align:right;font-size:15px;color:var(--gold3)">'+BGBLUR+'px</div></div>'
+   +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">拖动即时生效，调整正文与太史简背景毛玻璃的模糊强度（默认 9px 为初见效果；开低配模式时模糊被关闭，此项不生效）。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:32px 0 14px">字体</div>'
    +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
    +'<label class="btn glass" style="padding:10px 24px;cursor:pointer;color:var(--gold2);font-size:14px;letter-spacing:.1em">选择字体文件<input id="zjFontFile" type="file" accept=".ttf,.otf,.woff,.woff2" style="display:none"></label>'
@@ -3221,6 +3227,7 @@ root.addEventListener('input',function(e){
     var fl=document.getElementById('zjFsVal');if(fl)fl.textContent=fv+'%';
     var zzs=document.querySelectorAll('[data-zjzoom]');for(var zzi=0;zzi<zzs.length;zzi++)zzs[zzi].style.zoom=FS;
     return;}
+  if(e.target.id==='zjBlurRange'){var bv=Math.max(0,Math.min(24,parseInt(e.target.value,10)||0));BGBLUR=bv;try{localStorage.setItem('zhouji_bgblur',String(bv));}catch(er){}applyBgBlur();var bl=document.getElementById('zjBlurVal');if(bl)bl.textContent=bv+'px';return;}
   if(e.target.id==='zjWzPlace'){if(S.wiz){S.wiz.place=e.target.value.trim()||'__custom';}return;}
   if(e.target.id==='zjWzIdent'){if(S.wiz&&S.wiz.role)S.wiz.role.c.id=e.target.value;return;}
   if(e.target.id==='zjWzAge'){if(S.wiz&&S.wiz.role)S.wiz.role.c.age=e.target.value;return;}
