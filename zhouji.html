@@ -2093,21 +2093,41 @@ function npcPairs(){
 function graphInner(){
   var ns=npcStats();
   if(!ns.length)return '<div style="padding:18px 0 6px;text-align:center;font-size:12px;letter-spacing:.2em;color:#6f6148;line-height:2">尚无人物入络<br>与 NPC 相逢相知后，此处自动结成关系网</div>';
-  ns=ns.slice(-12); /* 至多画12人，取最近出场者 */
+  ns=ns.slice(-20); /* 至多画20人，取最近出场者 */
   var vis={};ns.forEach(function(o){vis[o.name]=1;});
   var pc=npcPairs();
-  var W=360,H=Math.max(340,220+ns.length*18),cx=W/2,cy=H/2;
-  /* 蛛网邻接图：主角连"常现之人"(出场≥2)；一切同幕共现者互连 */
+  /* 蛛网邻接图：先按同幕共现结丝互连并聚簇；主角系于各簇中"常现之人(出场≥2)"，
+     若通盘无常现者，则至少系于最大簇之锚点，确保主角恒在网上、不致孤悬 */
   var adj={'__c':[]};ns.forEach(function(o){adj[o.name]=[];});
-  ns.forEach(function(o){if((o.n||0)>=2){adj['__c'].push(o.name);adj[o.name].push('__c');}});
+  var gnames=ns.map(function(o){return o.name;}),gidx={};ns.forEach(function(o){gidx[o.name]=o;});
   Object.keys(pc).forEach(function(k){var ab=k.split('\u0001');if(!vis[ab[0]]||!vis[ab[1]])return;adj[ab[0]].push(ab[1]);adj[ab[1]].push(ab[0]);});
+  var guf={};gnames.forEach(function(n){guf[n]=n;});
+  function gfind(x){while(guf[x]!==x){guf[x]=guf[guf[x]];x=guf[x];}return x;}
+  Object.keys(pc).forEach(function(k){var ab=k.split('\u0001');if(!vis[ab[0]]||!vis[ab[1]])return;var ra=gfind(ab[0]),rb=gfind(ab[1]);if(ra!==rb)guf[ra]=rb;});
+  var gcl={};gnames.forEach(function(n){var r=gfind(n);(gcl[r]=gcl[r]||[]).push(n);});
+  var hub={},anyHub=false,bestCl=null,bestTot=-1;
+  Object.keys(gcl).forEach(function(r){
+    var mem=gcl[r],maxN=0,tot=0,anchor=mem[0];
+    mem.forEach(function(m){var nn=gidx[m].n||0;tot+=nn;if(nn>maxN)maxN=nn;
+      if(nn>(gidx[anchor].n||0)||(nn===(gidx[anchor].n||0)&&(gidx[m].favor||0)>(gidx[anchor].favor||0)))anchor=m;});
+    if(maxN>=2){mem.forEach(function(m){if((gidx[m].n||0)>=2){hub[m]=1;anyHub=true;}});}
+    if(tot>bestTot){bestTot=tot;bestCl=anchor;}
+  });
+  if(!anyHub&&bestCl)hub[bestCl]=1; /* 兜底：主角至少连最大簇锚点，保证在网上 */
+  gnames.forEach(function(n){if(hub[n]){adj['__c'].push(n);adj[n].push('__c');}});
   /* 自中枢 BFS 定层级与父（放射角度分配）；不可达者为漂浮之网 */
   var depthOf={'__c':0},parent={},seen={'__c':1},q=['__c'];
   while(q.length){var cur=q.shift();(adj[cur]||[]).forEach(function(nb){if(!seen[nb]){seen[nb]=1;depthOf[nb]=depthOf[cur]+1;parent[nb]=cur;q.push(nb);}});}
   var floated=[];ns.forEach(function(o){if(!seen[o.name])floated.push(o.name);});
   var kidsOf={'__c':[]};ns.forEach(function(o){if(seen[o.name]){var pp=parent[o.name];(kidsOf[pp]=kidsOf[pp]||[]).push(o.name);}});
   var maxD=1;ns.forEach(function(o){if((depthOf[o.name]||0)>maxD)maxD=depthOf[o.name];});
-  var availR=Math.min(W,H)/2-46,coreR=floated.length?availR*0.74:availR,ring=coreR/maxD;
+  var depN={};ns.forEach(function(o){if(seen[o.name]){var dd=depthOf[o.name];depN[dd]=(depN[dd]||0)+1;}});
+  var ring=84,radAt={};
+  for(var di=1;di<=maxD;di++){radAt[di]=Math.max(ring*di,(depN[di]||1)*9);}
+  for(var dj=2;dj<=maxD;dj++){if(radAt[dj]<radAt[dj-1]+ring)radAt[dj]=radAt[dj-1]+ring;}
+  var coreR=radAt[maxD]||ring;
+  var floatR=Math.max(coreR+ring*0.9,(floated.length||1)*8.6);
+  var maxR=Math.max(coreR,floatR),W=Math.round((maxR+48)*2),H=W,cx=W/2,cy=H/2;
   function leafN(nm){var k=kidsOf[nm]||[];if(!k.length)return 1;var s=0;k.forEach(function(c){s+=leafN(c);});return s;}
   var pos={'__c':{x:cx,y:cy}};
   function lay(nm,a0,a1,depth){
@@ -2115,7 +2135,7 @@ function graphInner(){
     var tot=0;kids.forEach(function(c){tot+=leafN(c);});
     var a=a0;
     kids.forEach(function(c){
-      var span=(a1-a0)*(leafN(c)/tot),mid=a+span/2,rr=(depthOf[c]||1)*ring;
+      var span=(a1-a0)*(leafN(c)/tot),mid=a+span/2,rr=radAt[depthOf[c]]||ring;
       pos[c]={x:cx+rr*Math.cos(mid),y:cy+rr*Math.sin(mid)};
       lay(c,a,a+span,depth+1);a+=span;
     });
@@ -2124,13 +2144,13 @@ function graphInner(){
   /* 漂浮之网：按各自共现小簇相邻排布于最外圈，彼此结丝、不系于主角 */
   var fseen={},ford=[];
   floated.forEach(function(st){if(fseen[st])return;var qq=[st];fseen[st]=1;while(qq.length){var cc=qq.shift();ford.push(cc);(adj[cc]||[]).forEach(function(nb){if(floated.indexOf(nb)>=0&&!fseen[nb]){fseen[nb]=1;qq.push(nb);}});}});
-  ford.forEach(function(nm,i){var ang=-Math.PI/2+(i+0.5)*2*Math.PI/ford.length;pos[nm]={x:cx+availR*Math.cos(ang),y:cy+availR*Math.sin(ang)};});
+  ford.forEach(function(nm,i){var ang=-Math.PI/2+(i+0.5)*2*Math.PI/ford.length;pos[nm]={x:cx+floatR*Math.cos(ang),y:cy+floatR*Math.sin(ang)};});
   /* —— 蛛网模型 —— 主角与常现之人（出场≥2）结成主角之网；一切同幕共现者彼此结丝成网，
      可跨簇互连（多网互联）；孤身偶现者不强系于主角，自在漂浮 */
   var vis={};ns.forEach(function(o){vis[o.name]=1;});
   var hubLines='';
   ns.forEach(function(o){
-    if((o.n||0)<2)return; /* 仅常现之人系于主角 */
+    if(!hub[o.name])return; /* 仅系于主角者（常现之人 / 兜底锚点）画连线 */
     var cp=pos[o.name]||{x:cx,y:cy},pp=pos['__c'];
     var fv=Number(o.favor);if(!isFinite(fv))fv=50;
     var col=fv>=70?'#7ea892':fv>=40?'#c9a063':'#b06a55';
