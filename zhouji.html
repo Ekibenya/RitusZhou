@@ -2326,8 +2326,23 @@ function npcStats(){
       if(np.sex)o.sex=np.sex;
     });
   });
+  /* 老存档修复：早于本次更新开的局，存档里的开场面板仍是旧四字段。
+     从当前开局定义(G.openings，代码内恒为新版八字段)按名补齐，无需重开局、无需AI。 */
+  var pre=presetNpcMeta();
   var meta=S.npcMeta||{};
-  return order.map(function(k){var o=map[k],mm=meta[k];if(mm){if(!o.role&&mm.role)o.role=mm.role;if(!o.place&&mm.place)o.place=mm.place;if(!o.age&&mm.age)o.age=mm.age;if(!o.sex&&mm.sex)o.sex=mm.sex;}return o;}).filter(function(o){return (S.graphHidden||[]).indexOf(o.name)<0;});
+  return order.map(function(k){var o=map[k];
+    var pm=pre[k];if(pm){if(!o.role&&pm.role)o.role=pm.role;if(!o.place&&pm.place)o.place=pm.place;if(!o.age&&pm.age)o.age=pm.age;if(!o.sex&&pm.sex)o.sex=pm.sex;}
+    var mm=meta[k];if(mm){if(!o.role&&mm.role)o.role=mm.role;if(!o.place&&mm.place)o.place=mm.place;if(!o.age&&mm.age)o.age=mm.age;if(!o.sex&&mm.sex)o.sex=mm.sex;}
+    return o;}).filter(function(o){return (S.graphHidden||[]).indexOf(o.name)<0;});
+}
+/* 当前开局定义里的 NPC 资料（身份/所在/年龄/性别），按名索引——用于修复旧存档 */
+function presetNpcMeta(){
+  try{
+    var op=currentOpening();if(!op||!op.text)return {};
+    var p=parseMvu(op.text);if(!p||!p.npcs)return {};
+    var m={};p.npcs.forEach(function(np){if(np&&np.name)m[np.name]={role:np.role||'',place:np.place||'',age:np.age||'',sex:np.sex||''};});
+    return m;
+  }catch(e){return {};}
 }
 /* 人物资料兜底推断：主模型若只给了旧版四字段(状态/好感/心声)，身份/所在/年龄/性别为空时，
    据该NPC历次出场片段用副模型推断一次并持久化缓存，令图谱详情卡恒能填满 */
