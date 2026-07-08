@@ -580,7 +580,7 @@ function imgHydrate(){
   [].forEach.call(els,function(el){var id=el.getAttribute('data-img');el.removeAttribute('data-img');
     imgURL(id,function(u){if(!el.isConnected)return;
       if(!u){el.innerHTML='<div style="padding:14px 0;text-align:center;font-size:12px;letter-spacing:.15em;color:var(--mut)">插画已散佚（本机图库无此图）</div>';return;}
-      el.innerHTML='<img src="'+u+'" loading="lazy" style="width:100%;display:block">';});});}
+      el.innerHTML='<img src="'+u+'" data-imgfull="1" loading="lazy" style="width:100%;display:block;cursor:zoom-in">';});});}
 /* ---------------- 酒馆助手脚本兼容层（沙箱 iframe，脚本摸不到密钥与页面本体） ---------------- */
 var JSKEY='zhouji_scripts_v1';
 var USCRIPTS=[];try{USCRIPTS=JSON.parse(localStorage.getItem(JSKEY)||'[]')||[];}catch(e){}if(!Array.isArray(USCRIPTS))USCRIPTS=[];
@@ -2036,7 +2036,7 @@ function storyPane(){
         +'<div class="btn obtn" data-act="swNext" title="'+(six>=h.alts.length-1?'再演新稿':'看下一稿')+'" style="font-size:12px;padding:6px 13px">'+(six>=h.alts.length-1?'▶＋':'▶')+'</div>';
     }
     var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;gap:9px;align-items:center;margin-top:2px;flex-wrap:wrap">'+sw+'<div class="btn obtn" data-act="reroll" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">⟲ 重演此幕</div>'
-      +(imgReady()?(!h.img?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">✦ 绘此幕</div>'):''):'<div class="btn obtn" data-act="openImgSet" title="配置生图接口后即可为此幕绘制插画" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold3)">✦ 生图设置</div>')
+      +(imgReady()?(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">'+(h.img?'⟲ 重绘':'✦ 绘此幕')+'</div>'):'<div class="btn obtn" data-act="openImgSet" title="配置生图接口后即可为此幕绘制插画" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold3)">✦ 生图设置</div>')
       +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="font-size:12px;letter-spacing:.2em;padding:6px 14px;color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停 诵</div>':'<div class="btn obtn" data-act="ttsScene" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">♪ 诵此幕</div>'):'')
       +(S.imgErr?'<div style="font-size:11.5px;color:#d9a06a">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="font-size:11.5px;letter-spacing:.15em;padding:5px 12px;color:var(--gold3)">⚙ 生图设置</div>':'')+'</div>':'';
     var wtb='<div class="btn" data-mtool="'+(i+1)+'" title="修改、删去或由此幕重来" style="position:absolute;top:-2px;right:-4px;color:var(--mut);opacity:.4;padding:2px 8px;font-size:15px;letter-spacing:1px;z-index:2">⋯</div>';
@@ -2050,7 +2050,7 @@ function storyPane(){
         +'<div style="display:flex;gap:8px;justify-content:flex-end;margin:7px 0 12px"><div class="btn obtn" data-act="mCancel" style="font-size:12px;padding:5px 14px">取消</div><div class="btn gbtn" data-act="mSave" style="font-size:12px;letter-spacing:.15em;padding:5px 16px">保存</div></div></div>';
       illu='';cotHtml='';retry='';
     }
-    return '<div class="fade" style="margin-bottom:24px;position:relative">'+wtb+chap+illu+cotHtml+wtools+paras+retry+'</div>';
+    return '<div class="fade" style="margin-bottom:24px;position:relative">'+wtb+chap+cotHtml+wtools+paras+illu+retry+'</div>';
   }).join('');
   var thinking=(S.thinking||S.fixing)?'<div style="display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px;letter-spacing:.25em;padding:4px 0 12px"><span>'+(S.fixing?'太史令补录状态栏中':'太史令执笔中')+'</span><span style="animation:blink 1.2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .4s infinite;color:var(--gold)">●</span></div>':'';
   var HIDE3D=false;try{HIDE3D=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
@@ -3455,6 +3455,7 @@ root.addEventListener('click',function(e){
   while(t&&t!==root){
     var a=t.getAttribute&&t.getAttribute('data-act');
     if(t.getAttribute){
+      if(t.getAttribute('data-imgfull')&&t.getAttribute('src')){var _fu=t.getAttribute('src');var _ov=document.createElement('div');_ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.93);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:12px';var _im=document.createElement('img');_im.src=_fu;_im.style.cssText='max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6)';_ov.appendChild(_im);_ov.addEventListener('click',function(){_ov.remove();});document.body.appendChild(_ov);return;}
       if(t.getAttribute('data-start')){startOpening(parseInt(t.getAttribute('data-start'),10));return;}
       if(t.getAttribute('data-wz-era')!=null&&t.getAttribute('data-wz-era')!==''){S.wiz.era=parseInt(t.getAttribute('data-wz-era'),10);S._wizKeep=true;S._noFade=true;render();return;}
       if(t.getAttribute('data-wz-place')){var wp=t.getAttribute('data-wz-place');if(wp==='__custom'){S.wiz.placeCustom=true;S.wiz.place='__custom';}else{S.wiz.placeCustom=false;S.wiz.place=wp;}S._wizKeep=true;S._noFade=true;render();return;}
@@ -3527,7 +3528,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-imgload')){var mlid=t.getAttribute('data-imgload');var mlWrap=t.parentNode;
         mlWrap.innerHTML='<div style="padding:26px 0;text-align:center;font-size:12px;letter-spacing:.2em;color:var(--mut)">插画载入中…</div>';
         imgURL(mlid,function(u){if(!mlWrap.isConnected)return;
-          mlWrap.innerHTML=u?'<img src="'+u+'" loading="lazy" style="width:100%;display:block">':'<div style="padding:14px 0;text-align:center;font-size:12px;color:var(--mut)">插画已散佚</div>';});
+          mlWrap.innerHTML=u?'<img src="'+u+'" data-imgfull="1" loading="lazy" style="width:100%;display:block;cursor:zoom-in">':'<div style="padding:14px 0;text-align:center;font-size:12px;color:var(--mut)">插画已散佚</div>';});
         return;}
       if(t.getAttribute('data-jsedit')){S.jsEdit=parseInt(t.getAttribute('data-jsedit'),10)-1;S.jsDelIx=null;renderOverlay();var jsf=document.getElementById('zjJsName');if(jsf)jsf.scrollIntoView({block:'center'});return;}
       if(t.getAttribute('data-jstog')){var jti=parseInt(t.getAttribute('data-jstog'),10)-1;if(USCRIPTS[jti]){USCRIPTS[jti].on=USCRIPTS[jti].on===false;uscriptsSave();sbxStartAll();renderOverlay();}return;}
@@ -3640,7 +3641,7 @@ root.addEventListener('click',function(e){
       else if(a==='drawScene'){
         if(S.imgBusy!=null||!imgReady())return;
         var dli=-1;for(var dj=S.history.length-1;dj>=0;dj--){if(S.history[dj].role==='world'){dli=dj;break;}}
-        if(dli<0||S.history[dli].img)return;
+        if(dli<0)return;
         drawWorld(dli);
         return;}
       else if(a==='imgCopyWorker'){var okc=function(){S.imgSetMsg='✓ 中转代码已复制！去 Cloudflare 新建 Worker 粘贴（见方法二步骤）';S.imgSetMsgC='var(--grn2)';renderOverlay();};var noc=function(){S.imgSetMsg='复制受限，请点下方「手动全选复制」展开后长按/右键复制';S.imgSetMsgC='var(--red2)';renderOverlay();};try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(NAI_WORKER_CODE).then(okc,noc);}else{noc();}}catch(e){noc();}return;}
