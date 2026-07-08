@@ -195,6 +195,31 @@ function imgVers(h){
 }
 /* iOS 风「缩放」图标（viewfinder 四角描边，非 emoji），点击在迷你/小/中/大循环。pointer-events:none 让点击必落到按钮本身、不穿透到图片（防误触全屏） */
 function zoomIcon(s){s=s||16;return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="display:block;pointer-events:none"><path d="M9 4H5.5A1.5 1.5 0 0 0 4 5.5V9"/><path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9"/><path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20H9"/></svg>';}
+/* ---------- 生成等待·启发式进度条 ----------
+   接口在吐第一个字前不给任何进度信号，无法真·倒计时；故用【本机最近几轮的首字耗时中位数】作预估，
+   进度条按预估渐近爬升（永不虚假到 100%，出字才冲满），文案写在条上：太史令落笔中…已等待 X 秒（通常约 N 秒）。
+   自驱动：监测 S.thinking/S.fixing 的真↔假跳变来量测耗时，无需改生成流程。 */
+var GEN={t0:0,est:0,active:false,mode:'',samples:(function(){try{var a=JSON.parse(localStorage.getItem('zhouji_ttft_v1')||'[]');return Array.isArray(a)?a.slice(-8):[];}catch(e){return [];}})()};
+function ttftMedian(){var a=GEN.samples.slice().sort(function(x,y){return x-y;});return a.length<1?0:a[Math.floor(a.length/2)];}
+/* 进度百分比与条上文案（markup 与动画共用一套计算，保证每次渲染都正确） */
+function genPct(){var el=Date.now()-GEN.t0,est=(GEN.mode==='gen'&&GEN.est)?GEN.est:9000;return Math.min(94,Math.max(5,(1-Math.exp(-el/(est*0.55)))*100));}
+function genLabel(){var el=Date.now()-GEN.t0,s=(el/1000).toFixed(el<10000?1:0);
+  if(GEN.mode==='fix')return '太史令补录状态栏中…已等待 '+s+' 秒';
+  if(GEN.est)return (el>GEN.est*1.6)?('太史令落笔中…已等待 '+s+' 秒 · 较慢，请稍候'):('太史令落笔中…已等待 '+s+' 秒（通常约 '+Math.max(1,Math.round(GEN.est/1000))+' 秒）');
+  return '太史令落笔中…已等待 '+s+' 秒（首次通常较慢）';}
+/* busy 上升/下降沿检测（markup 每次渲染 + genTick 每 200ms 共同驱动，200ms 采样天然桥接亚帧抖动）：
+   - 上升沿（开始生成）：置 t0、按历史算预估、清 done 标记。
+   - 下降沿（首字到达/结束）：记一条首字耗时样本（仅正文生成、且耗时合理时）。
+   返回 busy 供 markup 判断是否显示进度条。 */
+function genSync(){
+  var busy=!!(typeof S!=='undefined'&&(S.thinking||S.fixing)),now=Date.now();
+  if(busy&&!GEN.active){GEN.active=true;GEN.t0=now;GEN.mode=(S.fixing&&!S.thinking)?'fix':'gen';GEN.est=ttftMedian();GEN.done=false;}
+  else if(!busy&&GEN.active){GEN.active=false;
+    if(!GEN.done&&GEN.mode==='gen'){var dt=now-GEN.t0;if(dt>=250&&dt<=90000){GEN.samples.push(dt);if(GEN.samples.length>8)GEN.samples=GEN.samples.slice(-8);try{localStorage.setItem('zhouji_ttft_v1',JSON.stringify(GEN.samples));}catch(e){}}}GEN.done=true;}
+  return busy;
+}
+function genTick(){var busy=genSync();if(busy){var fill=document.getElementById('zjGenFill'),txt=document.getElementById('zjGenTxt');if(fill)fill.style.width=genPct().toFixed(1)+'%';if(txt)txt.textContent=genLabel();}}
+try{setInterval(genTick,200);}catch(e){}
 function ensureTyping(){
   if(!TYPE.msg||typedSet.has(TYPE.msg)){return;}
   if(TYPE.timer){return;}
@@ -2184,7 +2209,13 @@ function storyPane(){
     }
     return '<div class="fade" style="margin-bottom:24px;position:relative">'+wtb+chap+cotHtml+wtools+paras+illu+retry+'</div>';
   }).join('');
-  var thinking=(S.thinking||S.fixing)?'<div style="display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px;letter-spacing:.25em;padding:4px 0 12px"><span>'+(S.fixing?'太史令补录状态栏中':'太史令执笔中')+'</span><span style="animation:blink 1.2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .4s infinite;color:var(--gold)">●</span></div>':'';
+  var thinking='';
+  if(genSync()){
+    thinking='<div style="padding:6px 0 14px"><div style="position:relative;height:27px;border-radius:9px;overflow:hidden;background:rgba(255,255,255,.05);border:1px solid rgba(201,160,99,.32);box-shadow:inset 0 1px 0 rgba(255,242,214,.1)">'
+      +'<div id="zjGenFill" style="position:absolute;top:0;bottom:0;left:0;width:'+genPct().toFixed(1)+'%;background:linear-gradient(90deg,rgba(201,140,80,.55),rgba(224,190,130,.8));transition:width .3s linear"></div>'
+      +'<div id="zjGenTxt" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;letter-spacing:.1em;color:#f2e4c4;text-shadow:0 1px 2px rgba(0,0,0,.55)">'+genLabel()+'</div>'
+      +'</div></div>';
+  }
   var HIDE3D=false;try{HIDE3D=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
   var hideScene=window.__ZJ3D_OFF__&&SVGF&&mob;
   var hide3d=!window.__ZJ3D_OFF__&&HIDE3D;
