@@ -1471,7 +1471,7 @@ var pref = loadPref();
 var S = {
   screen: 'title', device: pref.device||'auto', openingId: pref.openingId||null,
   history: [], input:'', mode:'say', thinking:false, aiLive:null, muted:pref.muted||false, dice:!!pref.dice, sugg:pref.sugg!==0, chatOnly:!!pref.chat, micOn:(pref.mic===0?false:(pref.mic===1?true:null)), graphHidden:pref.graphHidden||[], npcMeta:pref.npcMeta||{}, _npcMetaBusy:null,
-  overlay:null, tab:'story', secC:true, secN:true, secW:true, secG:true, secA:false,
+  overlay:null, tab:'story', secC:true, secN:true, secW:true, secG:true, secA:true,
   codexCat:'核心', codexIdx:0, saves:pref.saves||[], connected:TH.available,
   mem:pref.mem||[], memOn:pref.memOn!==false, memN:pref.memN||0,
   customOp:pref.customOp||null, customRole:pref.customRole||null, wiz:null, setTab:'font'
@@ -2373,7 +2373,7 @@ function renderOverlay(){
     var all2=box.getElementsByTagName('*'),cnt2={};
     for(i=0;i<all2.length;i++){k=ovk(all2[i]);var n2=(cnt2[k]=(cnt2[k]||0)+1)-1;
       for(var j=0;j<sv.length;j++){if(sv[j][0]===k&&sv[j][1]===n2){all2[i].scrollTop=sv[j][2];all2[i].scrollLeft=sv[j][3];}}}
-    codexPills();setPills();
+    codexPills();setPills();try{imgHydrate();}catch(e){}
   }else render();
 }
 function overlayView(){
@@ -3156,11 +3156,28 @@ function cardPane(){
    +'<span style="font-size:12px;color:var(--mut)">酒馆 → 角色管理 → 导出的卡</span></div>'
    +msg+listBlock+'</div></div>';
 }
+/* 读取本机 IndexedDB 里现存的图片 id 列表（尚未被清理的） */
+function imgCacheList(cb){idbOpen(function(db){if(!db)return cb([]);try{var rq=db.transaction('img').objectStore('img').getAllKeys();rq.onsuccess=function(){cb((rq.result||[]).slice());};rq.onerror=function(){cb([]);};}catch(e){cb([]);}});}
+/* 图片缓存栏：迷你网格罗列尚存的生成图，点击全屏，无缩放。图库满时自动清最旧的。 */
+function imgCachePane(){
+  if(S.imgCacheKeys==null){
+    if(!S._imgCacheBusy){S._imgCacheBusy=true;imgCacheList(function(ks){S.imgCacheKeys=ks||[];S._imgCacheBusy=false;if(S.overlay==='set'&&S.setTab==='imgcache')renderOverlay();});}
+    return '<div class="grow bambooV" style="overflow-y:auto;padding:22px"><div style="text-align:center;color:var(--mut);font-size:13px;letter-spacing:.2em;padding:34px 0">读取本机图片缓存…</div></div>';
+  }
+  var ks=S.imgCacheKeys,cols=isMobile()?4:6,gap=6;
+  var head='<div style="padding:18px 20px 4px"><div class="kai" style="font-size:18px;color:var(--gold2);letter-spacing:.14em">缓 · 图片缓存</div><div style="font-size:12px;color:var(--mut);line-height:1.7;margin-top:6px">本机现存、尚未被清理的生成图，共 <b style="color:var(--gold3)">'+ks.length+'</b> 张。点任意图全屏查看；图库存满时会自动清掉最旧的（可在「简·存档简册」备份或清除）。</div></div>';
+  if(!ks.length)return '<div class="grow bambooV" style="overflow-y:auto">'+head+'<div style="text-align:center;color:var(--mut2);font-size:13px;letter-spacing:.25em;padding:48px 0">暂无缓存图片</div></div>';
+  var basis='calc((100% - '+((cols-1)*gap)+'px) / '+cols+')';
+  var grid='<div style="display:flex;flex-wrap:wrap;gap:'+gap+'px;padding:10px 16px calc(24px + env(safe-area-inset-bottom))">'
+    +ks.slice().reverse().map(function(id){return '<div style="flex:0 0 '+basis+';aspect-ratio:3/4;border:1px solid rgba(255,238,205,.14);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.03)"><div data-img="'+esc(id)+'" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><span style="font-size:9px;color:var(--mut);letter-spacing:.1em">…</span></div></div>';}).join('')
+    +'</div>';
+  return '<div class="grow bambooV" style="overflow-y:auto">'+head+grid+'</div>';
+}
 function setBody(){
-  var tabs=[['font','显 · 显示'],['img','图 · 生图'],['voice','声 · 语音'],['card','卡 · 角色卡'],['lore','书 · 世界书'],['rx','则 · 正则'],['js','脚 · 助手脚本'],['api','链 · AI 接口']].map(function(t){var on=S.setTab===t[0];return '<div class="btn" data-settab="'+t[0]+'" style="position:relative;z-index:1;cursor:pointer;white-space:nowrap;padding:9px 15px;font-family:var(--kai);font-size:15px;letter-spacing:.18em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('');
+  var tabs=[['font','显 · 显示'],['img','图 · 生图'],['voice','声 · 语音'],['card','卡 · 角色卡'],['lore','书 · 世界书'],['rx','则 · 正则'],['js','脚 · 助手脚本'],['api','链 · AI 接口'],['imgcache','缓 · 图片缓存']].map(function(t){var on=S.setTab===t[0];return '<div class="btn" data-settab="'+t[0]+'" style="position:relative;z-index:1;cursor:pointer;white-space:nowrap;padding:9px 15px;font-family:var(--kai);font-size:15px;letter-spacing:.18em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('');
   return '<div class="col grow" style="min-height:0">'
    +'<div id="zjSetBar" style="position:relative;flex:none;display:flex;gap:6px;padding:12px 18px;border-bottom:1px solid rgba(201,160,99,.18);overflow-x:auto;scrollbar-width:none">'+tabs+'</div>'
-   +'<div class="col grow" style="min-height:0">'+(S.setTab==='api'?apiBody():S.setTab==='img'?imgPane():S.setTab==='card'?cardPane():S.setTab==='lore'?lorePane():S.setTab==='rx'?rxPane():S.setTab==='js'?jsPane():S.setTab==='voice'?voicePane():fontPane())+'</div></div>';
+   +'<div class="col grow" style="min-height:0">'+(S.setTab==='api'?apiBody():S.setTab==='imgcache'?imgCachePane():S.setTab==='img'?imgPane():S.setTab==='card'?cardPane():S.setTab==='lore'?lorePane():S.setTab==='rx'?rxPane():S.setTab==='js'?jsPane():S.setTab==='voice'?voicePane():fontPane())+'</div></div>';
 }
 function setPills(){
   if(S.overlay!=='set')return;
@@ -3729,7 +3746,7 @@ root.addEventListener('click',function(e){
         if(srow){var det=srow.querySelector('.npcDetail');var chv=srow.querySelector('.npcChv');if(det)det.style.gridTemplateRows=willOpen?'1fr':'0fr';if(chv)chv.textContent=willOpen?'▾':'▸';}
         return;}
       if(t.getAttribute('data-sugg')!=null&&t.getAttribute('data-sugg')!==''){if(S.thinking)return;var sgi=parseInt(t.getAttribute('data-sugg'),10);var sgt=(S.suggList||[])[sgi];if(sgt){S.suggList=null;sendText(S.dice?sgt+diceRoll():sgt);}return;}
-      if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;renderOverlay();pillFlip('zjSetPill',spr);return;}
+      if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;if(stb==='imgcache')S.imgCacheKeys=null;renderOverlay();pillFlip('zjSetPill',spr);return;}
       if(t.getAttribute('data-imgstyle')){syncImgForm();var oldSt=IMGCFG.style,newSt=t.getAttribute('data-imgstyle');var od=imgDefaults(oldSt),nd=imgDefaults(newSt);IMGSAMPFIELDS.forEach(function(k){if(!IMGCFG[k]||IMGCFG[k]===od[k])IMGCFG[k]=nd[k];});IMGCFG.style=newSt;imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgmodel')){syncImgForm();IMGCFG.model=t.getAttribute('data-imgmodel');imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgcount')){syncImgForm();IMGCFG.count=Math.max(1,Math.min(6,parseInt(t.getAttribute('data-imgcount'),10)||1));imgCfgSave();renderOverlay();return;}
