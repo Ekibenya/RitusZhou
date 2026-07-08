@@ -706,6 +706,13 @@ function uloreParse(txt){
   else if(obj)norm(obj,0);
   return out;
 }
+function imgLoreImportText(txt){
+  var es=uloreParse(txt);var added=0;
+  es.forEach(function(e){if(e&&e.content){IMGLORE.push({keys:(e.keys||[]).slice(0,20),content:String(e.content).trim(),on:e.on!==false});added++;}});
+  if(added){imgLoreSave();S.loreMsg='已导入 '+added+' 条【生图】世界书条目 → 在「设置·图·生图」页可查看/编辑';}
+  else{S.loreMsg='无法识别：需为世界书 JSON（含 keys/content 的条目）';}
+  if(S.overlay)renderOverlay();else render();
+}
 function uloreImportText(txt){
   var es=uloreParse(txt);
   if(es.length){ULORE=ULORE.concat(es);uloreSave();S.loreMsg='\u5df2\u5bfc\u5165 '+es.length+' \u6761\u4e16\u754c\u4e66\u6761\u76ee';}
@@ -2862,6 +2869,10 @@ function lorePane(){
    +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
    +'<label class="btn glass" style="padding:9px 22px;cursor:pointer;color:var(--gold2);font-size:13.5px;letter-spacing:.1em">选择世界书文件<input id="zjLoreFile" type="file" accept=".json,.txt,application/json,text/plain" style="display:none"></label>'
    +'<span style="font-size:12px;color:var(--mut)">支持 SillyTavern 世界书 JSON / 本页导出的备份；角色卡请到「卡 · 角色卡」页签导入</span></div>'
+   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:30px 0 12px">上传<span style="color:#7ea892">生图</span>世界书</div>'
+   +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
+   +'<label class="btn glass" style="padding:9px 22px;cursor:pointer;color:#7ea892;font-size:13.5px;letter-spacing:.1em">选择生图世界书文件<input id="zjImgLoreFile" type="file" accept=".json,.txt,application/json,text/plain" style="display:none"></label>'
+   +'<span style="font-size:12px;color:var(--mut);line-height:1.7">同为世界书 JSON 格式，但 content 写<b style="color:#7ea892">英文画面提示词/danbooru 标签</b>（如 crimson royal robe, jade crown）；命中触发词时自动追加进生图提示词。导入后进「设置·图·生图」页可查看编辑。</span></div>'
    +msg+listBlock
    +'</div></div>';
 }
@@ -3447,6 +3458,10 @@ root.addEventListener('change',function(e){
     cardImportFile(e.target.files[0]);
     return;
   }
+  if(e.target&&e.target.id==='zjImgLoreFile'&&e.target.files&&e.target.files[0]){
+    var glf=e.target.files[0];var glrd=new FileReader();
+    glrd.onload=function(){imgLoreImportText(String(glrd.result||''));};
+    glrd.readAsText(glf);return;}
   if(e.target&&e.target.id==='zjLoreFile'&&e.target.files&&e.target.files[0]){
     var lf=e.target.files[0];var lrd=new FileReader();
     lrd.onload=function(){uloreImportText(String(lrd.result||''));};
