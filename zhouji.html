@@ -2206,8 +2206,11 @@ function graphInner(){
     +'<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" font-size="14" fill="#e0be82" font-family="var(--kai)" style="pointer-events:none">'+(S.customRole?'吾':'朕')+'</text></g>';
   var hid=(S.graphHidden||[]).length;
   var resetLine=hid?'<div style="text-align:right;margin-top:6px"><span class="btn" data-act="npcUnhide" style="cursor:pointer;font-size:11px;color:var(--mut)">已移除 '+hid+' 人 · 还原全部</span></div>':'';
-  return '<div style="font-size:11px;color:var(--mut);line-height:1.7;margin:2px 0 2px">蛛网思维导图：常现之人系于你、结成你的一张网（连线色由好感定 <span style="color:#7ea892">青亲</span>·<span style="color:#c9a063">金平</span>·<span style="color:#b06a55">赤疏</span>）；凡同幕共处者以金丝互连，可自成一网、亦可多网相牵；孤身偶现者不强系于你，自在漂浮。小球可拖拽，轻点看详情、移除重复球。</div>'
-    +'<svg id="zjGraphSvg" viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;touch-action:none">'+lines+center+nodes+'</svg>'
+  return '<div style="font-size:11px;color:var(--mut);line-height:1.7;margin:2px 0 2px">蛛网思维导图：常现之人系于你、结成你的一张网（连线色由好感定 <span style="color:#7ea892">青亲</span>·<span style="color:#c9a063">金平</span>·<span style="color:#b06a55">赤疏</span>）；凡同幕共处者以金丝互连，可自成一网、亦可多网相牵；孤身偶现者不强系于你，自在漂浮。小球可拖拽，轻点看详情、移除重复球——手机双指、电脑滚轮可放大细看，拖背景平移。</div>'
+    +'<div id="zjGraphWrap" style="position:relative;border-radius:12px;overflow:hidden">'
+    +'<svg id="zjGraphSvg" data-bw="'+W+'" data-bh="'+H+'" viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;touch-action:none">'+lines+center+nodes+'</svg>'
+    +'<span data-act="graphZoomReset" class="btn" style="position:absolute;right:8px;bottom:8px;font-size:11px;color:var(--mut);background:rgba(20,15,10,.72);border:1px solid rgba(201,160,99,.3);border-radius:8px;padding:3px 10px;cursor:pointer">复位</span>'
+    +'</div>'
     +'<div id="zjGraphCard">'+graphCardHtml()+'</div>'+resetLine;
 }
 function graphCardHtml(){
@@ -2240,11 +2243,36 @@ function graphSelect(nm){
   var card=document.getElementById('zjGraphCard');if(card)card.innerHTML=graphCardHtml();
 }
 /* 图谱小球联动拖拽：弹簧回位物理 */
+var GZOOM={s:1,vx:0,vy:0}; /* 人物图谱缩放·平移：改 viewBox，物理拖拽自动跟随 */
+function gzApplyVB(svg,BW,BH){
+  if(GZOOM.s<1)GZOOM.s=1;if(GZOOM.s>6)GZOOM.s=6;
+  var vw=BW/GZOOM.s,vh=BH/GZOOM.s;
+  if(GZOOM.vx>BW-vw)GZOOM.vx=BW-vw;if(GZOOM.vx<0)GZOOM.vx=0;
+  if(GZOOM.vy>BH-vh)GZOOM.vy=BH-vh;if(GZOOM.vy<0)GZOOM.vy=0;
+  svg.setAttribute('viewBox',GZOOM.vx.toFixed(1)+' '+GZOOM.vy.toFixed(1)+' '+vw.toFixed(1)+' '+vh.toFixed(1));
+}
+function gzZoom(svg,BW,BH,clientX,clientY,factor){
+  var r=svg.getBoundingClientRect();if(!r.width||!r.height)return;
+  var vw=BW/GZOOM.s,vh=BH/GZOOM.s;
+  var rx=(clientX-r.left)/r.width,ry=(clientY-r.top)/r.height;
+  var sx=GZOOM.vx+rx*vw,sy=GZOOM.vy+ry*vh;
+  var ns=GZOOM.s*factor;if(ns<1)ns=1;if(ns>6)ns=6;GZOOM.s=ns;
+  GZOOM.vx=sx-rx*(BW/ns);GZOOM.vy=sy-ry*(BH/ns);
+  gzApplyVB(svg,BW,BH);
+}
+function gzPan(svg,BW,BH,dx,dy){
+  var r=svg.getBoundingClientRect();if(!r.width||!r.height)return;
+  GZOOM.vx-=dx*(BW/GZOOM.s/r.width);GZOOM.vy-=dy*(BH/GZOOM.s/r.height);
+  gzApplyVB(svg,BW,BH);
+}
+function gzReset(){var svg=document.getElementById('zjGraphSvg');if(!svg)return;GZOOM.s=1;GZOOM.vx=0;GZOOM.vy=0;gzApplyVB(svg,+svg.getAttribute('data-bw')||360,+svg.getAttribute('data-bh')||360);}
 var GPH={drag:null,raf:0,squelch:false};
 function graphHydrate(){
   var svg=document.getElementById('zjGraphSvg');
   if(!svg||svg.__gph)return;
   svg.__gph=1;
+  var BW=+svg.getAttribute('data-bw')||360,BH=+svg.getAttribute('data-bh')||360;
+  gzApplyVB(svg,BW,BH); /* 重渲染后恢复上次缩放 */
   var byName={},nodes=[];
   [].forEach.call(svg.querySelectorAll('g[data-npc]'),function(g){
     var c=g.querySelector('circle');if(!c)return;
@@ -2285,30 +2313,37 @@ function graphHydrate(){
   }
   function kick(){if(!GPH.raf)GPH.raf=requestAnimationFrame(step);}
   function pt(e){var q=svg.createSVGPoint();q.x=e.clientX;q.y=e.clientY;var m=svg.getScreenCTM();return m?q.matrixTransform(m.inverse()):{x:0,y:0};}
+  GPH.ptrs={};
+  function actN(){return Object.keys(GPH.ptrs).length;}
+  function nAt(g){var n=null;nodes.forEach(function(x){if(x.g===g)n=x;});return n;}
+  function pinchInit(){var ids=Object.keys(GPH.ptrs),a=GPH.ptrs[ids[0]],b=GPH.ptrs[ids[1]];GPH._pinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,mx:(a.x+b.x)/2,my:(a.y+b.y)/2};}
+  function pinchMove(){var ids=Object.keys(GPH.ptrs);if(ids.length<2)return;var a=GPH.ptrs[ids[0]],b=GPH.ptrs[ids[1]];var d=Math.hypot(a.x-b.x,a.y-b.y)||1,mx=(a.x+b.x)/2,my=(a.y+b.y)/2;var pc=GPH._pinch;if(!pc){GPH._pinch={d:d,mx:mx,my:my};return;}gzZoom(svg,BW,BH,mx,my,d/pc.d);gzPan(svg,BW,BH,mx-pc.mx,my-pc.my);GPH._pinch={d:d,mx:mx,my:my};}
   svg.addEventListener('pointerdown',function(e){
-    var g=e.target&&e.target.closest?e.target.closest('g[data-npc],g[data-gcenter]'):null;if(!g)return;
-    var n=null;nodes.forEach(function(x){if(x.g===g)n=x;});if(!n)return;
-    GPH.drag=n;n._moved=0;n._sx=e.clientX;n._sy=e.clientY;
+    GPH.ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+    if(actN()>=2){if(GPH.drag){GPH.drag=null;nodes.forEach(function(o){o.ox=0;o.oy=0;});kick();}GPH.pan=null;pinchInit();e.preventDefault();return;}
+    var g=e.target&&e.target.closest?e.target.closest('g[data-npc],g[data-gcenter]'):null;
+    var n=g?nAt(g):null;
+    if(n){GPH.drag=n;n._moved=0;n._sx=e.clientX;n._sy=e.clientY;kick();}
+    else{GPH.pan={lx:e.clientX,ly:e.clientY};} /* 拖背景平移 */
     try{svg.setPointerCapture(e.pointerId);}catch(ex){}
-    e.preventDefault();kick();
+    e.preventDefault();
   });
   svg.addEventListener('pointermove',function(e){
-    var n=GPH.drag;if(!n)return;var q=pt(e);
-    n._moved=Math.max(n._moved||0,Math.abs(e.clientX-n._sx)+Math.abs(e.clientY-n._sy));
-    n.x=q.x;n.y=q.y;apply(n);updEdges();
-    var dx=n.x-n.x0,dy=n.y-n.y0;
-    nodes.forEach(function(o){if(o===n)return;var dd=Math.hypot(o.x0-n.x0,o.y0-n.y0)||1;var w=Math.min(.42,21/dd);o.ox=dx*w;o.oy=dy*w;});
-    kick();
+    if(GPH.ptrs[e.pointerId])GPH.ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+    if(actN()>=2){pinchMove();e.preventDefault();return;}
+    if(GPH.drag){var n=GPH.drag,q=pt(e);n._moved=Math.max(n._moved||0,Math.abs(e.clientX-n._sx)+Math.abs(e.clientY-n._sy));n.x=q.x;n.y=q.y;apply(n);updEdges();var dx=n.x-n.x0,dy=n.y-n.y0;nodes.forEach(function(o){if(o===n)return;var dd=Math.hypot(o.x0-n.x0,o.y0-n.y0)||1;var w=Math.min(.42,21/dd);o.ox=dx*w;o.oy=dy*w;});kick();}
+    else if(GPH.pan){gzPan(svg,BW,BH,e.clientX-GPH.pan.lx,e.clientY-GPH.pan.ly);GPH.pan.lx=e.clientX;GPH.pan.ly=e.clientY;}
   });
-  function gup(){
-    var n=GPH.drag;if(!n)return;GPH.drag=null;
-    var tap=(n._moved||0)<=10; /* 触屏容差：位移≤10px 视为轻点 */
-    nodes.forEach(function(o){o.ox=0;o.oy=0;});kick();
-    GPH.squelch=true;setTimeout(function(){GPH.squelch=false;},400); /* 吞掉浏览器补发 click，防重复切换 */
-    if(tap){graphSelect(n.g.getAttribute('data-npc'));}
+  function gup(e){
+    if(e&&e.pointerId!=null)delete GPH.ptrs[e.pointerId];
+    if(actN()<2)GPH._pinch=null;
+    if(actN()>0)return; /* 仍有指头按着，不结算轻点/拖拽 */
+    if(GPH.drag){var n=GPH.drag;GPH.drag=null;var tap=(n._moved||0)<=10;nodes.forEach(function(o){o.ox=0;o.oy=0;});kick();GPH.squelch=true;setTimeout(function(){GPH.squelch=false;},400);if(tap){graphSelect(n.g.getAttribute('data-npc'));}}
+    GPH.pan=null;
   }
   svg.addEventListener('pointerup',gup);
   svg.addEventListener('pointercancel',gup);
+  svg.addEventListener('wheel',function(e){e.preventDefault();gzZoom(svg,BW,BH,e.clientX,e.clientY,e.deltaY<0?1.15:1/1.15);},{passive:false});
 }
 function axisInner(){
   var ms=S.mem||[];
@@ -3244,6 +3279,7 @@ root.addEventListener('click',function(e){
       else if(a==='lowTog'){lowApply(!LOWFX);S._noFade=true;render();}
       else if(a==='npcDrop'){if(S.memNpc){S.graphHidden=(S.graphHidden||[]).concat([S.memNpc]);S.memNpc=null;savePref();S._noFade=true;render();}}
       else if(a==='npcUnhide'){S.graphHidden=[];savePref();S._noFade=true;render();}
+      else if(a==='graphZoomReset'){gzReset();}
       else if(a==='chatTog'){S.chatOnly=!S.chatOnly;savePref();S._noFade=true;render();}
       else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;savePref();
         var sch=document.querySelector('[data-act="suggTog"]');
