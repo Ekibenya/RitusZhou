@@ -3639,7 +3639,14 @@ root.addEventListener('click',function(e){
         if(IMGCFG.style==='novelai'&&/novelai\.(net|ai)/i.test(IMGCFG.url||'')){S.imgSetMsg='「接口地址」不能填 NovelAI 官网（image.novelai.net）——浏览器跨域必被拦（Failed to fetch）。这里要填你的 Cloudflare Worker 网址（形如 https://xxx.workers.dev）；NAI 官网地址已内置在 Worker 里，不用你填。';S.imgSetMsgC='var(--red2)';renderOverlay();return;}
         S.imgSetMsg='正在测试生图……';S.imgSetMsgC='var(--mut2)';renderOverlay();
         var tpos=[IMGCFG.pos,'ancient Chinese palace hall at dusk, cinematic lighting, highly detailed, test'].filter(Boolean).join(', ');
-        imgGenBlob(tpos,IMGCFG.neg).then(function(blob){if(blob&&blob.size){S.imgSetMsg='✓ 测试生图成功，接口可用';S.imgSetMsgC='var(--grn2)';}else throw new Error('接口未返回图像');renderOverlay();})['catch'](function(err){var em=String(err&&err.message||err);var extra='';if(IMGCFG.style==='novelai'&&/(500|Internal Server)/.test(em))extra=' ｜ NAI 500 十有八九是「模型名」不对：请精确填 nai-diffusion-3（V3）或 nai-diffusion-4-5-full / nai-diffusion-4-5-curated / nai-diffusion-4-full（V4.5/V4，需 Opus 订阅），不要留空、不要写别名。';S.imgSetMsg='测试失败：'+em.slice(0,170)+extra;S.imgSetMsgC='var(--red2)';renderOverlay();});
+        var runGen=function(){imgGenBlob(tpos,IMGCFG.neg).then(function(blob){if(blob&&blob.size){S.imgSetMsg='✓ 测试生图成功，接口可用';S.imgSetMsgC='var(--grn2)';}else throw new Error('接口未返回图像');renderOverlay();})['catch'](function(err){var em=String(err&&err.message||err);var extra='';if(IMGCFG.style==='novelai'&&/(500|Internal Server)/.test(em))extra=' ｜ NAI 500 十有八九是「模型名」不对：请在上方直接点选模型（V4.5/V4 需 Opus 订阅，没订阅选 V3）。';if(IMGCFG.style==='novelai'&&/连不上「接口地址」/.test(em))em='第②步失败：GET 探测是通的，但生图 POST（跨站预检）被拦——多半是此浏览器的广告拦截/省流/隐私盾挡了 workers.dev 的跨站请求，或 Cloudflare 正对你的网络出人机验证。请试：换浏览器（Chrome 无痕）、关拦截类插件、换 Wi-Fi/流量后再测。';S.imgSetMsg='测试失败：'+em.slice(0,260)+extra;S.imgSetMsgC='var(--red2)';renderOverlay();});};
+        if(IMGCFG.style==='novelai'){
+          /* 分段自检：先 GET 探中转（无预检，等价手动打开网页），再发真正的生图 POST */
+          fetch(imgBase()+'/',{method:'GET'}).then(function(r){return r.text();}).then(function(t){
+            if(/proxy is running/i.test(t)){S.imgSetMsg='第①步通过：中转在线。正在生图（第②步）……';S.imgSetMsgC='var(--mut2)';renderOverlay();runGen();}
+            else{S.imgSetMsg='第①步失败：「接口地址」能连上，但它不是本游戏的 NAI 中转（返回内容不对，开头：'+String(t).replace(/\s+/g,' ').slice(0,60)+'…）。请确认填的是你部署的 Worker 网址。';S.imgSetMsgC='var(--red2)';renderOverlay();}
+          },function(){S.imgSetMsg='第①步失败：这台浏览器根本连不到「接口地址」（连最简单的 GET 都不通）。可能：网址有误、此网络或浏览器插件拦截了 *.workers.dev。请试：换浏览器（Chrome 无痕）、关广告拦截/省流模式、换 Wi-Fi/流量。';S.imgSetMsgC='var(--red2)';renderOverlay();});
+        }else runGen();
         return;}
       else if(a==='imgLoreAdd'){syncImgForm();IMGLORE.push({keys:[],content:'',on:true});imgLoreSave();renderOverlay();return;}
       else if(a==='imgLoreDel'){return;}
