@@ -3150,7 +3150,10 @@ function imgPane(){
     +lbl('角色参考')+tog('zjImgCharRef',C.charRef,'启用角色参考（随图附带参考图，接口需支持 img2img/参考）')
     +'<div style="margin-top:8px"><label class="btn obtn" style="cursor:pointer;font-size:12.5px;padding:7px 14px">添加参考图<input id="zjImgRefFile" type="file" accept="image/*" style="display:none"></label></div>'+refPrev
     +lbl('生图世界书（命中触发词即把片段追加进画面提示词）')+lore
-    +'<div style="margin-top:9px"><button data-act="imgLoreAdd" class="obtn btn" style="font-size:12.5px;padding:7px 15px">＋ 添加条目</button></div>'
+    +'<div style="margin-top:9px;display:flex;gap:9px;flex-wrap:wrap;align-items:center"><button data-act="imgLoreAdd" class="obtn btn" style="font-size:12.5px;padding:7px 15px">＋ 添加条目</button>'
+    +'<label class="btn obtn" style="cursor:pointer;font-size:12.5px;padding:7px 15px;color:#7ea892">\u2191 上传生图世界书<input id="zjImgLoreFile2" type="file" accept=".json,.txt,application/json,text/plain" style="display:none"></label>'
+    +(IMGLORE.length?'<button data-act="imgLoreExport" class="obtn btn" style="font-size:12.5px;padding:7px 15px">导出</button>':'')
+    +'<span style="font-size:11px;color:var(--mut)">上传＝世界书 JSON（content 写英文画面提示词）</span></div>'
     +'<div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;align-items:center"><button data-act="imgSave" class="gbtn btn" style="font-size:15px;letter-spacing:.2em;padding:10px 28px">保 存</button><button data-act="imgTest" class="obtn btn" style="font-size:14px;letter-spacing:.12em;padding:10px 22px">测试生图</button>'+msg+'</div>'
     +'<div style="margin-top:14px;font-size:11.5px;line-height:1.8;color:var(--mut)">插画只存本机图库并自动瘦身（手机留最近10张、电脑留30张），存档只记编号。不同接口字段不一：OpenAI 兼容用 size；SD·A1111 走 /sdapi/v1/txt2img；自定义/NovelAI 风格把上面各参数原样作为 JSON 字段发出——请按你服务商的字段名调整。</div>'
     +'</div>';
@@ -3458,7 +3461,7 @@ root.addEventListener('change',function(e){
     cardImportFile(e.target.files[0]);
     return;
   }
-  if(e.target&&e.target.id==='zjImgLoreFile'&&e.target.files&&e.target.files[0]){
+  if(e.target&&(e.target.id==='zjImgLoreFile'||e.target.id==='zjImgLoreFile2')&&e.target.files&&e.target.files[0]){
     var glf=e.target.files[0];var glrd=new FileReader();
     glrd.onload=function(){imgLoreImportText(String(glrd.result||''));};
     glrd.readAsText(glf);return;}
@@ -3704,6 +3707,7 @@ root.addEventListener('click',function(e){
         })['catch'](function(err){S.imgSetMsg='拉取失败：'+String(err&&err.message||err).slice(0,130)+'（确认 ComfyUI 已启动、接口地址对、且启动参数带 --enable-cors-header "*"）';S.imgSetMsgC='var(--red2)';renderOverlay();});
         return;}
       else if(a==='imgLoreAdd'){syncImgForm();IMGLORE.push({keys:[],content:'',on:true});imgLoreSave();renderOverlay();return;}
+      else if(a==='imgLoreExport'){try{syncImgForm();var glb=new Blob([JSON.stringify(IMGLORE,null,2)],{type:'application/json'});var glu=URL.createObjectURL(glb);var gla=document.createElement('a');gla.href=glu;gla.download='周纪生图世界书.json';document.body.appendChild(gla);gla.click();document.body.removeChild(gla);setTimeout(function(){URL.revokeObjectURL(glu);},4000);}catch(e){}return;}
       else if(a==='imgLoreDel'){return;}
       else if(a==='imgRefClear'){IMGCFG.refImg=null;imgCfgSave();S.imgSetMsg='参考图已移除';S.imgSetMsgC='var(--mut2)';renderOverlay();return;}
       else if(a==='histmore'){S.histShow=(S.histShow||30)+30;S._stayTop=true;S._noFade=true;render();return;}
