@@ -905,7 +905,7 @@ var API_DEF={
   gemini:{name:'Gemini 官方',url:'https://generativelanguage.googleapis.com',hint:'Google AI Studio 官方直连，一般无需修改地址'}
 };
 function loadApi(){
-  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}},img:{url:'',key:'',model:''},aux:{url:'',key:'',model:''},gen:{temp:'',topp:'',maxtok:''}};
+  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}},img:{url:'',key:'',model:''},aux:{url:'',key:'',model:''},gen:{temp:'',topp:'',maxtok:'',autofix:''}};
   try{
     var s=JSON.parse(localStorage.getItem(APIK)||'{}');
     if(s.provider&&d.cfg[s.provider])d.provider=s.provider;
@@ -1026,6 +1026,7 @@ function readApiForm(){
   var gt=document.getElementById('zjGenTemp'),gp=document.getElementById('zjGenTopP'),gm=document.getElementById('zjGenMax');
   if(gt)API.gen.temp=gt.value.trim();if(gp)API.gen.topp=gp.value.trim();if(gm)API.gen.maxtok=gm.value.trim();
   var gs=document.getElementById('zjGenStream');if(gs)API.gen.stream=gs.checked?'':'0';
+  var ga=document.getElementById('zjGenAutofix');if(ga)API.gen.autofix=ga.checked?'':'0';
 }
 function apiTestRun(){
   readApiForm();saveApi();
@@ -1306,16 +1307,19 @@ function driveTavern(text){
 /* 断续自动补全：状态栏恒在正文末尾，故「缺失或不完整的 mvu_panel」即「被截断或漏写」的可靠信号。
    命中时自动续写一次，接着把话说完并补齐状态栏，从根上避免「变量不更新 / AI截断」两类问题。 */
 function panelComplete(t){var p=parseMvu(t);return !!(p&&p.world&&Object.keys(p.world).length&&p.char&&Object.keys(p.char).length);}
+function autofixOn(){return !(API.gen&&API.gen.autofix==='0');} /* 断续自动补全开关，默认开 */
 function ensureComplete(sys,msgs,t){
-  if(S.chatOnly||!t||!apiReady()||panelComplete(t))return Promise.resolve(t); /* 聊天模式不需状态栏 */
+  if(S.chatOnly||!t||!apiReady()||!autofixOn()||panelComplete(t))return Promise.resolve(t); /* 关闭 / 聊天模式 / 已完整 → 不补 */
+  S.fixing=true;renderSoft(); /* 亮出「太史令补录状态栏中…」 */
   var ask='（上一段疑似被截断或漏写了结尾状态栏。请紧接上文把话说完，并在末尾据实补齐完整<mvu_panel>：<sec_char>含◆衣冠/持物/御体/观瞻/神格/史笔；<sec_npc>每在场者一行◈名字|状态|好感|心声；<sec_world>含◇纪年/时地/天气/安稳/大势/将临。只输出续写与状态栏，不要重复已写过的内容。）';
   var cont=msgs.concat([{role:'assistant',content:t},{role:'user',content:ask}]);
   return callCustomAI(sys,cont).then(function(t2){
+    S.fixing=false;
     if(!t2||!String(t2).trim())return t;
     var head=String(t).replace(/<mvu_panel>[\s\S]*$/,'').replace(/\s+$/,''); /* 去掉可能的半截状态栏 */
     var merged=head+'\n\n'+String(t2).trim();
     return panelComplete(merged)?merged:t; /* 补全仍失败则保留原文，绝不劣化 */
-  },function(){return t;});
+  },function(){S.fixing=false;return t;});
 }
 function advanceLocal(base,text){
   var done=function(reply,live){
@@ -1812,7 +1816,7 @@ function storyPane(){
     }
     return '<div class="fade" style="margin-bottom:24px;position:relative">'+wtb+chap+illu+cotHtml+wtools+paras+retry+'</div>';
   }).join('');
-  var thinking=S.thinking?'<div style="display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px;letter-spacing:.25em;padding:4px 0 12px"><span>太史令执笔中</span><span style="animation:blink 1.2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .4s infinite;color:var(--gold)">●</span></div>':'';
+  var thinking=(S.thinking||S.fixing)?'<div style="display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px;letter-spacing:.25em;padding:4px 0 12px"><span>'+(S.fixing?'太史令补录状态栏中':'太史令执笔中')+'</span><span style="animation:blink 1.2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .2s infinite;color:var(--gold)">●</span><span style="animation:blink 1.2s .4s infinite;color:var(--gold)">●</span></div>':'';
   var HIDE3D=false;try{HIDE3D=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
   var hideScene=window.__ZJ3D_OFF__&&SVGF&&mob;
   var hide3d=!window.__ZJ3D_OFF__&&HIDE3D;
@@ -2677,6 +2681,7 @@ function apiBody(){
     +'<div style="flex:1;min-width:130px"><input id="zjGenMax" '+inp+' value="'+esc(API.gen.maxtok)+'" placeholder="max_tokens 默认4000" inputmode="numeric"><div style="font-size:11px;color:var(--mut);margin-top:4px">单轮输出上限</div></div>'
     +'</div>'
     +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mut2);cursor:pointer;margin-top:12px"><input id="zjGenStream" type="checkbox" style="accent-color:#c9a063"'+(API.gen.stream!=='0'?' checked':'')+'>流式输出：字随生成边打边现（失败自动回退整段）</label>'
+    +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mut2);cursor:pointer;margin-top:10px"><input id="zjGenAutofix" type="checkbox" style="accent-color:#c9a063"'+(API.gen.autofix!=='0'?' checked':'')+'>断续自动补全：状态栏被截断或漏写时，自动续写补齐一次（推荐开）</label>'
     +'<div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;align-items:center">'
     +'<button data-act="apiSave" class="gbtn btn" style="font-size:15px;letter-spacing:.2em;padding:10px 30px">保 存</button>'
     +'<button data-act="apiTest" class="obtn btn" style="font-size:14px;letter-spacing:.15em;padding:10px 24px">测试连接</button>'
