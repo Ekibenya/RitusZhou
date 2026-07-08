@@ -2047,20 +2047,28 @@ function storyPane(){
     var cotX=extractCoT(text);text=applyRegex(cotX.text,'display');
     var illu='';
     if(h.img){var nearEnd=(S.history.length-1-i)<=8;
-      var _dsz=h.dispSize||IMGCFG.disp||'lg';
-      illu='<div style="position:relative;max-width:'+imgDispW(_dsz)+';margin:0 auto 8px">'
-        +'<div '+(nearEnd?'data-img="'+esc(h.img)+'"':'')+' style="border:1px solid rgba(255,238,205,.18);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.15),0 6px 18px rgba(0,0,0,.3)">'
-          +(nearEnd?'<div style="padding:26px 0;text-align:center;font-size:12px;letter-spacing:.2em;color:var(--mut)">插画载入中…</div>'
-            :'<div class="btn" data-imgload="'+esc(h.img)+'" style="cursor:pointer;padding:13px 0;text-align:center;font-size:12px;letter-spacing:.18em;color:var(--mut)">▸ 插画（点开加载）</div>')
-          +'</div>'
-          +'<div class="btn" data-imgzoom="'+i+'" title="缩放显示（小 / 中 / 大）" style="position:absolute;top:9px;right:9px;z-index:3;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;color:#f2e2bb;background:rgba(18,12,7,.5);border:1px solid rgba(255,238,205,.26);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 2px 9px rgba(0,0,0,.4)">'+zoomIcon(17)+'</div>'
-        +'</div>';
-      if(h.imgs&&h.imgs.length>1){var _im=h.imgs.length,_ix=(h.imgIx==null?_im-1:h.imgIx);
-        illu+='<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin:0 0 14px">'
-          +'<div class="btn obtn" data-imgprev="'+i+'" style="font-size:13px;padding:3px 13px;line-height:1;'+(_ix<=0?'opacity:.35;':'')+'">'+chev(-1,12)+'</div>'
-          +'<span style="font-size:11.5px;color:var(--mut);letter-spacing:.08em">第 '+(_ix+1)+' / '+_im+' 张</span>'
-          +'<div class="btn obtn" data-imgnext="'+i+'" style="font-size:13px;padding:3px 13px;line-height:1;'+(_ix>=_im-1?'opacity:.35;':'')+'">'+chev(1,12)+'</div>'
-          +'</div>';}
+      if(h.imgs&&h.imgs.length>=2){
+        /* 多图（2–6 张）：固定小图、一排两张的网格全部同时呈现，避免刷屏；点任一图可全屏；不提供缩放 */
+        illu='<div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 auto 12px">'
+          +h.imgs.map(function(iid){
+            return '<div style="flex:0 0 calc(50% - 4px);border:1px solid rgba(255,238,205,.16);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.12),0 4px 12px rgba(0,0,0,.28)">'
+              +(nearEnd
+                ?'<div data-img="'+esc(iid)+'"><div style="padding:30px 0;text-align:center;font-size:11px;letter-spacing:.15em;color:var(--mut)">载入中…</div></div>'
+                :'<div class="btn" data-imgload="'+esc(iid)+'" style="cursor:pointer;padding:30px 0;text-align:center;font-size:11px;letter-spacing:.12em;color:var(--mut)">点开加载</div>')
+              +'</div>';
+          }).join('')
+          +'</div>';
+      } else {
+        /* 单图：默认「大」，右上角三档缩放（大/中/小） */
+        var _dsz=h.dispSize||IMGCFG.disp||'lg';
+        illu='<div style="position:relative;max-width:'+imgDispW(_dsz)+';margin:0 auto 8px">'
+          +'<div '+(nearEnd?'data-img="'+esc(h.img)+'"':'')+' style="border:1px solid rgba(255,238,205,.18);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.15),0 6px 18px rgba(0,0,0,.3)">'
+            +(nearEnd?'<div style="padding:26px 0;text-align:center;font-size:12px;letter-spacing:.2em;color:var(--mut)">插画载入中…</div>'
+              :'<div class="btn" data-imgload="'+esc(h.img)+'" style="cursor:pointer;padding:13px 0;text-align:center;font-size:12px;letter-spacing:.18em;color:var(--mut)">▸ 插画（点开加载）</div>')
+            +'</div>'
+            +'<div class="btn" data-imgzoom="'+i+'" title="缩放显示（小 / 中 / 大）" style="position:absolute;top:9px;right:9px;z-index:3;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;color:#f2e2bb;background:rgba(18,12,7,.5);border:1px solid rgba(255,238,205,.26);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 2px 9px rgba(0,0,0,.4)">'+zoomIcon(17)+'</div>'
+          +'</div>';
+      }
     }
     var cotHtml=cotX.cot?'<details class="zjCot" style="margin:0 0 12px"><summary style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:12px;letter-spacing:.14em;color:var(--mut);border:1px solid rgba(201,160,99,.25);border-radius:99px;padding:5px 14px;background:rgba(255,255,255,.02)">✦ 推演之思</summary><div style="margin-top:8px;border-left:3px solid rgba(201,160,99,.3);border-radius:8px;background:rgba(255,255,255,.018);padding:10px 13px;font-size:13px;line-height:1.9;color:#9d8c6b;white-space:pre-wrap">'+esc(cotX.cot)+'</div></details>':'';
     var cm=/^【[^】]*】/.exec(text);
@@ -3179,7 +3187,7 @@ function imgPane(){
     +lbl('每轮生几张（多张＝不同角度/人物/视角，图下用 '+chev(-1,10)+chev(1,10)+' 翻看）')+seg([['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6']],'imgcount',String(C.count||1))
     +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:5px">超过 1 张时，由副模型据本幕剧情拆出多个<b style="color:var(--gold3)">不同切入点</b>（主场景 / 人物特写 / 在别处的相关 NPC / 不同摄像机机位 / 平行视角），各生一张，非同图重复。需配好 AI 接口。</div>'
     +lbl('镜头 · 风格（内置提示词，套在每张最前）')+seg([['auto','自动'],['cinematic','电影感'],['illust','插画'],['ink','水墨'],['fpv','第一人称'],['god','上帝视角'],['real','写实']],'imgcam',C.cam||'auto')
-    +lbl('图片显示尺寸（正文里默认多大；每张图右上角可单独调）')+seg([['sm','小'],['md','中'],['lg','大']],'imgdisp',C.disp||'lg')
+    +lbl('单张图显示尺寸（默认「大」，每张图右上角可单独调；多图那轮固定小图并排，不受此项影响）')+seg([['sm','小'],['md','中'],['lg','大']],'imgdisp',C.disp||'lg')
     +lbl('接口风格')+seg([['openai','OpenAI 兼容'],['novelai','NovelAI 官方'],['sd','SD · A1111'],['comfyui','本地 ComfyUI'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')+(C.style==='comfyui'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">本地 ComfyUI：启动时加 <b style="color:#e8b77d">--enable-cors-header "*"</b> 允许网页调用（127.0.0.1 不受 https 混合内容限制）。「接口地址」填 <b style="color:#e8b77d">http://127.0.0.1:8188</b>，「模型」填 checkpoint 文件名（如 sd_xl_base_1.0.safetensors），采样器/步数/CFG/尺寸/种子照常填。<br>进阶：下方可粘贴你自己的 <b style="color:#e8b77d">API 格式</b>工作流（ComfyUI 里 Save (API Format) 导出），用 %prompt% %negative% %seed% %steps% %cfg% %width% %height% %sampler% %scheduler% %ckpt% 作占位符；留空则用内置默认 txt2img。若最新 Chrome 因 Private Network Access 拦截，可改用本地打开游戏。</div><textarea id="zjImgComfyWf" rows="4" placeholder="（可选）粘贴 ComfyUI API 格式工作流 JSON，含 %prompt% 等占位符" style="width:100%;margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(201,160,99,.3);color:var(--ink2);font-size:11px;font-family:monospace;line-height:1.5;padding:8px;resize:vertical">'+esc(C.comfyWorkflow||'')+'</textarea>':'')
     +(C.style==='novelai'?'<div style="border:1px solid rgba(201,160,99,.32);border-radius:12px;padding:12px 13px;margin-top:14px;background:rgba(255,255,255,.015)">'+'<div style="font-size:12px;letter-spacing:.22em;color:var(--gold);margin-bottom:7px">接口地址</div>'+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="粘贴你的 Worker 网址（找不到 Cloudflare 链接？用下面的懒人拼网址）">'+'<div style="border-top:1px dashed rgba(201,160,99,.28);margin:13px 0 11px"></div>'+'<div style="font-size:12.5px;color:var(--grn2);letter-spacing:.03em;margin-bottom:8px">\u270e 懒人拼网址（懒得找那条长链接，就填下面的子域名/GitHub 用户名框就好）</div>'+'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--mut2)">https://<input id="zjNaiName" placeholder="nai-proxy（默认留空）" autocomplete="off" spellcheck="false" style="width:150px;background:rgba(255,255,255,.04);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:6px 8px;font-size:13px">.<input id="zjNaiSub" placeholder="子域名/GitHub用户名" autocomplete="off" spellcheck="false" style="width:150px;background:rgba(255,255,255,.04);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:6px 8px;font-size:13px">.workers.dev</div>'+'<div style="font-size:11px;color:var(--mut);margin-top:8px;line-height:1.75">左框＝Worker 名，部署没改名就留空（默认 <b style="color:var(--gold3)">nai-proxy</b>）；右框＝你的 <b style="color:var(--gold3)">workers.dev 子域名</b>（就是 <b>xxx</b>.workers.dev 里的 xxx，部署成功页 / Cloudflare 面板右上角可见；很多人与 GitHub 用户名一致，可先按用户名试）。填好自动写进上面「接口地址」。</div>'+'</div>':lbl('接口地址')+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="如 https://api.openai.com/v1 或 http://127.0.0.1:7860">')
     +lbl('密钥（本地 SD 可留空）')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(C.key)+'" placeholder="sk-…">'
