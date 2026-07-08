@@ -1682,9 +1682,9 @@ function sidebar(){
   var charRows=['衣冠','持物','御体','观瞻'].filter(function(k){return cc[k];}).map(function(k){return '<div style="display:flex;gap:12px;font-size:13px;line-height:1.7;margin:3px 0"><span style="flex:none;width:2.6em;color:var(--mut)">'+k+'</span><span style="flex:1;color:var(--ink2)">'+esc(cc[k])+'</span></div>';}).join('');
   var shenge=clamp(cc['神格']),anwen=clamp(cw['安稳']);
   var npcs=(p?p.npcs:[]).map(function(n){
-    var exp=S.sideNpc===n.name;
+    var exp=!(S.sideClosed&&S.sideClosed[n.name]);
     return '<div data-npcrow="'+esc(n.name)+'" style="border:1px solid rgba(255,238,205,.16);border-radius:12px;background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.04));box-shadow:inset 0 1px 0 rgba(255,242,214,.18),0 2px 6px rgba(0,0,0,.22);padding:10px 13px;margin:8px 0">'
-      +'<div class="btn" data-sidetog="'+esc(n.name)+'" style="cursor:pointer;display:flex;align-items:baseline;gap:8px"><span class="kai" style="font-size:15px;color:var(--gold3)">'+esc(n.name)+'</span><span style="flex:1;font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(n.state)+'</span><span class="npcChv" style="flex:none;font-size:11px;color:var(--mut)">'+(exp?'▾':'▸')+'</span></div>'
+      +'<div class="btn" data-sidetog="'+esc(n.name)+'" style="cursor:pointer;display:flex;align-items:baseline;gap:8px"><span class="kai" style="font-size:15px;color:var(--gold3)">'+esc(n.name)+'</span><span style="flex:1;font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(n.state)+'</span><span class="npcChv" style="flex:none;font-size:17px;line-height:1;color:var(--gold3)">'+(exp?'▾':'▸')+'</span></div>'
       +'<div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="font-size:10px;color:var(--mut);letter-spacing:.2em">心向</span><div style="flex:1;height:4px;border-radius:99px;overflow:hidden;background:rgba(201,160,99,.14)"><div style="height:100%;border-radius:99px;width:'+clamp(n.favor)+'%;background:linear-gradient(90deg,#5f8574,var(--gold));transition:width 1s ease"></div></div><span style="font-size:11px;color:var(--gold);width:22px;text-align:right">'+clamp(n.favor)+'</span></div>'
       +'<div class="npcDetail" style="display:grid;grid-template-rows:'+(exp?'1fr':'0fr')+';transition:grid-template-rows .28s ease"><div style="overflow:hidden">'
       +(n.state?'<div style="font-size:12px;color:var(--ink2);line-height:1.75;margin-top:8px">近况：'+esc(n.state)+'</div>':'')
@@ -2095,24 +2095,63 @@ function graphInner(){
   if(!ns.length)return '<div style="padding:18px 0 6px;text-align:center;font-size:12px;letter-spacing:.2em;color:#6f6148;line-height:2">尚无人物入络<br>与 NPC 相逢相知后，此处自动结成关系网</div>';
   ns=ns.slice(-12); /* 至多画12人，取最近出场者 */
   var vis={};ns.forEach(function(o){vis[o.name]=1;});
-  var W=360,H=Math.max(340,220+ns.length*18),cx=W/2,cy=H/2,R=Math.min(W,H)/2-56;
-  var pos={};
-  ns.forEach(function(o,i){var ang=-Math.PI/2+i*2*Math.PI/ns.length;pos[o.name]={x:cx+R*Math.cos(ang),y:cy+R*Math.sin(ang)};});
-  /* NPC—NPC 互连：同幕共现即结缘，线随共现次数加粗（虚线，垫在最底） */
-  var edges='',pc=npcPairs();
-  Object.keys(pc).forEach(function(k){
-    var ab=k.split('\u0001');if(!vis[ab[0]]||!vis[ab[1]])return;
-    var a=pos[ab[0]],bp=pos[ab[1]];var w=Math.min(2.4,.6+pc[k]*.4);
-    edges+='<line data-a="'+esc(ab[0])+'" data-b="'+esc(ab[1])+'" x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+bp.x.toFixed(1)+'" y2="'+bp.y.toFixed(1)+'" stroke="#8a7a5e" stroke-opacity=".33" stroke-width="'+w.toFixed(1)+'" stroke-dasharray="2 3"/>';
+  var pc=npcPairs();
+  var W=360,H=Math.max(340,220+ns.length*18),cx=W/2,cy=H/2;
+  /* 蛛网邻接图：主角连"常现之人"(出场≥2)；一切同幕共现者互连 */
+  var adj={'__c':[]};ns.forEach(function(o){adj[o.name]=[];});
+  ns.forEach(function(o){if((o.n||0)>=2){adj['__c'].push(o.name);adj[o.name].push('__c');}});
+  Object.keys(pc).forEach(function(k){var ab=k.split('\u0001');if(!vis[ab[0]]||!vis[ab[1]])return;adj[ab[0]].push(ab[1]);adj[ab[1]].push(ab[0]);});
+  /* 自中枢 BFS 定层级与父（放射角度分配）；不可达者为漂浮之网 */
+  var depthOf={'__c':0},parent={},seen={'__c':1},q=['__c'];
+  while(q.length){var cur=q.shift();(adj[cur]||[]).forEach(function(nb){if(!seen[nb]){seen[nb]=1;depthOf[nb]=depthOf[cur]+1;parent[nb]=cur;q.push(nb);}});}
+  var floated=[];ns.forEach(function(o){if(!seen[o.name])floated.push(o.name);});
+  var kidsOf={'__c':[]};ns.forEach(function(o){if(seen[o.name]){var pp=parent[o.name];(kidsOf[pp]=kidsOf[pp]||[]).push(o.name);}});
+  var maxD=1;ns.forEach(function(o){if((depthOf[o.name]||0)>maxD)maxD=depthOf[o.name];});
+  var availR=Math.min(W,H)/2-46,coreR=floated.length?availR*0.74:availR,ring=coreR/maxD;
+  function leafN(nm){var k=kidsOf[nm]||[];if(!k.length)return 1;var s=0;k.forEach(function(c){s+=leafN(c);});return s;}
+  var pos={'__c':{x:cx,y:cy}};
+  function lay(nm,a0,a1,depth){
+    var kids=kidsOf[nm]||[];if(!kids.length)return;
+    var tot=0;kids.forEach(function(c){tot+=leafN(c);});
+    var a=a0;
+    kids.forEach(function(c){
+      var span=(a1-a0)*(leafN(c)/tot),mid=a+span/2,rr=(depthOf[c]||1)*ring;
+      pos[c]={x:cx+rr*Math.cos(mid),y:cy+rr*Math.sin(mid)};
+      lay(c,a,a+span,depth+1);a+=span;
+    });
+  }
+  lay('__c',-Math.PI/2,-Math.PI/2+2*Math.PI,0);
+  /* 漂浮之网：按各自共现小簇相邻排布于最外圈，彼此结丝、不系于主角 */
+  var fseen={},ford=[];
+  floated.forEach(function(st){if(fseen[st])return;var qq=[st];fseen[st]=1;while(qq.length){var cc=qq.shift();ford.push(cc);(adj[cc]||[]).forEach(function(nb){if(floated.indexOf(nb)>=0&&!fseen[nb]){fseen[nb]=1;qq.push(nb);}});}});
+  ford.forEach(function(nm,i){var ang=-Math.PI/2+(i+0.5)*2*Math.PI/ford.length;pos[nm]={x:cx+availR*Math.cos(ang),y:cy+availR*Math.sin(ang)};});
+  /* —— 蛛网模型 —— 主角与常现之人（出场≥2）结成主角之网；一切同幕共现者彼此结丝成网，
+     可跨簇互连（多网互联）；孤身偶现者不强系于主角，自在漂浮 */
+  var vis={};ns.forEach(function(o){vis[o.name]=1;});
+  var hubLines='';
+  ns.forEach(function(o){
+    if((o.n||0)<2)return; /* 仅常现之人系于主角 */
+    var cp=pos[o.name]||{x:cx,y:cy},pp=pos['__c'];
+    var fv=Number(o.favor);if(!isFinite(fv))fv=50;
+    var col=fv>=70?'#7ea892':fv>=40?'#c9a063':'#b06a55';
+    var sel=S.memNpc===o.name;
+    hubLines+='<line data-a="__c" data-b="'+esc(o.name)+'" x1="'+pp.x.toFixed(1)+'" y1="'+pp.y.toFixed(1)+'" x2="'+cp.x.toFixed(1)+'" y2="'+cp.y.toFixed(1)+'" stroke="'+col+'" stroke-opacity="'+(sel?'.92':'.55')+'" stroke-width="'+(1+Math.min(2.4,o.n/3)).toFixed(1)+'"/>';
   });
-  var lines='',nodes='';
-  ns.forEach(function(o,i){
+  var webLines='',pcw=npcPairs();
+  Object.keys(pcw).forEach(function(k){
+    var ab=k.split('\u0001');if(!vis[ab[0]]||!vis[ab[1]])return;
+    var a=pos[ab[0]],b=pos[ab[1]],cnt=pcw[k];if(!a||!b)return;
+    var w=Math.min(2.2,.5+cnt*.35);
+    var seld=(S.memNpc===ab[0]||S.memNpc===ab[1]);
+    webLines+='<line data-a="'+esc(ab[0])+'" data-b="'+esc(ab[1])+'" x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b.x.toFixed(1)+'" y2="'+b.y.toFixed(1)+'" stroke="#9a8a6a" stroke-opacity="'+(seld?'.75':'.42')+'" stroke-width="'+w.toFixed(1)+'"/>';
+  });
+  var lines=webLines+hubLines;
+  var nodes='';
+  ns.forEach(function(o){
     var x=pos[o.name].x,y=pos[o.name].y;
     var fv=Number(o.favor);if(!isFinite(fv))fv=50;
     var col=fv>=70?'#7ea892':fv>=40?'#c9a063':'#b06a55';
-    var wdt=(1+Math.min(3,o.n/3)).toFixed(1);
     var sel=S.memNpc===o.name;
-    lines+='<line data-a="__c" data-b="'+esc(o.name)+'" x1="'+cx+'" y1="'+cy+'" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-opacity="'+(sel?'.9':'.45')+'" stroke-width="'+wdt+'"/>';
     nodes+='<g data-npc="'+esc(o.name)+'" style="cursor:grab">'
       +'<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="22" fill="rgba(26,20,16,.94)" stroke="'+col+'" stroke-width="'+(sel?2.4:1.2)+'"/>'
       +'<text x="'+x.toFixed(1)+'" y="'+(y-2).toFixed(1)+'" text-anchor="middle" font-size="12" fill="'+(sel?'#e0be82':'#d8c9a8')+'" font-family="var(--kai)" style="pointer-events:none">'+esc(String(o.name).slice(0,4))+'</text>'
@@ -2120,22 +2159,40 @@ function graphInner(){
   });
   var center='<g data-gcenter="1" style="cursor:grab"><circle cx="'+cx+'" cy="'+cy+'" r="26" fill="rgba(140,35,24,.25)" stroke="#e0be82" stroke-width="1.4"/>'
     +'<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" font-size="14" fill="#e0be82" font-family="var(--kai)" style="pointer-events:none">'+(S.customRole?'吾':'朕')+'</text></g>';
-  var card='';
-  if(S.memNpc){
-    var sel2=null;ns.forEach(function(o){if(o.name===S.memNpc)sel2=o;});
-    if(sel2){var fv2=Number(sel2.favor);if(!isFinite(fv2))fv2=50;
-      card='<div class="fade" style="border:1px solid rgba(224,190,130,.4);border-radius:12px;padding:11px 13px;margin-top:8px;background:rgba(255,255,255,.02)">'
-      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="kai" style="font-size:15px;color:var(--gold2)">'+esc(sel2.name)+'</span><span style="font-size:11px;color:var(--mut)">出场 '+sel2.n+' 幕</span>'
-      +'<div style="flex:1;min-width:80px;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden"><div style="width:'+Math.max(2,Math.min(100,fv2))+'%;height:100%;background:linear-gradient(90deg,#b06a55,#c9a063,#7ea892)"></div></div>'
-      +'<span style="font-size:11px;color:var(--gold3)">好感 '+fv2+'</span></div>'
-      +(sel2.status?'<div style="font-size:12px;color:var(--ink2);margin-top:6px;line-height:1.7">近况：'+esc(sel2.status)+'</div>':'')
-      +(sel2.thought?'<div style="font-size:12px;color:#9d8c6b;margin-top:3px;line-height:1.7">心声：'+esc(sel2.thought)+'</div>':'')
-      +'<div style="display:flex;justify-content:flex-end;margin-top:8px"><div class="btn" data-act="npcDrop" style="cursor:pointer;font-size:11.5px;color:#b06a55;border:1px solid rgba(166,59,38,.4);border-radius:8px;padding:4px 12px">移除此球</div></div></div>';}
-  }
   var hid=(S.graphHidden||[]).length;
   var resetLine=hid?'<div style="text-align:right;margin-top:6px"><span class="btn" data-act="npcUnhide" style="cursor:pointer;font-size:11px;color:var(--mut)">已移除 '+hid+' 人 · 还原全部</span></div>':'';
-  return '<div style="font-size:11px;color:var(--mut);line-height:1.7;margin:2px 0 2px">实线连主角，色由好感定（<span style="color:#7ea892">青亲</span>·<span style="color:#c9a063">金平</span>·<span style="color:#b06a55">赤疏</span>）；虚线为同幕共现者互连。小球可拖拽，轻点看详情、移除重复球。</div>'
-    +'<svg id="zjGraphSvg" viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;touch-action:none">'+edges+lines+center+nodes+'</svg>'+card+resetLine;
+  return '<div style="font-size:11px;color:var(--mut);line-height:1.7;margin:2px 0 2px">蛛网思维导图：常现之人系于你、结成你的一张网（连线色由好感定 <span style="color:#7ea892">青亲</span>·<span style="color:#c9a063">金平</span>·<span style="color:#b06a55">赤疏</span>）；凡同幕共处者以金丝互连，可自成一网、亦可多网相牵；孤身偶现者不强系于你，自在漂浮。小球可拖拽，轻点看详情、移除重复球。</div>'
+    +'<svg id="zjGraphSvg" viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;touch-action:none">'+lines+center+nodes+'</svg>'
+    +'<div id="zjGraphCard">'+graphCardHtml()+'</div>'+resetLine;
+}
+function graphCardHtml(){
+  if(!S.memNpc)return '';
+  var ns=npcStats(),sel2=null;ns.forEach(function(o){if(o.name===S.memNpc)sel2=o;});
+  if(!sel2)return '';
+  var fv2=Number(sel2.favor);if(!isFinite(fv2))fv2=50;
+  return '<div class="fade" style="border:1px solid rgba(224,190,130,.4);border-radius:12px;padding:11px 13px;margin-top:8px;background:rgba(255,255,255,.02)">'
+    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="kai" style="font-size:15px;color:var(--gold2)">'+esc(sel2.name)+'</span><span style="font-size:11px;color:var(--mut)">出场 '+sel2.n+' 幕</span>'
+    +'<div style="flex:1;min-width:80px;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden"><div style="width:'+Math.max(2,Math.min(100,fv2))+'%;height:100%;background:linear-gradient(90deg,#b06a55,#c9a063,#7ea892)"></div></div>'
+    +'<span style="font-size:11px;color:var(--gold3)">好感 '+fv2+'</span></div>'
+    +(sel2.status?'<div style="font-size:12px;color:var(--ink2);margin-top:6px;line-height:1.7">近况：'+esc(sel2.status)+'</div>':'')
+    +(sel2.thought?'<div style="font-size:12px;color:#9d8c6b;margin-top:3px;line-height:1.7">心声：'+esc(sel2.thought)+'</div>':'')
+    +'<div style="display:flex;justify-content:flex-end;margin-top:8px"><div class="btn" data-act="npcDrop" style="cursor:pointer;font-size:11.5px;color:#b06a55;border:1px solid rgba(166,59,38,.4);border-radius:8px;padding:4px 12px">移除此球</div></div></div>';
+}
+function graphSelect(nm){
+  S.memNpc=(nm&&S.memNpc!==nm)?nm:null;
+  var svg=document.getElementById('zjGraphSvg');
+  if(svg){
+    [].forEach.call(svg.querySelectorAll('g[data-npc]'),function(g){
+      var selc=g.getAttribute('data-npc')===S.memNpc,c=g.querySelector('circle'),ts=g.querySelectorAll('text');
+      if(c)c.setAttribute('stroke-width',selc?2.4:1.2);
+      if(ts[0])ts[0].setAttribute('fill',selc?'#e0be82':'#d8c9a8');
+    });
+    [].forEach.call(svg.querySelectorAll('line[data-b]'),function(l){
+      var a=l.getAttribute('data-a'),b=l.getAttribute('data-b'),touch=(a===S.memNpc||b===S.memNpc),isHub=(a==='__c');
+      l.setAttribute('stroke-opacity',touch?(isHub?'.92':'.75'):(isHub?'.55':'.42'));
+    });
+  }
+  var card=document.getElementById('zjGraphCard');if(card)card.innerHTML=graphCardHtml();
 }
 /* 图谱小球联动拖拽：弹簧回位物理 */
 var GPH={drag:null,raf:0,squelch:false};
@@ -2203,7 +2260,7 @@ function graphHydrate(){
     var tap=(n._moved||0)<=10; /* 触屏容差：位移≤10px 视为轻点 */
     nodes.forEach(function(o){o.ox=0;o.oy=0;});kick();
     GPH.squelch=true;setTimeout(function(){GPH.squelch=false;},400); /* 吞掉浏览器补发 click，防重复切换 */
-    if(tap){var nm=n.g.getAttribute('data-npc');S.memNpc=(nm&&S.memNpc!==nm)?nm:null;S._noFade=true;render();}
+    if(tap){graphSelect(n.g.getAttribute('data-npc'));}
   }
   svg.addEventListener('pointerup',gup);
   svg.addEventListener('pointercancel',gup);
@@ -2951,10 +3008,10 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-mtool')){var mtix=parseInt(t.getAttribute('data-mtool'),10)-1;S.msgTools=(S.msgTools===mtix?null:mtix);S.msgEdit=null;S._noFade=true;render();return;}
       if(t.getAttribute('data-medit')){S.memEdit=parseInt(t.getAttribute('data-medit'),10)-1;renderOverlay();return;}
       if(t.getAttribute('data-mdel')){S.mem.splice(parseInt(t.getAttribute('data-mdel'),10),1);savePref();renderOverlay();return;}
-      if(t.getAttribute('data-npc')!=null&&t.getAttribute('data-npc')!==''){if(GPH.squelch){GPH.squelch=false;return;}var npv=t.getAttribute('data-npc');S.memNpc=(S.memNpc===npv?null:npv);S._noFade=true;render();return;}
-      if(t.getAttribute('data-sidetog')!=null&&t.getAttribute('data-sidetog')!==''){var snm=t.getAttribute('data-sidetog');var sopen=S.sideNpc!==snm;S.sideNpc=sopen?snm:null;
-        var shost=t.closest('.zjSideNpcs')||document;
-        [].forEach.call(shost.querySelectorAll('[data-npcrow]'),function(row){var isT=row.getAttribute('data-npcrow')===snm;var det=row.querySelector('.npcDetail');var chv=row.querySelector('.npcChv');var e2=isT&&sopen;if(det)det.style.gridTemplateRows=e2?'1fr':'0fr';if(chv)chv.textContent=e2?'▾':'▸';});
+      if(t.getAttribute('data-npc')!=null&&t.getAttribute('data-npc')!==''){if(GPH.squelch){GPH.squelch=false;return;}graphSelect(t.getAttribute('data-npc'));return;}
+      if(t.getAttribute('data-sidetog')!=null&&t.getAttribute('data-sidetog')!==''){var snm=t.getAttribute('data-sidetog');S.sideClosed=S.sideClosed||{};var willOpen=!!S.sideClosed[snm];if(S.sideClosed[snm])delete S.sideClosed[snm];else S.sideClosed[snm]=1;
+        var srow=t.closest('[data-npcrow]');
+        if(srow){var det=srow.querySelector('.npcDetail');var chv=srow.querySelector('.npcChv');if(det)det.style.gridTemplateRows=willOpen?'1fr':'0fr';if(chv)chv.textContent=willOpen?'▾':'▸';}
         return;}
       if(t.getAttribute('data-sugg')!=null&&t.getAttribute('data-sugg')!==''){if(S.thinking)return;var sgi=parseInt(t.getAttribute('data-sugg'),10);var sgt=(S.suggList||[])[sgi];if(sgt){S.suggList=null;sendText(S.dice?sgt+diceRoll():sgt);}return;}
       if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;renderOverlay();pillFlip('zjSetPill',spr);return;}
