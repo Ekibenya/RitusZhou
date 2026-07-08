@@ -399,6 +399,13 @@ function parseMvu(text){
   return {char:char,npcs:npcs,world:world};
 }
 function stripMvu(t){return String(t||'').replace(/<mvu_panel>[\s\S]*?<\/mvu_panel>/g,'').replace(/<UpdateVariable>[\s\S]*?<\/UpdateVariable>/g,'').trim();}
+/* 去复读退化：Gemini 等模型偶发"极其极其极其…"式无尽复读，客户端兜底压平 */
+function deLoop(t){
+  t=String(t||'');
+  t=t.replace(/(.)\1{9,}/g,function(m,c){return c+c+c;}); /* 单字连刷≥10 → 3 */
+  t=t.replace(/([\s\S]{2,12}?)\1{5,}/g,function(m,g){return g+g+g;}); /* 2-12字短语连刷≥6 → 3 */
+  return t;
+}
 function parseDeed(text){
   var m=/<sec_deed>([\s\S]*?)<\/sec_deed>/.exec(text||'');
   if(!m)return null;
@@ -956,7 +963,7 @@ function callCustomAI(system,messages){
   }
   if(API.provider==='gemini'){
     var contents=messages.map(function(m){return {role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]};});
-    return apiHttp(base+'/v1beta/models/'+encodeURIComponent(c.model)+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':c.key},body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:contents,generationConfig:(function(){var g={maxOutputTokens:gM};if(gT!=null)g.temperature=gT;if(gP!=null)g.topP=gP;return g;})()})})
+    return apiHttp(base+'/v1beta/models/'+encodeURIComponent(c.model)+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':c.key},body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:contents,generationConfig:(function(){var g={maxOutputTokens:gM,frequencyPenalty:0.6};if(gT!=null)g.temperature=gT;if(gP!=null)g.topP=gP;return g;})()})})
       .then(function(d){var cd=d.candidates&&d.candidates[0];return (cd&&cd.content&&cd.content.parts||[]).map(function(x){return x.text||'';}).join('');});
   }
   var url=/\/chat\/completions$/.test(base)?base:base+'/chat/completions';
@@ -985,6 +992,7 @@ function callCustomAIStream(system,messages,onDelta){
             if(!ln||ln==='[DONE]')return;
             try{var j=JSON.parse(ln);var d=extract(j)||'';if(d){full+=d;try{onDelta&&onDelta(full);}catch(e3){}}}catch(e){}
           });
+          if(full.length>200&&/([\s\S]{1,12}?)\1{29,}$/.test(full)){try{rd.cancel();}catch(e4){}return full;}
           return pump();
         });
       }
@@ -997,7 +1005,7 @@ function callCustomAIStream(system,messages,onDelta){
   }
   if(API.provider==='gemini'){
     var contents=messages.map(function(m){return {role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]};});
-    var gg={maxOutputTokens:gM};if(gT!=null)gg.temperature=gT;if(gP!=null)gg.topP=gP;
+    var gg={maxOutputTokens:gM,frequencyPenalty:0.6};if(gT!=null)gg.temperature=gT;if(gP!=null)gg.topP=gP;
     return sse(base+'/v1beta/models/'+encodeURIComponent(c.model)+':streamGenerateContent?alt=sse',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':c.key},body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:contents,generationConfig:gg})},
       function(j){var cd=j.candidates&&j.candidates[0];return ((cd&&cd.content&&cd.content.parts)||[]).map(function(x){return x.text||'';}).join('');});
   }
@@ -1200,9 +1208,13 @@ function sttToggle(){
   var mb=document.getElementById('zjMicBtn');if(mb){mb.style.color='#e06a50';mb.style.borderColor='rgba(224,106,80,.65)';mb.textContent='●';}
 }
 function diceRoll(){
-  var r=1+Math.floor(Math.random()*100),t;
-  if(r<=5)t='大凶';else if(r<=35)t='不利';else if(r<=65)t='平平';else if(r<=94)t='顺遂';else t='大吉';
-  return '\n〔天命明骰 '+r+'／100 · '+t+'〕';
+  var r=1+Math.floor(Math.random()*100),t,e;
+  if(r<=5){t='大凶';e='灾难性失败且有恶果';}
+  else if(r<=35){t='不利';e='事与愿违';}
+  else if(r<=65){t='平平';e='成败参半、进展有限';}
+  else if(r<=94){t='顺遂';e='如愿达成';}
+  else{t='大吉';e='超乎所求，另有意外之喜';}
+  return '\n〔天命判定 '+r+'/100 · '+t+'：本回合行动'+e+'。务必严格照此骰值裁定成效，不得无视骰点或一律写成失败／大凶〕';
 }
 /* 懒人四策：每幕后由 AI 拟四条可点选的下一步 */
 function genSuggestions(){
@@ -1323,6 +1335,7 @@ function ensureComplete(sys,msgs,t){
 }
 function advanceLocal(base,text){
   var done=function(reply,live){
+    reply=deLoop(reply);
     var msg={role:'world',text:reply,panel:parseMvu(reply)};
     if(S._swipeFrom){msg.alts=S._swipeFrom.concat([reply]).slice(-8);msg.altIx=msg.alts.length-1;S._swipeFrom=null;}
     S.thinking=false;S.aiLive=live;S.history=base.concat([{role:'user',text:text},msg]);render();savePref();
@@ -1342,7 +1355,7 @@ function advanceLocal(base,text){
       }).then(function(t){
         if(!t||!String(t).trim())throw new Error('接口返回了空回复');
         return ensureComplete(sys,msgs,t).then(function(t3){
-          live.text=t3;live.panel=parseMvu(t3);S.thinking=false;S.aiLive=true;
+          t3=deLoop(t3);live.text=t3;live.panel=parseMvu(t3);S.thinking=false;S.aiLive=true;
           if(S._swipeFrom){live.alts=S._swipeFrom.concat([t3]).slice(-8);live.altIx=live.alts.length-1;S._swipeFrom=null;}
           if(!started)S.history=base.concat([{role:'user',text:text},live]);
           render();savePref();genSuggestions();
