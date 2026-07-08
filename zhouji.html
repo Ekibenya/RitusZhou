@@ -980,9 +980,24 @@ function imgEndpoint(){var base=imgBase();if(IMGCFG.style==='novelai')return bas
 function imgBuildBody(pos,neg){
   var C=IMGCFG,w=parseInt(C.width,10)||0,h=parseInt(C.height,10)||0,seed=imgSeed();
   if(C.style==='novelai'){
-    var np={params_version:3,width:w||832,height:h||1216,scale:parseFloat(C.guidance)||5,sampler:C.sampler||'k_euler_ancestral',steps:parseInt(C.steps,10)||28,n_samples:1,ucPreset:0,qualityToggle:true,negative_prompt:neg||'',seed:(seed>=0?seed:Math.floor(Math.random()*4294967295)),cfg_rescale:(C.rescale!==''&&C.rescale!=null?parseFloat(C.rescale)||0:0),noise_schedule:C.noise||'native',dynamic_thresholding:false,add_original_image:true,legacy:false};
+    /* NAI 请求体分两套 schema：V3(nai-diffusion-3)与 V4/V4.5(nai-diffusion-4*)。
+       旧代码恒发 params_version:3 却不带 v4_prompt，V3、V4 都会被 NAI 判 500。 */
+    var naiModel=C.model||'nai-diffusion-3';
+    var isV4=/diffusion-4/.test(naiModel);
+    var seedVal=(seed>=0?seed:Math.floor(Math.random()*4294967295));
+    var noiseIn=(C.noise||'').trim();
+    var np={params_version:(isV4?3:1),width:w||832,height:h||1216,scale:parseFloat(C.guidance)||5,sampler:C.sampler||'k_euler_ancestral',steps:parseInt(C.steps,10)||28,n_samples:1,ucPreset:0,qualityToggle:true,dynamic_thresholding:false,controlnet_strength:1,legacy:false,add_original_image:true,cfg_rescale:(C.rescale!==''&&C.rescale!=null?parseFloat(C.rescale)||0:0),seed:seedVal,negative_prompt:neg||''};
+    if(isV4){
+      /* V4/V4.5：native 不受支持，回落 karras；须带 v4_prompt/v4_negative_prompt */
+      np.noise_schedule=(noiseIn&&noiseIn!=='native')?noiseIn:'karras';
+      np.autoSmea=false;np.use_coords=false;np.legacy_v3_extend=false;np.deliberate_euler_ancestral_bug=false;np.prefer_brownian=true;
+      np.v4_prompt={caption:{base_caption:pos,char_captions:[]},use_coords:false,use_order:true};
+      np.v4_negative_prompt={caption:{base_caption:neg||'',char_captions:[]},legacy_uc:false};
+    }else{
+      np.noise_schedule=noiseIn||'native';np.sm=false;np.sm_dyn=false;
+    }
     if(C.charRef&&C.refImg){np.reference_image_multiple=[String(C.refImg).replace(/^data:image\/\w+;base64,/,'')];np.reference_strength_multiple=[0.6];}
-    return {input:pos,model:C.model||'nai-diffusion-3',action:'generate',parameters:np};
+    return {input:pos,model:naiModel,action:'generate',parameters:np};
   }
   if(C.style==='sd'){
     var b={prompt:pos,negative_prompt:neg||'',steps:parseInt(C.steps,10)||28,cfg_scale:parseFloat(C.guidance)||7,width:w||832,height:h||1216,seed:seed};
@@ -3081,6 +3096,7 @@ function imgPane(){
     +lbl('接口地址')+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="如 https://api.openai.com/v1 或 http://127.0.0.1:7860">'
     +lbl('密钥（本地 SD 可留空）')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(C.key)+'" placeholder="sk-…">'
     +lbl('模型')+'<input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="如 dall-e-3 / gpt-image-1 / nai-diffusion-3 / flux">'
+    +(C.style==='novelai'?'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:5px">NAI 模型名须精确：<b style="color:var(--gold3)">nai-diffusion-3</b>（V3）／<b style="color:var(--gold3)">nai-diffusion-4-5-full</b>·<b style="color:var(--gold3)">nai-diffusion-4-5-curated</b>·<b style="color:var(--gold3)">nai-diffusion-4-full</b>（V4.5/V4，需 Opus）。填错或留空即报 500。V3、V4 的请求体本游戏已自动区分。</div>':'')
     +lbl('采样与画质')+'<div style="margin:-2px 0 7px"><span class="btn" data-act="imgReset" style="cursor:pointer;font-size:11.5px;color:var(--gold3);border:1px solid rgba(201,160,99,.3);border-radius:7px;padding:3px 11px">↺ 用本接口推荐默认</span><span style="font-size:11px;color:var(--mut);margin-left:8px">看不懂就用推荐值，直接能出图</span></div>'
     +'<div style="display:flex;gap:9px;flex-wrap:wrap"><input id="zjImgSampler" '+half+' value="'+esc(C.sampler)+'" placeholder="采样器 sampler 如 k_euler_ancestral"><input id="zjImgNoise" '+half+' value="'+esc(C.noise)+'" placeholder="噪点表 noise 如 karras/native"></div>'
     +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:9px"><input id="zjImgSteps" '+half+' value="'+esc(C.steps)+'" placeholder="步数 steps 如 28"><input id="zjImgGuid" '+half+' value="'+esc(C.guidance)+'" placeholder="提示词引导 guidance/CFG 如 5"><input id="zjImgRescale" '+half+' value="'+esc(C.rescale)+'" placeholder="引导重缩放 rescale 如 0.2"></div>'
@@ -3613,7 +3629,7 @@ root.addEventListener('click',function(e){
         if(!imgReady()){S.imgSetMsg='请先填好接口地址/密钥/模型';S.imgSetMsgC='var(--red2)';renderOverlay();return;}
         S.imgSetMsg='正在测试生图……';S.imgSetMsgC='var(--mut2)';renderOverlay();
         var tpos=[IMGCFG.pos,'ancient Chinese palace hall at dusk, cinematic lighting, highly detailed, test'].filter(Boolean).join(', ');
-        imgGenBlob(tpos,IMGCFG.neg).then(function(blob){if(blob&&blob.size){S.imgSetMsg='✓ 测试生图成功，接口可用';S.imgSetMsgC='var(--grn2)';}else throw new Error('接口未返回图像');renderOverlay();})['catch'](function(err){S.imgSetMsg='测试失败：'+String(err&&err.message||err).slice(0,150);S.imgSetMsgC='var(--red2)';renderOverlay();});
+        imgGenBlob(tpos,IMGCFG.neg).then(function(blob){if(blob&&blob.size){S.imgSetMsg='✓ 测试生图成功，接口可用';S.imgSetMsgC='var(--grn2)';}else throw new Error('接口未返回图像');renderOverlay();})['catch'](function(err){var em=String(err&&err.message||err);var extra='';if(IMGCFG.style==='novelai'&&/(500|Internal Server)/.test(em))extra=' ｜ NAI 500 十有八九是「模型名」不对：请精确填 nai-diffusion-3（V3）或 nai-diffusion-4-5-full / nai-diffusion-4-5-curated / nai-diffusion-4-full（V4.5/V4，需 Opus 订阅），不要留空、不要写别名。';S.imgSetMsg='测试失败：'+em.slice(0,170)+extra;S.imgSetMsgC='var(--red2)';renderOverlay();});
         return;}
       else if(a==='imgLoreAdd'){syncImgForm();IMGLORE.push({keys:[],content:'',on:true});imgLoreSave();renderOverlay();return;}
       else if(a==='imgLoreDel'){return;}
