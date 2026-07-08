@@ -1240,7 +1240,7 @@ function apiModelsRun(){
 
 var LSK='zhouji_tavern_v1';
 function loadPref(){try{return JSON.parse(localStorage.getItem(LSK)||'{}');}catch(e){return {};}}
-function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined,alts:(h.alts&&h.alts.length>1)?h.alts:undefined,altIx:h.altIx};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN,dice:S.dice?1:0,sugg:S.sugg===false?0:1,chat:S.chatOnly?1:0,mic:S.micOn===false?0:(S.micOn===true?1:undefined),graphHidden:(S.graphHidden&&S.graphHidden.length)?S.graphHidden:undefined,last:Date.now()}));}catch(e){}}
+function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined,alts:(h.alts&&h.alts.length>1)?h.alts:undefined,altIx:h.altIx};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN,dice:S.dice?1:0,sugg:S.sugg===false?0:1,chat:S.chatOnly?1:0,mic:S.micOn===false?0:(S.micOn===true?1:undefined),graphHidden:(S.graphHidden&&S.graphHidden.length)?S.graphHidden:undefined,npcMeta:(S.npcMeta&&Object.keys(S.npcMeta).length)?S.npcMeta:undefined,last:Date.now()}));}catch(e){}}
 
 /* ---------------- 长程记忆 · 太史长卷 ----------------
    每轮世界回应自动摘为一条编年纪要（纪年·时地·天子之举·史笔），永久保存、
@@ -1295,7 +1295,7 @@ function memChronicle(){
 var pref = loadPref();
 var S = {
   screen: 'title', device: pref.device||'auto', openingId: pref.openingId||null,
-  history: [], input:'', mode:'say', thinking:false, aiLive:null, muted:pref.muted||false, dice:!!pref.dice, sugg:pref.sugg!==0, chatOnly:!!pref.chat, micOn:(pref.mic===0?false:(pref.mic===1?true:null)), graphHidden:pref.graphHidden||[],
+  history: [], input:'', mode:'say', thinking:false, aiLive:null, muted:pref.muted||false, dice:!!pref.dice, sugg:pref.sugg!==0, chatOnly:!!pref.chat, micOn:(pref.mic===0?false:(pref.mic===1?true:null)), graphHidden:pref.graphHidden||[], npcMeta:pref.npcMeta||{}, _npcMetaBusy:null,
   overlay:null, tab:'story', secC:true, secN:true, secW:true, secG:true, secA:false,
   codexCat:'核心', codexIdx:0, saves:pref.saves||[], connected:TH.available,
   mem:pref.mem||[], memOn:pref.memOn!==false, memN:pref.memN||0,
@@ -1508,7 +1508,7 @@ function autofixOn(){return !(API.gen&&API.gen.autofix==='0');} /* 断续自动�
 function ensureComplete(sys,msgs,t){
   if(S.chatOnly||!t||!apiReady()||!autofixOn()||panelComplete(t))return Promise.resolve(t); /* 关闭 / 聊天模式 / 已完整 → 不补 */
   S.fixing=true;renderSoft(); /* 亮出「太史令补录状态栏中…」 */
-  var ask='（上一段疑似被截断或漏写了结尾状态栏。请紧接上文把话说完，并在末尾据实补齐完整<mvu_panel>：<sec_char>含◆衣冠/持物/御体/观瞻/神格/史笔；<sec_npc>每在场者一行◈名字|状态|好感|心声；<sec_world>含◇纪年/时地/天气/安稳/大势/将临。只输出续写与状态栏，不要重复已写过的内容。）';
+  var ask='（上一段疑似被截断或漏写了结尾状态栏。请紧接上文把话说完，并在末尾据实补齐完整<mvu_panel>：<sec_char>含◆衣冠/持物/御体/观瞻/神格/史笔；<sec_npc>每在场者一行◈名字|状态|好感|心声|身份|所在|年龄|性别（后四项据剧情如实填，不明可留空但保留竖线占位）；<sec_world>含◇纪年/时地/天气/安稳/大势/将临。只输出续写与状态栏，不要重复已写过的内容。）';
   var cont=msgs.concat([{role:'assistant',content:t},{role:'user',content:ask}]);
   return callCustomAI(sys,cont).then(function(t2){
     S.fixing=false;
@@ -1796,7 +1796,7 @@ function wizTemplate(w){
   var era=WIZ_ERAS[w.era];var role=wizRoleDesc(w);var isT=!role;var wy=wizYearOf(w);
   var who=isT?'你——姬瑶，永生的周天子——':'你——'+(w.role.mode==='figure'?w.role.fig:(w.role.c.id||'无名之人'))+'——';
   var panel='<mvu_panel>\n<sec_char>\n◆衣冠|依时代与身份\n◆持物|——\n◆御体|'+(isT?'永生之躯':'如常')+'\n◆观瞻|——\n◆'+(isT?'神格':'处境')+'|100\n◆史笔|开局于'+w.place+'。\n</sec_char>\n<sec_npc>\n'
-    +w.npcs.map(function(n){return '◈'+n+'|在场|50|静观';}).join('\n')
+    +w.npcs.map(function(n){return '◈'+n+'|在场|50|静观|||';}).join('\n')
     +'\n</sec_npc>\n<sec_world>\n◇纪年|'+era.label+' · '+wizYearStr(wy)+' · 春\n◇时地|日中 · '+w.place+'\n◇天气|晴\n◇安稳|80\n◇大势|'+era.blurb.split('：')[0]+'\n◇将临|未卜\n</sec_world>\n</mvu_panel>';
   return '【开局零·'+era.label+'（'+wizYearStr(wy)+'），'+w.place+'：自定义开局】\n\n'
     +era.blurb+'\n\n此刻，'+who+'正在'+w.place+'。'+(w.npcs.length?('在场的还有：'+w.npcs.join('、')+'。'):'')
@@ -2307,7 +2307,39 @@ function npcStats(){
       if(np.sex)o.sex=np.sex;
     });
   });
-  return order.map(function(k){return map[k];}).filter(function(o){return (S.graphHidden||[]).indexOf(o.name)<0;});
+  var meta=S.npcMeta||{};
+  return order.map(function(k){var o=map[k],mm=meta[k];if(mm){if(!o.role&&mm.role)o.role=mm.role;if(!o.place&&mm.place)o.place=mm.place;if(!o.age&&mm.age)o.age=mm.age;if(!o.sex&&mm.sex)o.sex=mm.sex;}return o;}).filter(function(o){return (S.graphHidden||[]).indexOf(o.name)<0;});
+}
+/* 人物资料兜底推断：主模型若只给了旧版四字段(状态/好感/心声)，身份/所在/年龄/性别为空时，
+   据该NPC历次出场片段用副模型推断一次并持久化缓存，令图谱详情卡恒能填满 */
+var NPCMETA_SYS='你是人物设定提取器。下面给你一个中国古代角色扮演游戏里某NPC的历次出场片段，请推断其四项固定资料。只输出一个JSON对象，不要任何解释、不要代码块围栏：\n{"role":"其人身份或职业，如 铁匠/太宰/侍女/将军，尽量简短(≤4字)","place":"最近所在地","age":"年龄，可填数字或如 约四十","sex":"男 或 女"}\n凡片段中确实无从判断的字段，填空字符串""。';
+function npcMetaContext(name){
+  var out=[];
+  for(var i=0;i<S.history.length;i++){
+    var h=S.history[i];if(h.role!=='world')continue;
+    var p=h.panel||(h.panel=parseMvu(h.text));
+    if(p&&p.npcs)p.npcs.forEach(function(np){if(np&&np.name===name&&(np.state||np.thought))out.push('◈'+name+'｜'+(np.state||'')+(np.thought?'｜心声:'+np.thought:''));});
+    var txt=stripCoT(stripMvu(h.text));var idx=txt.indexOf(name);
+    if(idx>=0)out.push(txt.slice(Math.max(0,idx-46),idx+140).replace(/\s+/g,' '));
+  }
+  return out.slice(-16).join('\n').slice(0,2200);
+}
+function npcMetaParse(t){
+  t=String(t||'');var m=/\{[\s\S]*\}/.exec(t);if(!m)return null;
+  try{var o=JSON.parse(m[0]);var sx=String(o.sex||'').trim();sx=/女/.test(sx)?'女':(/男/.test(sx)?'男':'');
+    return {role:String(o.role||'').trim().slice(0,12),place:String(o.place||'').trim().slice(0,16),age:String(o.age||'').trim().slice(0,10),sex:sx};}catch(e){return null;}
+}
+function npcMetaFill(name){
+  if(!name||S._npcMetaBusy||!apiReady())return;
+  if(!S.npcMeta)S.npcMeta={};
+  var ctx=npcMetaContext(name);if(!ctx)return;
+  S._npcMetaBusy=name;
+  var c0=document.getElementById('zjGraphCard');if(c0&&S.memNpc===name)c0.innerHTML=graphCardHtml();
+  callAuxAI(NPCMETA_SYS,[{role:'user',content:'【NPC】'+name+'\n【历次出场片段】\n'+ctx}]).then(function(t){
+    S.npcMeta[name]=npcMetaParse(t)||{role:'',place:'',age:'',sex:''};savePref();
+  },function(){S.npcMeta[name]={role:'',place:'',age:'',sex:''};}).then(function(){
+    S._npcMetaBusy=null;var c1=document.getElementById('zjGraphCard');if(c1&&S.memNpc===name)c1.innerHTML=graphCardHtml();
+  });
 }
 function npcPairs(){
   var hid=S.graphHidden||[],pc={};
@@ -2421,6 +2453,10 @@ function graphCardHtml(){
   var ns=npcStats(),sel2=null;ns.forEach(function(o){if(o.name===S.memNpc)sel2=o;});
   if(!sel2)return '';
   var fv2=Number(sel2.favor);if(!isFinite(fv2))fv2=50;
+  var lack=(!sel2.role||!sel2.place||!sel2.age||!sel2.sex);
+  if(lack&&apiReady()&&S.npcMeta&&!S.npcMeta[sel2.name]&&S._npcMetaBusy!==sel2.name)setTimeout(function(){npcMetaFill(sel2.name);},30);
+  var busy=(S._npcMetaBusy===sel2.name);
+  var redo=apiReady()?'<div class="btn" data-act="npcMetaRedo" style="cursor:pointer;font-size:11.5px;color:var(--gold3);border:1px solid rgba(201,160,99,.3);border-radius:8px;padding:4px 12px;margin-right:auto">↻ 重新推断资料</div>':'';
   return '<div class="fade" style="border:1px solid rgba(224,190,130,.4);border-radius:12px;padding:11px 13px;margin-top:8px;background:rgba(255,255,255,.02)">'
     +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="kai" style="font-size:15px;color:var(--gold2)">'+esc(sel2.name)+'</span><span style="font-size:11px;color:var(--mut)">出场 '+sel2.n+' 幕</span>'
     +'<div style="flex:1;min-width:80px;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden"><div style="width:'+Math.max(2,Math.min(100,fv2))+'%;height:100%;background:linear-gradient(90deg,#b06a55,#c9a063,#7ea892)"></div></div>'
@@ -2433,7 +2469,8 @@ function graphCardHtml(){
       +'</div>':'')
     +(sel2.status?'<div style="font-size:12px;color:var(--ink2);margin-top:6px;line-height:1.7">近况：'+esc(sel2.status)+'</div>':'')
     +(sel2.thought?'<div style="font-size:12px;color:#9d8c6b;margin-top:3px;line-height:1.7">心声：'+esc(sel2.thought)+'</div>':'')
-    +'<div style="display:flex;justify-content:flex-end;margin-top:8px"><div class="btn" data-act="npcDrop" style="cursor:pointer;font-size:11.5px;color:#b06a55;border:1px solid rgba(166,59,38,.4);border-radius:8px;padding:4px 12px">移除此球</div></div></div>';
+    +(busy?'<div style="font-size:11px;color:var(--gold3);margin-top:7px;line-height:1.7;opacity:.85">✦ 正据出场记录推断身份/所在/年龄/性别…</div>':'')
+    +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px">'+redo+'<div class="btn" data-act="npcDrop" style="cursor:pointer;font-size:11.5px;color:#b06a55;border:1px solid rgba(166,59,38,.4);border-radius:8px;padding:4px 12px">移除此球</div></div></div>';
 }
 function graphSelect(nm){
   S.memNpc=(nm&&S.memNpc!==nm)?nm:null;
@@ -3574,6 +3611,7 @@ root.addEventListener('click',function(e){
       else if(a==='lowTog'){lowApply(!LOWFX);S._noFade=true;render();}
       else if(a==='npcDrop'){if(S.memNpc){S.graphHidden=(S.graphHidden||[]).concat([S.memNpc]);S.memNpc=null;savePref();S._noFade=true;render();}}
       else if(a==='npcUnhide'){S.graphHidden=[];savePref();S._noFade=true;render();}
+      else if(a==='npcMetaRedo'){if(S.memNpc){if(S.npcMeta)delete S.npcMeta[S.memNpc];savePref();npcMetaFill(S.memNpc);}return;}
       else if(a==='graphZoomReset'){gzReset();}
       else if(a==='chatTog'){S.chatOnly=!S.chatOnly;savePref();S._noFade=true;render();}
       else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;savePref();
