@@ -941,14 +941,19 @@ function imgCfgSave(){try{localStorage.setItem(IMGCFGKEY,JSON.stringify(IMGCFG))
 var IMGLOREKEY='zhouji_imglore_v1';
 var IMGLORE=[];try{IMGLORE=JSON.parse(localStorage.getItem(IMGLOREKEY)||'[]')||[];}catch(e){}if(!Array.isArray(IMGLORE))IMGLORE=[];
 function imgLoreSave(){try{localStorage.setItem(IMGLOREKEY,JSON.stringify(IMGLORE));}catch(e){}}
-function imgReady(){if(!IMGCFG.on)return false;if(IMGCFG.style==='sd')return !!IMGCFG.url;return !!(IMGCFG.key&&IMGCFG.model);}
+function imgReady(){if(!IMGCFG.on)return false;if(IMGCFG.style==='sd')return !!IMGCFG.url;if(IMGCFG.style==='novelai')return !!(IMGCFG.url&&IMGCFG.key);return !!(IMGCFG.key&&IMGCFG.model);}
 function imgBase(){return String(IMGCFG.url||'https://api.openai.com/v1').trim().replace(/\/+$/,'');}
 function imgActiveLore(text){var out=[];(IMGLORE||[]).forEach(function(e){if(e.on===false||!e.content)return;var ks=e.keys||[];if(!ks.length||ks.some(function(k){return k&&text.indexOf(k)>=0;}))out.push(e.content);});return out.join(', ');}
 function imgSize(){var w=parseInt(IMGCFG.width,10)||0,h=parseInt(IMGCFG.height,10)||0;if(w&&h)return w+'x'+h;return IMGCFG.size||'1024x1024';}
 function imgSeed(){var s=parseInt(IMGCFG.seed,10);return isFinite(s)?s:-1;}
-function imgEndpoint(){var base=imgBase();if(IMGCFG.style==='sd')return base+'/sdapi/v1/txt2img';if(IMGCFG.style==='custom')return /\/(generate|txt2img|images|generateimage)/i.test(base)?base:base+'/images/generations';return base+'/images/generations';}
+function imgEndpoint(){var base=imgBase();if(IMGCFG.style==='novelai')return base+'/ai/generate-image';if(IMGCFG.style==='sd')return base+'/sdapi/v1/txt2img';if(IMGCFG.style==='custom')return /\/(generate|txt2img|images|generateimage)/i.test(base)?base:base+'/images/generations';return base+'/images/generations';}
 function imgBuildBody(pos,neg){
   var C=IMGCFG,w=parseInt(C.width,10)||0,h=parseInt(C.height,10)||0,seed=imgSeed();
+  if(C.style==='novelai'){
+    var np={params_version:3,width:w||832,height:h||1216,scale:parseFloat(C.guidance)||5,sampler:C.sampler||'k_euler_ancestral',steps:parseInt(C.steps,10)||28,n_samples:1,ucPreset:0,qualityToggle:true,negative_prompt:neg||'',seed:(seed>=0?seed:Math.floor(Math.random()*4294967295)),cfg_rescale:(C.rescale!==''&&C.rescale!=null?parseFloat(C.rescale)||0:0),noise_schedule:C.noise||'native',dynamic_thresholding:false,add_original_image:true,legacy:false};
+    if(C.charRef&&C.refImg){np.reference_image_multiple=[String(C.refImg).replace(/^data:image\/\w+;base64,/,'')];np.reference_strength_multiple=[0.6];}
+    return {input:pos,model:C.model||'nai-diffusion-3',action:'generate',parameters:np};
+  }
   if(C.style==='sd'){
     var b={prompt:pos,negative_prompt:neg||'',steps:parseInt(C.steps,10)||28,cfg_scale:parseFloat(C.guidance)||7,width:w||832,height:h||1216,seed:seed};
     if(C.sampler)b.sampler_name=C.sampler;if(C.noise)b.scheduler=C.noise;if(C.rescale!==''&&C.rescale!=null)b.cfg_rescale=parseFloat(C.rescale)||0;
@@ -980,6 +985,37 @@ function imgParseResult(j){
   if(url)return {url:url};
   return null;
 }
+/* 内置极速解压：NovelAI 返回的是内含 image_0.png 的 zip，见 zip 即刻抽出 PNG（stored 直接切片；deflate 用浏览器内置 DecompressionStream） */
+function zipExtractPng(buf){
+  var u8=new Uint8Array(buf);
+  if(u8.length>8&&u8[0]===0x89&&u8[1]===0x50&&u8[2]===0x4E&&u8[3]===0x47)return Promise.resolve(new Blob([u8],{type:'image/png'}));
+  if(!(u8[0]===0x50&&u8[1]===0x4B&&u8[2]===0x03&&u8[3]===0x04))return Promise.reject(new Error('返回既非 PNG 亦非 zip（可能是错误信息或被拦截）'));
+  var dv=new DataView(buf);
+  var method=dv.getUint16(8,true),compSize=dv.getUint32(18,true),nameLen=dv.getUint16(26,true),extraLen=dv.getUint16(28,true);
+  var start=30+nameLen+extraLen,dataEnd;
+  if(compSize>0){dataEnd=start+compSize;}
+  else{var eocd=-1;for(var i=u8.length-22;i>=0;i--){if(u8[i]===0x50&&u8[i+1]===0x4B&&u8[i+2]===0x05&&u8[i+3]===0x06){eocd=i;break;}}dataEnd=eocd>=0?dv.getUint32(eocd+16,true):u8.length;}
+  var data=u8.subarray(start,dataEnd);
+  if(method===0)return Promise.resolve(new Blob([data],{type:'image/png'}));
+  if(method===8&&typeof DecompressionStream!=='undefined'){var ds=new DecompressionStream('deflate-raw');var wr=ds.writable.getWriter();wr.write(data);wr.close();return new Response(ds.readable).arrayBuffer().then(function(ab){return new Blob([ab],{type:'image/png'});});}
+  return Promise.reject(new Error('zip 压缩方式不支持（method '+method+'）'));
+}
+function imgFetchBlob(url,hdr,body){
+  return fetch(url,{method:'POST',headers:hdr,body:JSON.stringify(body)}).then(function(r){
+    if(!r.ok)return r.text().then(function(t){throw new Error('HTTP '+r.status+'：'+String(t).slice(0,180));});
+    return r.arrayBuffer();
+  }).then(function(buf){return zipExtractPng(buf);});
+}
+function imgGenBlob(pos,neg){
+  var hdr={'Content-Type':'application/json'};if(IMGCFG.key)hdr['Authorization']='Bearer '+IMGCFG.key;
+  if(IMGCFG.style==='novelai')return imgFetchBlob(imgEndpoint(),hdr,imgBuildBody(pos,neg));
+  return apiHttp(imgEndpoint(),{method:'POST',headers:hdr,body:JSON.stringify(imgBuildBody(pos,neg))}).then(function(j){
+    var r=imgParseResult(j);
+    if(!r)throw new Error('接口未返回图像数据（本轮图未出）');
+    if(r.url)return fetch(r.url).then(function(x){if(!x.ok)throw new Error('取图失败 HTTP '+x.status);return x.blob();});
+    return r.blob;
+  });
+}
 /* 生图核心：一定要出图——生成后校验图确实拿到并入库，失败自动重试一次 */
 function drawWorld(idx,tries){
   if(idx==null||idx<0||!S.history[idx]||S.history[idx].role!=='world')return;
@@ -993,13 +1029,7 @@ function drawWorld(idx,tries){
   var mk=apiReady()?callAuxAI(AUX,[{role:'user',content:dTxt}]).then(function(t){return String(t||'').trim().slice(0,700)||('ancient Chinese Zhou dynasty scene: '+dTxt.slice(0,140));}):Promise.resolve('ancient Chinese Zhou dynasty scene, cinematic lighting, highly detailed illustration: '+dTxt.slice(0,160));
   mk.then(function(scene){
     var pos=[IMGCFG.pos,scene,loreStr].filter(Boolean).join(', ');
-    var hdr={'Content-Type':'application/json'};if(IMGCFG.key)hdr['Authorization']='Bearer '+IMGCFG.key;
-    return apiHttp(imgEndpoint(),{method:'POST',headers:hdr,body:JSON.stringify(imgBuildBody(pos,IMGCFG.neg))});
-  }).then(function(j){
-    var r=imgParseResult(j);
-    if(!r)throw new Error('接口未返回图像数据（本轮图未出）');
-    if(r.url)return fetch(r.url).then(function(x){if(!x.ok)throw new Error('取图失败 HTTP '+x.status);return x.blob();});
-    return r.blob;
+    return imgGenBlob(pos,IMGCFG.neg);
   }).then(function(blob){
     if(!blob||!blob.size)throw new Error('图像为空（本轮图未出）');
     var iid='img_'+Date.now()+'_'+Math.floor(Math.random()*10000);
@@ -2880,7 +2910,7 @@ function imgPane(){
     +'<div style="font-size:12.5px;line-height:1.85;color:var(--ink2)">给每幕正文配 AI 插画。接口、密钥与参数只存本机浏览器。开「每幕自动生图」后每出一幕自动作画，并<b style="color:var(--gold2)">检测本轮图是否真出来、失败自动重试</b>。</div>'
     +tog('zjImgOn',C.on,'启用生图功能')
     +tog('zjImgAuto',C.auto,'每幕自动生图（关则手动点正文下的「✦ 绘此幕」）')
-    +lbl('接口风格')+seg([['openai','OpenAI 兼容'],['sd','SD · A1111'],['custom','自定义 / NovelAI 风格']],'imgstyle',C.style)
+    +lbl('接口风格')+seg([['openai','OpenAI 兼容'],['novelai','NovelAI 官方'],['sd','SD · A1111'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')
     +lbl('接口地址')+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="如 https://api.openai.com/v1 或 http://127.0.0.1:7860">'
     +lbl('密钥（本地 SD 可留空）')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(C.key)+'" placeholder="sk-…">'
     +lbl('模型')+'<input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="如 dall-e-3 / gpt-image-1 / nai-diffusion-3 / flux">'
@@ -3411,10 +3441,7 @@ root.addEventListener('click',function(e){
         if(!imgReady()){S.imgSetMsg='请先填好接口地址/密钥/模型';S.imgSetMsgC='var(--red2)';renderOverlay();return;}
         S.imgSetMsg='正在测试生图……';S.imgSetMsgC='var(--mut2)';renderOverlay();
         var tpos=[IMGCFG.pos,'ancient Chinese palace hall at dusk, cinematic lighting, highly detailed, test'].filter(Boolean).join(', ');
-        var thdr={'Content-Type':'application/json'};if(IMGCFG.key)thdr['Authorization']='Bearer '+IMGCFG.key;
-        apiHttp(imgEndpoint(),{method:'POST',headers:thdr,body:JSON.stringify(imgBuildBody(tpos,IMGCFG.neg))}).then(function(j){
-          var r=imgParseResult(j);if(r&&((r.blob&&r.blob.size)||r.url)){S.imgSetMsg='✓ 测试生图成功，接口可用';S.imgSetMsgC='var(--grn2)';}else throw new Error('接口未返回图像');renderOverlay();
-        })['catch'](function(err){S.imgSetMsg='测试失败：'+String(err&&err.message||err).slice(0,150);S.imgSetMsgC='var(--red2)';renderOverlay();});
+        imgGenBlob(tpos,IMGCFG.neg).then(function(blob){if(blob&&blob.size){S.imgSetMsg='✓ 测试生图成功，接口可用';S.imgSetMsgC='var(--grn2)';}else throw new Error('接口未返回图像');renderOverlay();})['catch'](function(err){S.imgSetMsg='测试失败：'+String(err&&err.message||err).slice(0,150);S.imgSetMsgC='var(--red2)';renderOverlay();});
         return;}
       else if(a==='imgLoreAdd'){syncImgForm();IMGLORE.push({keys:[],content:'',on:true});imgLoreSave();renderOverlay();return;}
       else if(a==='imgLoreDel'){return;}
