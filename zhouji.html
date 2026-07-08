@@ -1303,6 +1303,20 @@ function driveTavern(text){
     }else{ S.thinking=false;render(); }
   }catch(e){ S.thinking=false;render(); }
 }
+/* 断续自动补全：状态栏恒在正文末尾，故「缺失或不完整的 mvu_panel」即「被截断或漏写」的可靠信号。
+   命中时自动续写一次，接着把话说完并补齐状态栏，从根上避免「变量不更新 / AI截断」两类问题。 */
+function panelComplete(t){var p=parseMvu(t);return !!(p&&p.world&&Object.keys(p.world).length&&p.char&&Object.keys(p.char).length);}
+function ensureComplete(sys,msgs,t){
+  if(S.chatOnly||!t||!apiReady()||panelComplete(t))return Promise.resolve(t); /* 聊天模式不需状态栏 */
+  var ask='（上一段疑似被截断或漏写了结尾状态栏。请紧接上文把话说完，并在末尾据实补齐完整<mvu_panel>：<sec_char>含◆衣冠/持物/御体/观瞻/神格/史笔；<sec_npc>每在场者一行◈名字|状态|好感|心声；<sec_world>含◇纪年/时地/天气/安稳/大势/将临。只输出续写与状态栏，不要重复已写过的内容。）';
+  var cont=msgs.concat([{role:'assistant',content:t},{role:'user',content:ask}]);
+  return callCustomAI(sys,cont).then(function(t2){
+    if(!t2||!String(t2).trim())return t;
+    var head=String(t).replace(/<mvu_panel>[\s\S]*$/,'').replace(/\s+$/,''); /* 去掉可能的半截状态栏 */
+    var merged=head+'\n\n'+String(t2).trim();
+    return panelComplete(merged)?merged:t; /* 补全仍失败则保留原文，绝不劣化 */
+  },function(){return t;});
+}
 function advanceLocal(base,text){
   var done=function(reply,live){
     var msg={role:'world',text:reply,panel:parseMvu(reply)};
@@ -1314,7 +1328,7 @@ function advanceLocal(base,text){
   if(apiReady()){
     var sys=buildSystem(base,text),msgs=buildMessages(base,text);
     var fail=function(err){done('【API 调用失败】'+(err&&err.message?err.message:String(err))+'\n\n请点击右上角「链」核对接口地址、密钥与模型名，然后点「重演此幕」重试本回合。',false);};
-    var plain=function(){callCustomAI(sys,msgs).then(function(t){if(!t||!String(t).trim())throw new Error('接口返回了空回复（可能被内容过滤或模型名不对）');done(t,true);}).catch(fail);};
+    var plain=function(){callCustomAI(sys,msgs).then(function(t){if(!t||!String(t).trim())throw new Error('接口返回了空回复（可能被内容过滤或模型名不对）');return ensureComplete(sys,msgs,t);}).then(function(t){done(t,true);}).catch(fail);};
     if(API.gen&&API.gen.stream!=='0'&&window.ReadableStream){
       var live={role:'world',text:'',panel:null};var started=false,lastR=0;
       callCustomAIStream(sys,msgs,function(full){
@@ -1323,10 +1337,12 @@ function advanceLocal(base,text){
         else if(Date.now()-lastR>650){lastR=Date.now();renderSoft();}
       }).then(function(t){
         if(!t||!String(t).trim())throw new Error('接口返回了空回复');
-        live.text=t;live.panel=parseMvu(t);S.thinking=false;S.aiLive=true;
-        if(S._swipeFrom){live.alts=S._swipeFrom.concat([t]).slice(-8);live.altIx=live.alts.length-1;S._swipeFrom=null;}
-        if(!started)S.history=base.concat([{role:'user',text:text},live]);
-        render();savePref();genSuggestions();
+        return ensureComplete(sys,msgs,t).then(function(t3){
+          live.text=t3;live.panel=parseMvu(t3);S.thinking=false;S.aiLive=true;
+          if(S._swipeFrom){live.alts=S._swipeFrom.concat([t3]).slice(-8);live.altIx=live.alts.length-1;S._swipeFrom=null;}
+          if(!started)S.history=base.concat([{role:'user',text:text},live]);
+          render();savePref();genSuggestions();
+        });
       }).catch(function(){
         /* 流式中断：撤下半截，回退整段生成重试一次 */
         if(started){var lx=S.history.indexOf(live);if(lx>=0)S.history.splice(lx,1);}
