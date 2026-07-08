@@ -1123,7 +1123,6 @@ function imgGenBlob(pos,neg){
 /* 生图核心：一定要出图——生成后校验图确实拿到并入库，失败自动重试一次 */
 function drawWorld(idx,tries){
   if(idx==null||idx<0||!S.history[idx]||S.history[idx].role!=='world')return;
-  if(S.history[idx].img)return;
   if(!imgReady()){S.imgErr='未配置或未启用生图接口（设置→图·生图）';renderSoft();return;}
   if(S.imgBusy!=null&&S.imgBusy!==idx)return;
   S.imgBusy=idx;S.imgErr=null;S._noFade=true;render();
@@ -1138,7 +1137,7 @@ function drawWorld(idx,tries){
     if(!blob||!blob.size)throw new Error('图像为空（本轮图未出）');
     var iid='img_'+Date.now()+'_'+Math.floor(Math.random()*10000);
     idbPut(iid,blob,function(okp){
-      if(okp&&S.history[idx]){S.history[idx].img=iid;savePref();idbPrune(isMobile()?10:30);S.imgErr=null;}
+      if(okp&&S.history[idx]){var _h=S.history[idx];if(!_h.imgs)_h.imgs=_h.img?[_h.img]:[];_h.imgs.push(iid);if(_h.imgs.length>8)_h.imgs=_h.imgs.slice(-8);_h.img=iid;_h.imgIx=_h.imgs.length-1;savePref();idbPrune(isMobile()?16:40);S.imgErr=null;}
       else S.imgErr='插画存储失败（浏览器不支持或空间不足）';
       S.imgBusy=null;S._noFade=true;render();});
   })['catch'](function(err){
@@ -1277,7 +1276,7 @@ function apiModelsRun(){
 
 var LSK='zhouji_tavern_v1';
 function loadPref(){try{return JSON.parse(localStorage.getItem(LSK)||'{}');}catch(e){return {};}}
-function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined,alts:(h.alts&&h.alts.length>1)?h.alts:undefined,altIx:h.altIx};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN,dice:S.dice?1:0,sugg:S.sugg===false?0:1,chat:S.chatOnly?1:0,mic:S.micOn===false?0:(S.micOn===true?1:undefined),graphHidden:(S.graphHidden&&S.graphHidden.length)?S.graphHidden:undefined,npcMeta:(S.npcMeta&&Object.keys(S.npcMeta).length)?S.npcMeta:undefined,last:Date.now()}));}catch(e){}}
+function savePref(){try{localStorage.setItem(LSK,JSON.stringify({device:S.device,muted:S.muted,openingId:S.openingId,customOp:S.customOp||null,customRole:S.customRole||null,history:TH.available?null:S.history.map(function(h){return {role:h.role,text:h.text,img:h.img||undefined,imgs:(h.imgs&&h.imgs.length>1)?h.imgs:undefined,imgIx:(h.imgs&&h.imgs.length>1)?h.imgIx:undefined,alts:(h.alts&&h.alts.length>1)?h.alts:undefined,altIx:h.altIx};}),saves:S.saves,mem:S.mem,memOn:S.memOn,memN:S.memN,dice:S.dice?1:0,sugg:S.sugg===false?0:1,chat:S.chatOnly?1:0,mic:S.micOn===false?0:(S.micOn===true?1:undefined),graphHidden:(S.graphHidden&&S.graphHidden.length)?S.graphHidden:undefined,npcMeta:(S.npcMeta&&Object.keys(S.npcMeta).length)?S.npcMeta:undefined,last:Date.now()}));}catch(e){}}
 
 /* ---------------- 长程记忆 · 太史长卷 ----------------
    每轮世界回应自动摘为一条编年纪要（纪年·时地·天子之举·史笔），永久保存、
@@ -2000,10 +1999,17 @@ function storyPane(){
     var cotX=extractCoT(text);text=applyRegex(cotX.text,'display');
     var illu='';
     if(h.img){var nearEnd=(S.history.length-1-i)<=8;
-      illu='<div '+(nearEnd?'data-img="'+esc(h.img)+'"':'')+' style="margin:0 0 14px;border:1px solid rgba(255,238,205,.18);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.15),0 6px 18px rgba(0,0,0,.3)">'
+      illu='<div '+(nearEnd?'data-img="'+esc(h.img)+'"':'')+' style="margin:0 0 8px;border:1px solid rgba(255,238,205,.18);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.15),0 6px 18px rgba(0,0,0,.3)">'
         +(nearEnd?'<div style="padding:26px 0;text-align:center;font-size:12px;letter-spacing:.2em;color:var(--mut)">插画载入中…</div>'
           :'<div class="btn" data-imgload="'+esc(h.img)+'" style="cursor:pointer;padding:13px 0;text-align:center;font-size:12px;letter-spacing:.18em;color:var(--mut)">▸ 插画（点开加载）</div>')
-        +'</div>';}
+        +'</div>';
+      if(h.imgs&&h.imgs.length>1){var _im=h.imgs.length,_ix=(h.imgIx==null?_im-1:h.imgIx);
+        illu+='<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin:0 0 14px">'
+          +'<div class="btn obtn" data-imgprev="'+i+'" style="font-size:13px;padding:3px 13px;'+(_ix<=0?'opacity:.35;':'')+'">◀</div>'
+          +'<span style="font-size:11.5px;color:var(--mut);letter-spacing:.08em">第 '+(_ix+1)+' / '+_im+' 稿</span>'
+          +'<div class="btn obtn" data-imgnext="'+i+'" style="font-size:13px;padding:3px 13px;'+(_ix>=_im-1?'opacity:.35;':'')+'">▶</div>'
+          +'</div>';}
+    }
     var cotHtml=cotX.cot?'<details class="zjCot" style="margin:0 0 12px"><summary style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:12px;letter-spacing:.14em;color:var(--mut);border:1px solid rgba(201,160,99,.25);border-radius:99px;padding:5px 14px;background:rgba(255,255,255,.02)">✦ 推演之思</summary><div style="margin-top:8px;border-left:3px solid rgba(201,160,99,.3);border-radius:8px;background:rgba(255,255,255,.018);padding:10px 13px;font-size:13px;line-height:1.9;color:#9d8c6b;white-space:pre-wrap">'+esc(cotX.cot)+'</div></details>':'';
     var cm=/^【[^】]*】/.exec(text);
     if(cm&&i===0){chap='<div style="text-align:center;margin:4px 0 30px"><div style="font-size:12px;letter-spacing:.42em;color:var(--mut)">'+esc(op?op.era:'')+'</div><div class="kai" style="font-size:clamp(23px,3.4vw,30px);color:var(--gold2);letter-spacing:.1em;margin-top:8px">'+esc(op?op.scene:'')+'</div><div class="slip" style="width:190px;margin:14px auto 0"></div></div>';text=text.slice(cm[0].length).trim();}
@@ -3462,6 +3468,8 @@ root.addEventListener('click',function(e){
   while(t&&t!==root){
     var a=t.getAttribute&&t.getAttribute('data-act');
     if(t.getAttribute){
+      if(t.getAttribute('data-imgprev')!=null&&t.getAttribute('data-imgprev')!==''){var _pi=parseInt(t.getAttribute('data-imgprev'),10);var _ph=S.history[_pi];if(_ph&&_ph.imgs&&_ph.imgs.length){var _cx=(_ph.imgIx==null?_ph.imgs.length-1:_ph.imgIx);if(_cx>0){_ph.imgIx=_cx-1;_ph.img=_ph.imgs[_ph.imgIx];savePref();S._noFade=true;render();}}return;}
+      if(t.getAttribute('data-imgnext')!=null&&t.getAttribute('data-imgnext')!==''){var _ni=parseInt(t.getAttribute('data-imgnext'),10);var _nh=S.history[_ni];if(_nh&&_nh.imgs&&_nh.imgs.length){var _cy=(_nh.imgIx==null?_nh.imgs.length-1:_nh.imgIx);if(_cy<_nh.imgs.length-1){_nh.imgIx=_cy+1;_nh.img=_nh.imgs[_nh.imgIx];savePref();S._noFade=true;render();}}return;}
       if(t.getAttribute('data-drawidx')!=null&&t.getAttribute('data-drawidx')!==''){var _di=parseInt(t.getAttribute('data-drawidx'),10);if(S.imgBusy==null&&imgReady()&&S.history[_di]&&S.history[_di].role==='world')drawWorld(_di);return;}
       if(t.getAttribute('data-imgfull')&&t.getAttribute('src')){var _fu=t.getAttribute('src');var _ov=document.createElement('div');_ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.93);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:12px';var _im=document.createElement('img');_im.src=_fu;_im.style.cssText='max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6)';_ov.appendChild(_im);_ov.addEventListener('click',function(){_ov.remove();});document.body.appendChild(_ov);return;}
       if(t.getAttribute('data-start')){startOpening(parseInt(t.getAttribute('data-start'),10));return;}
