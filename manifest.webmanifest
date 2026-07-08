@@ -1,0 +1,20 @@
+{
+  "name": "周纪·千年天下",
+  "short_name": "周纪",
+  "description": "永生周天子，你即姬瑶，天下由 AI 扮演。西周到战国的千年 AI 角色扮演。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#0d0a08",
+  "theme_color": "#0d0a08",
+  "icons": [
+    { "src": "/core/res/icon-zhou-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/core/res/icon-zhou-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/core/res/icon-zhou-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

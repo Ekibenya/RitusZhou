@@ -8,6 +8,19 @@
 <link rel="apple-touch-icon" sizes="180x180" href="core/res/icon-zhou-180.png">
 <link rel="icon" type="image/png" sizes="32x32" href="core/res/icon-zhou-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="core/res/icon-zhou-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0d0a08">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="周纪">
+<script>
+/* PWA：仅在 http(s) 下注册 service worker（单文件离线分发 / 酒馆内嵌走 file:// 时跳过）。
+   SW 只缓存同源资源、网络优先；跨域 AI / 生图请求一律放行不拦。 */
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});
+}
+</script>
 <style>@font-face{font-family:'ZCOOL XiaoWei';font-style:normal;font-weight:400;font-display:swap;src:url('core/res/fonts/zcool-xiaowei.woff2') format('woff2');unicode-range:U+0-56DD,U+56DF-10FFFF}</style>
 <script>
 /* three.js 加载策略：优先本仓库 core 的现代版（含 GLTF/Meshopt，支持三维天下游历），
