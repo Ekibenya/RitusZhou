@@ -2363,7 +2363,7 @@ function storyPane(){
     +'</div>';
   var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['free','书 · 自由'],['world','控制游戏']];
   /* 模式/开关一律做成柔光金字（与封面、正文操作栏同款），去掉方框：选中/开启＝亮色发光，未选/关闭＝暗灰无光。 */
-  var _cpad=isMobile()?'5px 6px':'6px 10px',_cfs=isMobile()?'12px':'13px',_cls=isMobile()?'.05em':'.14em';
+  var _cpad=isMobile()?'3px 7px':'6px 10px',_cfs=isMobile()?'12px':'13px',_cls=isMobile()?'.05em':'.14em';
   var gchip=function(label,on,ac,gl,attrs,dis){
     var c=dis?'var(--mut)':(on?ac:'var(--mut)');
     var ts=on&&!dis?('0 0 11px '+gl+',0 1px 2px rgba(0,0,0,.8)'):'0 1px 2px rgba(0,0,0,.6)';
@@ -2379,7 +2379,7 @@ function storyPane(){
   chips+=gchip(isMobile()?'策':'策 · 四策',son,'var(--gold2)','rgba(224,190,130,.6)','data-act="suggTog" title="懒人四策：每幕后由 AI 拟四条可点选的下一步"');
   var ph=(S.chatOnly&&S.mode!=='world')?'像发消息一样聊起来……':MODE_PH[S.mode];
   var _suggRow=((S.suggList&&S.suggList.length&&!S.thinking)?'<div id="zjSuggRow" style="pointer-events:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:'+(mob?'5px':'8px')+'">'+S.suggList.map(function(sg,si){return '<div class="btn zjHl" data-sugg="'+si+'" style="cursor:pointer;font-size:'+(mob?'11px':'12px')+';line-height:1.5;letter-spacing:.02em;padding:'+(mob?'6px 10px':'6px 12px')+';border-radius:12px;color:#c8b48e;border:1px solid rgba(255,238,205,.18);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.03));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);box-shadow:inset 0 1px 0 rgba(255,242,214,.18),0 2px 8px rgba(0,0,0,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sg)+'</div>';}).join('')+'</div>':'');
-  var _chipsRow='<div id="zjChipsRow" style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:'+(mob?'5px':'8px')+';padding:2px 2px 3px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch">'+chips+'</div>';
+  var _chipsRow='<div id="zjChipsRow" style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:'+(mob?'3px':'8px')+';padding:2px 2px 1px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch">'+chips+'</div>';
   var _taSh=INPUTGLASS?';text-shadow:0 1px 4px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.85)':'';
   var _micBtn=(sttOK()&&(S.micOn===true||(S.micOn==null&&!mob)))?'<button id="zjMicBtn" data-act="micTog" class="btn" title="语音输入（说完自动停）" style="flex:none;background:transparent;border:none;padding:3px;cursor:pointer;color:'+(S.rec?'#e06a50':'var(--gold2)')+';filter:drop-shadow(0 0 7px '+(S.rec?'rgba(224,106,80,.7)':'rgba(224,190,130,.5)')+')">'+micIcon(mob?21:23,S.rec)+'</button>':'';
   var _sendBtn='<button data-act="send" class="btn" title="递呈（回车）" style="flex:none;background:transparent;border:none;padding:0;cursor:pointer;filter:drop-shadow(0 0 8px rgba(224,190,130,.5));opacity:'+(S.thinking?.5:1)+'">'+sendIcon(mob?32:34)+'</button>';
