@@ -1032,6 +1032,7 @@ function buildSystem(history,userInput){
     (S.memOn!==false&&S.mem&&S.mem.length>1)?('【长程记忆·太史长卷】以下为本局开局至今全部既定事实的编年纪要（越靠后越接近当下）。正文历史若有缺失，以此卷为准；任何叙事不得与之矛盾：\n'+memChronicle(SPD?1600:7000)):'',
     (function(){var _fd=npcFavorDigest();return _fd?('【人物好感·续记（不得健忘）】以下为曾登场人物最近一次的好感度与近况。他们即便暂时离场，好感与关系也须【延续记忆】：再次出场时自此数值起继续自然演变，严禁凭空重置、归零或大幅跳变；确有剧情推动方可增减：\n'+_fd):'';})(),
     '【剧情不得原地打转】严禁同类事件循环复读（如连番遇刺、同一桥段反复上演、每到某地必发生同一种事）。近几幕已出现过的事件类型，本幕必须推进出新的因果与后果，或转入截然不同的新场面；玩家若困于某个局面，世界必须主动送来破局变量——援手、转机、敌方失误、事态升级或改向，绝不许把玩家按在同一处反复挨打。',
+    (function(){var mn=parseInt(API.gen&&API.gen.mintok,10);return (isFinite(mn)&&mn>0&&!S.chatOnly)?('【篇幅下限】本幕正文（不含状态栏）不得少于 '+mn+' 字：以更细的场面、对话与人物反应把内容写足，不许灌水凑数，也不许为凑字数拖慢剧情节奏。'):'';})(),
     '【世界书·激活条目】\n'+lore.map(function(e){return '『'+e.title+'』'+e.content;}).join('\n'),
     SPD?'':('【对话示例】\n'+fill(G.mes_example)),
     SPD
@@ -1119,7 +1120,7 @@ var API_DEF={
   gemini:{name:'Gemini 官方',url:'https://generativelanguage.googleapis.com',hint:'Google AI Studio 官方直连，一般无需修改地址'}
 };
 function loadApi(){
-  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}},img:{url:'',key:'',model:''},aux:{url:'',key:'',model:''},gen:{temp:'',topp:'',maxtok:'',autofix:'',speed:''}};
+  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}},img:{url:'',key:'',model:''},aux:{url:'',key:'',model:''},gen:{temp:'',topp:'',maxtok:'',mintok:'',effort:'',autofix:'',speed:''}};
   try{
     var s=JSON.parse(localStorage.getItem(APIK)||'{}');
     if(s.provider&&d.cfg[s.provider])d.provider=s.provider;
@@ -1397,6 +1398,25 @@ function auxReady(){return !!(API.aux&&API.aux.key&&API.aux.model);}
 function auxBase(){return String(API.aux.url||'https://api.openai.com/v1').trim().replace(/\/+$/,'');}
 function genNum(v){var n=parseFloat(v);return isFinite(n)?n:null;}
 function genMax(){var n=parseInt(API.gen&&API.gen.maxtok,10);var m=(isFinite(n)&&n>0)?Math.min(n,32000):4000;if(speedOn())m=Math.min(m,1400);/* 极速模式压低单轮上限，短正文更快收笔 */return m;}
+/* 推理强度（可选）：low/medium/high/xhigh/max。按三家各自的原生参数下发：
+   Anthropic→thinking.budget_tokens（此时温度/top_p 须留默认，接口强制）；OpenAI 系→reasoning_effort（xhigh/max 折为 high）；
+   Gemini→thinkingConfig.thinkingBudget。默认关＝不发任何额外参数，与从前完全一致。 */
+function effortVal(){var e=(API.gen&&API.gen.effort)||'';return /^(low|medium|high|xhigh|max)$/.test(e)?e:'';}
+function effTune(b,gT,gP,gEff){
+  if(gT!=null)b.temperature=gT;if(gP!=null)b.top_p=gP;
+  if(gEff){
+    if(b.system!==undefined){ /* Anthropic v1/messages */
+      var bud={low:2048,medium:6144,high:12288,xhigh:24576,max:49152}[gEff]||6144;
+      delete b.temperature;delete b.top_p;
+      b.thinking={type:'enabled',budget_tokens:bud};
+      b.max_tokens=Math.max(b.max_tokens||0,bud+2000);
+    }else{ /* OpenAI 兼容 chat/completions */
+      b.reasoning_effort=({low:'low',medium:'medium',high:'high',xhigh:'high',max:'high'})[gEff];
+    }
+  }
+  return b;
+}
+function geminiThink(g,gEff){if(gEff)g.thinkingConfig={thinkingBudget:({low:1024,medium:4096,high:8192,xhigh:16384,max:24576})[gEff]};return g;}
 /* 副模型：绘图提示词等杂务走便宜快模型，正文仍由主模型执笔；未配则回落主模型 */
 /* 生成中断：本轮生成的请求都带上 GENAC.signal，用户点「取消发送」即 abort */
 var GENAC=null;
@@ -1423,9 +1443,9 @@ function apiHttp(url,opt){
 }
 function callCustomAI(system,messages){
   var c=apiCur(),base=apiBase();
-  var gT=genNum(API.gen&&API.gen.temp),gP=genNum(API.gen&&API.gen.topp),gM=genMax();
+  var gT=genNum(API.gen&&API.gen.temp),gP=genNum(API.gen&&API.gen.topp),gM=genMax(),gEff=effortVal();
   if(S.chatOnly)gM=Math.min(gM,600); /* 聊天模式求快 */
-  function gtune(b){if(gT!=null)b.temperature=gT;if(gP!=null)b.top_p=gP;return b;}
+  function gtune(b){return effTune(b,gT,gP,gEff);}
   PV={at:new Date().toLocaleTimeString(),provider:API.provider,model:c.model,system:system,messages:messages};
   if(API.provider==='claude'){
     return apiHttp(base+'/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(gtune({model:c.model,max_tokens:gM,system:system,messages:messages}))})
@@ -1433,7 +1453,7 @@ function callCustomAI(system,messages){
   }
   if(API.provider==='gemini'){
     var contents=messages.map(function(m){return {role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]};});
-    return apiHttp(base+'/v1beta/models/'+encodeURIComponent(c.model)+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':c.key},body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:contents,generationConfig:(function(){var g={maxOutputTokens:gM,frequencyPenalty:0.6};if(gT!=null)g.temperature=gT;if(gP!=null)g.topP=gP;return g;})()})})
+    return apiHttp(base+'/v1beta/models/'+encodeURIComponent(c.model)+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':c.key},body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:contents,generationConfig:(function(){var g={maxOutputTokens:gM,frequencyPenalty:0.6};if(gT!=null)g.temperature=gT;if(gP!=null)g.topP=gP;return geminiThink(g,gEff);})()})})
       .then(function(d){var cd=d.candidates&&d.candidates[0];return (cd&&cd.content&&cd.content.parts||[]).map(function(x){return x.text||'';}).join('');});
   }
   var url=/\/chat\/completions$/.test(base)?base:base+'/chat/completions';
@@ -1443,9 +1463,9 @@ function callCustomAI(system,messages){
 /* 流式生成：SSE 增量回调；任何失败由调用方回退整段生成 */
 function callCustomAIStream(system,messages,onDelta){
   var c=apiCur(),base=apiBase();
-  var gT=genNum(API.gen&&API.gen.temp),gP=genNum(API.gen&&API.gen.topp),gM=genMax();
+  var gT=genNum(API.gen&&API.gen.temp),gP=genNum(API.gen&&API.gen.topp),gM=genMax(),gEff=effortVal();
   if(S.chatOnly)gM=Math.min(gM,600); /* 聊天模式求快 */
-  function gtune(b){if(gT!=null)b.temperature=gT;if(gP!=null)b.top_p=gP;return b;}
+  function gtune(b){return effTune(b,gT,gP,gEff);}
   PV={at:new Date().toLocaleTimeString(),provider:API.provider,model:c.model,system:system,messages:messages};
   function sse(url,opt,extract){
     try{if(opt&&!opt.signal)opt.signal=genSignal();}catch(e){}
@@ -1476,7 +1496,7 @@ function callCustomAIStream(system,messages,onDelta){
   }
   if(API.provider==='gemini'){
     var contents=messages.map(function(m){return {role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]};});
-    var gg={maxOutputTokens:gM,frequencyPenalty:0.6};if(gT!=null)gg.temperature=gT;if(gP!=null)gg.topP=gP;
+    var gg=geminiThink((function(){var g={maxOutputTokens:gM,frequencyPenalty:0.6};if(gT!=null)g.temperature=gT;if(gP!=null)g.topP=gP;return g;})(),gEff);
     return sse(base+'/v1beta/models/'+encodeURIComponent(c.model)+':streamGenerateContent?alt=sse',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':c.key},body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:contents,generationConfig:gg})},
       function(j){var cd=j.candidates&&j.candidates[0];return ((cd&&cd.content&&cd.content.parts)||[]).map(function(x){return x.text||'';}).join('');});
   }
@@ -1502,6 +1522,8 @@ function readApiForm(){
   if(au)API.aux.url=au.value.trim();if(ak)API.aux.key=ak.value.trim();if(am)API.aux.model=am.value.trim();
   var gt=document.getElementById('zjGenTemp'),gp=document.getElementById('zjGenTopP'),gm=document.getElementById('zjGenMax');
   if(gt)API.gen.temp=gt.value.trim();if(gp)API.gen.topp=gp.value.trim();if(gm)API.gen.maxtok=gm.value.trim();
+  var gmn=document.getElementById('zjGenMin');if(gmn)API.gen.mintok=gmn.value.trim();
+  var gef=document.getElementById('zjGenEffort');if(gef)API.gen.effort=gef.value;
   var gs=document.getElementById('zjGenStream');if(gs)API.gen.stream=gs.checked?'':'0';
   var ga=document.getElementById('zjGenAutofix');if(ga)API.gen.autofix=ga.checked?'':'0';
 }
@@ -3499,7 +3521,9 @@ function apiBody(){
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
     +'<div style="flex:1;min-width:130px"><input id="zjGenTemp" '+inp+' value="'+esc(API.gen.temp)+'" placeholder="temperature 0–2" inputmode="decimal"><div style="font-size:11px;color:var(--mut);margin-top:4px">温度：越高越放飞</div></div>'
     +'<div style="flex:1;min-width:130px"><input id="zjGenTopP" '+inp+' value="'+esc(API.gen.topp)+'" placeholder="top_p 0–1" inputmode="decimal"><div style="font-size:11px;color:var(--mut);margin-top:4px">采样核：一般不与温度同调</div></div>'
-    +'<div style="flex:1;min-width:130px"><input id="zjGenMax" '+inp+' value="'+esc(API.gen.maxtok)+'" placeholder="max_tokens 默认4000" inputmode="numeric"><div style="font-size:11px;color:var(--mut);margin-top:4px">单轮输出上限</div></div>'
+    +'<div style="flex:1;min-width:130px"><input id="zjGenMax" '+inp+' value="'+esc(API.gen.maxtok)+'" placeholder="max_tokens 默认4000" inputmode="numeric"><div style="font-size:11px;color:var(--mut);margin-top:4px">单轮输出上限（最大回复长度）</div></div>'
+    +'<div style="flex:1;min-width:130px"><input id="zjGenMin" '+inp+' value="'+esc(API.gen.mintok||'')+'" placeholder="最低字数 留空不限" inputmode="numeric"><div style="font-size:11px;color:var(--mut);margin-top:4px">每幕正文的篇幅下限（以写作指令约束）</div></div>'
+    +'<div style="flex:1;min-width:130px"><select id="zjGenEffort" '+inp.replace('type="text"','')+'>'+[['','推理强度 · 关'],['low','low · 低'],['medium','medium · 中'],['high','high · 高'],['xhigh','xhigh · 极高'],['max','max · 拉满']].map(function(o){return '<option value="'+o[0]+'"'+((API.gen.effort||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select><div style="font-size:11px;color:var(--mut);margin-top:4px">Claude=思考预算(开启后温度/top_p失效)；GPT系=reasoning_effort；Gemini=思考预算</div></div>'
     +'</div>'
     +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mut2);cursor:pointer;margin-top:12px"><input id="zjGenStream" type="checkbox" style="accent-color:#c9a063"'+(API.gen.stream!=='0'?' checked':'')+'>流式输出：字随生成边打边现（失败自动回退整段）</label>'
     +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mut2);cursor:pointer;margin-top:10px"><input id="zjGenAutofix" type="checkbox" style="accent-color:#c9a063"'+(API.gen.autofix!=='0'?' checked':'')+'>断续自动补全：状态栏被截断或漏写时，自动续写补齐一次（推荐开）</label>'
