@@ -2432,13 +2432,16 @@ function storyPane(){
   }
   if(S.zen&&!S.zenWorld){scene='';sceneH=0;}
   else if(!S.zen&&(hideScene||hide3d)){
-    /* 三维折叠后的灵动岛：不再是没意义的「天下」，改为滚动显示纪年·地点，点它展开三维 */
+    if(!mob){scene='';sceneH=0;} /* 电脑端：灵动岛已住进顶栏留白，正文直接上移 */
+    else{
+    /* 手机端折叠灵动岛：滚动显示纪年·地点，点它展开三维；位置上调贴近顶排、少占正文 */
     var _mp=currentPanel(),_mcw=_mp?_mp.world:{};
     var _mera=[_mcw['纪年'],_mcw['时地']].filter(Boolean).join(' · ')||(currentOpening()?currentOpening().era:'')||'展开天下画面';
-    scene='<div id="zjMiniIsle" data-act="'+(hide3d?'show3d':'svgfold')+'" class="btn zjHl" title="展开天下画面" style="position:absolute;top:'+(barH+2)+'px;left:50%;margin-left:-140px;width:280px;height:27px;z-index:4;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px;padding:0 14px;overflow:hidden">'
+    scene='<div id="zjMiniIsle" data-act="'+(hide3d?'show3d':'svgfold')+'" class="btn zjHl" title="展开天下画面" style="position:absolute;top:'+(barH-4)+'px;left:50%;margin-left:-140px;width:280px;height:27px;z-index:4;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px;padding:0 14px;overflow:hidden">'
       +'<span style="flex:none;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
       +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(_mera)+'</span><span aria-hidden="true">'+esc(_mera)+'</span></div></div></div>';
-    sceneH=16;
+    sceneH=8;
+    }
   }
   /* 背景毛玻璃独立成非滚动层：backdrop-filter 一旦置于滚动容器(#zjStory)上，
      安卓 Chromium 合成器会漏绘/残影，导致正文缺字。此层不随内容滚动，规避该 bug。 */
@@ -2466,9 +2469,9 @@ function gameView(){
           该层整条声明无效、自动只剩基础层，绝不塌；
        ③ 底纹极淡，只为顶排文字留一点对比。 */
     ?'<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true"><filter id="zjLiqRefract" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.005 0.011" numOctaves="2" seed="11" result="n"/><feGaussianBlur in="n" stdDeviation="1.6" result="nb"/><feDisplacementMap in="SourceGraphic" in2="nb" scale="13" xChannelSelector="R" yChannelSelector="G"/></filter></svg>'
-      +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(7px) saturate(150%);backdrop-filter:blur(7px) saturate(150%);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
+      +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(5px) saturate(150%);backdrop-filter:blur(5px) saturate(150%);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
       +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:url(#zjLiqRefract);backdrop-filter:url(#zjLiqRefract);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
-      +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(20,14,9,.14) 0%,rgba(18,13,8,.05) 55%,transparent 100%);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
+      +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(20,14,9,.1) 0%,rgba(18,13,8,.04) 55%,transparent 100%);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
     :'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.84) 0%,rgba(12,8,5,.5) 58%,rgba(12,8,5,0) 100%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>';
   var conn='<div class="btn zjHl" data-act="zen" title="全屏阅读，只留正文" style="cursor:pointer;display:flex;align-items:center;font-size:11px;letter-spacing:.14em;color:var(--mut2);'+_fr+'padding:4px 12px;border-radius:20px">全屏</div>';
   var topBtns='<button data-ov="set" class="obtn btn" title="设置" style="width:34px;height:34px;font-size:15px;color:'+(apiReady()?'var(--gold2)':'var(--mut)')+'"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="3.1"/><path d="M19.3 12c0-.5-.05-.99-.15-1.46l2-1.56-1.8-3.12-2.37.95a7.4 7.4 0 0 0-2.52-1.46L14.1 2.8h-4.2l-.36 2.55a7.4 7.4 0 0 0-2.52 1.46l-2.37-.95-1.8 3.12 2 1.56c-.1.47-.15.96-.15 1.46s.05.99.15 1.46l-2 1.56 1.8 3.12 2.37-.95c.75.65 1.6 1.15 2.52 1.46l.36 2.55h4.2l.36-2.55a7.4 7.4 0 0 0 2.52-1.46l2.37.95 1.8-3.12-2-1.56c.1-.47.15-.96.15-1.46z"/></svg></button>'
@@ -2501,7 +2504,13 @@ function gameView(){
       +'<div style="position:relative;pointer-events:auto;height:56px;display:flex;align-items:center;gap:9px;padding:4px 12px 0">'
       +logo
       +'<div class="kai" style="font-size:16px;letter-spacing:.12em;color:var(--gold2);white-space:nowrap">周纪·千年天下</div>'
-      +'<div class="grow"></div>'/* 纪年地点已移到三维场景地名框，此处按你要求留白、不改布局 */
+      /* 三维折叠时，灵动岛（滚动纪年·地点胶囊）直接住进顶栏中间这块留白——作为弹性子项参与排版，永不与两侧按钮重叠 */
+      +(function(){var _h3=false;try{_h3=!window.__ZJ3D_OFF__&&localStorage.getItem('zj3d_hide')==='1';}catch(e){}
+        if(!_h3)return '<div class="grow"></div>';
+        return '<div class="grow" style="display:flex;justify-content:center;min-width:0;pointer-events:none;padding:0 10px">'
+          +'<div id="zjMiniIsle" data-act="show3d" class="btn zjHl" title="展开天下画面" style="pointer-events:auto;flex:1;max-width:300px;min-width:0;height:27px;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.62);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.4);display:flex;align-items:center;gap:8px;padding:0 14px;overflow:hidden">'
+          +'<span style="flex:none;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
+          +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(era||'展开天下画面')+'</span><span aria-hidden="true">'+esc(era||'展开天下画面')+'</span></div></div></div></div>';})()
       +devSeg+topBtns+'</div></div>';
   }
   var body;
@@ -4062,7 +4071,7 @@ function zenToggle(){
   var _zn=Date.now();if(zenToggle._busy&&_zn-zenToggle._busy<430)return;zenToggle._busy=_zn;
   var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
   function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
-  function els(){var o=[];zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el)o.push([el,g[1]]);});return o;}
+  function els(){var o=[];zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&!(g[0]==='zjMiniIsle'&&el.closest&&el.closest('#zjTopBar')))o.push([el,g[1]]);});return o;}/* 岛住进顶栏时随栏一起动，不再单独滑 */
   /* 电脑端太史简侧栏：取顶层玻璃框（排除嵌套），进全屏时逐框右滑离场、退出时从右侧逐框滑回（级联） */
   function sideBoxes(){var sc=document.getElementById('zjSideCol');if(!sc)return [];return [].filter.call(sc.querySelectorAll('.glass'),function(b){return !(b.parentElement&&b.parentElement.closest('.glass'));});}
   function sideSlideIn(){
@@ -4134,7 +4143,7 @@ function zenToggle(){
       var oldY=(function(){var s=document.getElementById('zjStory');var w=s&&s.querySelector('[data-zjzoom]');return w?w.getBoundingClientRect().top:null;})();
       S._noFade=true;S._keepScroll=true;render();
       if(oldY!=null&&!reducedMotion()){var s2=document.getElementById('zjStory');var w2=s2&&s2.querySelector('[data-zjzoom]');if(s2&&w2&&s2.animate){var dy2=Math.round(oldY-w2.getBoundingClientRect().top);if(Math.abs(dy2)>2)s2.animate([{transform:'translateY('+dy2+'px)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.02,.35,1)'});}}
-      if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)',fill:'backwards'});});
+      if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate&&!(g[0]==='zjMiniIsle'&&el.closest&&el.closest('#zjTopBar')))el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)',fill:'backwards'});});
       sideSlideIn(); /* 兜底路径同样给太史简来一次右侧级联滑入 */
     }
   }
