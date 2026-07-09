@@ -185,6 +185,8 @@ function chev(d,sz){var s=sz||11;return '<svg viewBox="0 0 24 24" width="'+s+'" 
 function bolt(on){var c=on?'#ffdca0':'#8a7f68';return '<svg viewBox="0 0 24 24" width="22" height="22" fill="'+c+'" style="display:block'+(on?';filter:drop-shadow(0 0 5px rgba(255,200,110,.7))':'')+'"><path d="M13 2 4.6 13.1c-.34.45-.02 1.1.53 1.1H11l-1.2 7.1c-.11.66.72 1.02 1.12.48L19.4 10c.34-.45.02-1.1-.53-1.1H13l1.2-6.5c.12-.63-.68-1-1.2-.4z"/></svg>';}
 /* 笔头描边图标（修改此幕用；矢量图非 emoji），替代会被移动端渲染成彩色 emoji 的 ✎ 字符 */
 function pen(s){s=s||11;return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l3 3"/></svg>';}
+/* 警告三角描边图标（矢量图非 emoji，避免移动端渲染成彩色 ⚠️ 且颜色不可控） */
+function warn(s,c){s=s||11;c=c||'#e6795f';return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="'+c+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px"><path d="M12 3.4 22 20.2H2z"/><path d="M12 9.5v4.2"/><path d="M12 17.2v.01"/></svg>';}
 /* 单图显示尺寸 迷你/小/中/大 → 容器最大宽度（大=满栏，即原样）。多图并排列数由 gridCols 自动决定，不受此项影响。 */
 function imgDispW(sz){return sz==='mini'?'32%':sz==='sm'?'46%':sz==='md'?'70%':'100%';}
 /* 多图并排列数：auto=2–4张两列、5–6张三列（迷你）；c2 恒两列；c3 恒三列（迷你） */
@@ -1800,11 +1802,31 @@ function advanceLocal(base,text){
     setTimeout(function(){done(demoReply(base.concat([{role:'user',text:text}]),text),false);},650);
   }
 }
+/* 重演开局：开局是 history[0]、其前没有玩家输入，无法走 advanceLocal，故单开一路——让 AI 依本局设定重写开场，
+   保留历稿以便翻看；若其后已有剧情则先确认（会全部舍弃、等于换个开场重新开始）。 */
+function rerollOpening(){
+  var h=S.history;
+  if(S.thinking||!h.length||h[0].role!=='world')return;
+  if(!apiReady()){S.apiMsg={t:'请先在「链」配置 AI 接口后再重演开局。',c:'var(--red2)'};if(S.overlay)renderOverlay();else render();return;}
+  if(h.length>1&&!confirm('重演开局将舍弃其后的全部剧情，并重新生成开场。确定吗？'))return;
+  var op=currentOpening();var oldW=h[0];
+  S._swipeFrom=(oldW.alts&&oldW.alts.length?oldW.alts.slice():[oldW.text]).slice(-7);
+  S.mem=[];S.memN=0;S._genCancel=false;try{GENAC=new AbortController();}catch(e){GENAC=null;}
+  S.thinking=true;S.history=[];render();
+  var sys=buildSystem([],'（开场）');
+  var ask='请为本局重新撰写【开场白】：以现代白话轻小说笔法写一段开场正文（2-6段），交代'+(op&&op.scene?('「'+op.scene+'」'):'本局')+'的时地、场面与在场人物，把玩家（周天子姬瑶）自然带入，停在需要天子表态处；末尾必须输出完整 <mvu_panel> 状态栏（含 <sec_char>/<sec_npc>/<sec_world>，规则同平时）。只输出正文与状态栏，不要复述指令、不要写玩家的话。';
+  var msgs=[{role:'user',content:ask}];
+  var fin=function(reply){GENAC=null;reply=deLoop(reply);var msg={role:'world',text:reply,panel:parseMvu(reply)};if(S._swipeFrom){msg.alts=S._swipeFrom.concat([reply]).slice(-8);msg.altIx=msg.alts.length-1;S._swipeFrom=null;}S.thinking=false;S.history=[msg];render();savePref();maybeAutoDraw();};
+  var back=function(){GENAC=null;S._genCancel=false;S.thinking=false;S.history=[oldW];S._swipeFrom=null;render();savePref();};
+  callCustomAI(sys,msgs).then(function(t){if(!t||!String(t).trim())throw new Error('接口空回复');return ensureComplete(sys,msgs,t);}).then(fin).catch(back);
+}
 function reroll(idx){
   var h=S.history;
-  if(S.thinking||h.length<2)return;
+  if(S.thinking||!h.length)return;
   if(idx==null){for(idx=h.length-1;idx>=0&&h[idx].role!=='world';idx--){}}
-  if(idx<1||!h[idx]||h[idx].role!=='world')return;
+  if(idx<0||!h[idx]||h[idx].role!=='world')return;
+  if(idx===0){rerollOpening();return;}
+  if(h.length<2)return;
   var isLast=(idx===h.length-1);
   /* 旧幕重演会舍弃其后剧情——先确认 */
   if(!isLast&&!confirm('重演此幕将舍弃其后的剧情，确定重新演绎这一幕吗？'))return;
@@ -2238,17 +2260,18 @@ function storyPane(){
     }
     /* 每一幕世界消息常驻一排操作（旧幕也全有）：重演/重出状态栏/绘此幕/诵此幕/(旧幕)回到此处/修。
        全部 flex:1 等宽同尺寸、铺满一排，绝不横滑；宁可字号缩小也要一排显全。 */
-    /* 正文下方常驻一排操作：重演／重出状态栏／诵此幕／(旧幕)回到此处 等宽铺满一排，末尾「修」只占小小一格（笔头＋一字）。绘此幕/重绘不在此排——已单独拎到插画上下方。绝不横滑、绝不换行。 */
-    var _rb='flex:1 1 0;min-width:0;box-sizing:border-box;font-size:12px;letter-spacing:.02em;padding:6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;line-height:1.5';
-    var _rbFix='flex:0 0 auto;box-sizing:border-box;font-size:12px;padding:6px 11px;white-space:nowrap;line-height:1.5';
+    /* 正文下方常驻一排操作：重演／重出状态栏／诵读／(旧幕)回到此处 等宽铺满一排、高度一致，末尾「修」只占小小一格（笔头＋一字）。绘此幕/重绘不在此排——已单独拎到插画上下方。绝不横滑、绝不换行。字号高度与旧版一致，图标用小一号 span 让长标签也放得下。 */
+    var _rb='flex:1 1 0;min-width:0;box-sizing:border-box;font-size:11px;letter-spacing:-.2px;padding:5px 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;line-height:1.5';
+    var _rbFix='flex:0 0 auto;box-sizing:border-box;font-size:11px;padding:5px 8px;white-space:nowrap;line-height:1.5';
+    var _ti=function(s){return '<span style="font-size:.76em;opacity:.9;margin-right:1px">'+s+'</span>';};
     var retry='';
-    if(!S.thinking&&i>0&&!typing&&h.role==='world'){
-      var _row='<div style="display:flex;flex-wrap:nowrap;gap:5px;align-items:stretch;margin-top:5px">'
+    if(!S.thinking&&i>=0&&!typing&&h.role==='world'){
+      var _row='<div style="display:flex;flex-wrap:nowrap;gap:4px;align-items:stretch;margin-top:5px">'
         +(isLast&&h.alts&&h.alts.length>1?sw:'')
-        +'<div class="btn obtn" data-rr="'+i+'" title="重新演绎这一幕" style="'+_rb+'">重演</div>'
-        +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div class="btn obtn" style="'+_rb+';color:var(--gold);border-color:rgba(224,190,130,.5)">补录中…</div>':'<div class="btn obtn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式时用）" style="'+_rb+';'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">'+(panelComplete(h.text)?'重出状态':'补状态')+'</div>'))
-        +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="'+_rb+';color:var(--gold2);border-color:rgba(224,190,130,.6)">停诵</div>':'<div class="btn obtn" data-tts="'+i+'" title="朗读这一幕" style="'+_rb+'">诵读</div>'):'')
-        +(!isLast?'<div class="btn obtn" data-backto="'+i+'" title="舍弃其后剧情，回到这一幕继续" style="'+_rb+';color:#d9a06a;border-color:rgba(217,160,106,.45)">回到此处</div>':'')
+        +'<div class="btn obtn" data-rr="'+i+'" title="重新演绎这一幕" style="'+_rb+'">'+_ti('⟲')+'重演</div>'
+        +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div class="btn obtn" style="'+_rb+';color:var(--gold);border-color:rgba(224,190,130,.5)">补录中…</div>':'<div class="btn obtn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式时用）" style="'+_rb+';'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">'+_ti('⟲')+(panelComplete(h.text)?'重出状态栏':'补状态栏')+'</div>'))
+        +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="'+_rb+';color:var(--gold2);border-color:rgba(224,190,130,.6)">'+_ti('■')+'停诵</div>':'<div class="btn obtn" data-tts="'+i+'" title="朗读这一幕" style="'+_rb+'">'+_ti('♪')+'诵读</div>'):'')
+        +(!isLast?'<div class="btn obtn" data-backto="'+i+'" title="舍弃其后剧情，回到这一幕继续" style="'+_rb+';color:#d9a06a;border-color:rgba(217,160,106,.45)">'+_ti(chev(-1,9))+'回到此处</div>':'')
         +'<div class="btn obtn" data-wedit="'+i+'" title="修改此幕正文" style="'+_rbFix+'">'+pen(11)+' 修</div>'
         +'</div>';
       var _errline=(S.imgErr&&isLast)?'<div style="display:flex;gap:6px;align-items:center;margin-top:5px"><div style="font-size:10.5px;color:#d9a06a;flex:1;min-width:0">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="font-size:10px;padding:4px 10px;flex:none;color:var(--gold3)">⚙ 设置</div></div>':'';
@@ -3305,6 +3328,7 @@ function speedToggle(){
         +'<div style="display:flex;align-items:center;gap:9px">'
           +'<span style="display:inline-flex;width:22px;height:22px;flex:none">'+bolt(on)+'</span>'
           +'<span style="font-family:var(--kai);font-size:16px;letter-spacing:.16em;color:'+(on?'var(--gold2)':'var(--mut)')+'">极速模式</span>'
+          +'<span style="font-size:12.5px;letter-spacing:.04em;color:#e6795f;font-weight:600;display:inline-flex;align-items:center;gap:2px">（'+warn(12,'#e6795f')+'慎开）</span>'
           +'<span style="font-size:11px;letter-spacing:.24em;font-weight:700;color:'+(on?'#ffdca0':'var(--mut)')+';'+(on?'text-shadow:0 0 10px rgba(255,200,110,.6)':'opacity:.55')+'">'+(on?'ON':'OFF')+'</span>'
         +'</div>'
         +'<div style="font-size:11.5px;line-height:1.78;color:var(--mut);margin-top:7px">觉得出字太慢？开启后大幅精简提示词、缩短上下文与长程记忆、去掉示例与自查、不再自动补全状态栏——出字更快；代价是<b style="color:#d9a06a">正文、变量、记忆与角色扮演质量都会下降</b>。默认关闭，满血全配置、绝不缩水；此项只为等不及的玩家留一个选择。</div>'
