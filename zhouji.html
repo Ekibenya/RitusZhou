@@ -606,18 +606,22 @@ function scanLore(recent,budget,history,userInput){
      兼容 ST 高级字段：次级关键词(须同时命中)、注入顺序、触发概率、扫描深度、递归扫描 */
   function future(e){return now!==null&&typeof e.from==='number'&&e.from>now;}
   function past(e){return now!==null&&typeof e.to==='number'&&e.to<now;}
-  function push(e){if(out.indexOf(e)>=0)return;if(used+e.content.length<=budget){out.push(e);used+=e.content.length;}}
+  var UL=ULORE.filter(function(e){return e.on!==false&&e.content;});
+  function isU(e){return UL.indexOf(e)>=0;}
+  /* 玩家自定义条目优先保障：内置常驻把 9000 字预算吃满时，自定义命中条目允许额外 +3000 字余量，
+     绝不再被静默挤掉（此前「关键词命中了却不在激活列表」多半是这个原因） */
+  function push(e){if(out.indexOf(e)>=0)return;var cap=budget+(isU(e)?3000:0);if(used+e.content.length<=cap){out.push(e);used+=e.content.length;}}
   function textAt(e){
     if(!e.depth||!history)return recent;
     return history.slice(-e.depth).map(function(h){return h.text;}).join('\n')+'\n'+(userInput||'');
   }
-  function hitBy(e,txt){
-    if(!(e.keys||[]).some(function(k){return k&&txt.indexOf(k)>=0;}))return false;
-    if(e.keys2&&e.keys2.length&&!e.keys2.some(function(k){return k&&txt.indexOf(k)>=0;}))return false;
+  function hitBy(e,txt){ /* 大小写不敏感（ST 同款）：英文关键词不再因大小写错失 */
+    var lt=String(txt).toLowerCase();
+    if(!(e.keys||[]).some(function(k){return k&&lt.indexOf(String(k).toLowerCase())>=0;}))return false;
+    if(e.keys2&&e.keys2.length&&!e.keys2.some(function(k){return k&&lt.indexOf(String(k).toLowerCase())>=0;}))return false;
     return true;
   }
   function pass(e){return e.prob==null||Math.random()*100<e.prob;}
-  var UL=ULORE.filter(function(e){return e.on!==false&&e.content;});
   var L=(G.lorebook||[]).concat(UL).filter(function(e){return !future(e);});
   L.forEach(function(e){if(e.constant&&pass(e)) push(e);});
   L.forEach(function(e){ /* 各朝【指南】：命中当前年代即常驻，不靠关键词 */
@@ -629,7 +633,9 @@ function scanLore(recent,budget,history,userInput){
   var rtxt=out.concat(hit).filter(function(e){return !e.prevR;}).map(function(e){return e.content;}).join('\n');
   if(rtxt)cand.forEach(function(e){if(hit.indexOf(e)>=0||out.indexOf(e)>=0||e.exclR)return;if(hitBy(e,rtxt)&&pass(e))hit.push(e);});
   hit.sort(function(a,b){return (a.order==null?100:a.order)-(b.order==null?100:b.order);});
-  hit.filter(function(e){return !past(e);}).forEach(push);
+  /* 自定义命中条目最先装桶（玩家亲手写的最要紧），其后内置命中，最后千年记忆 */
+  hit.filter(function(e){return isU(e)&&!past(e);}).forEach(push);
+  hit.filter(function(e){return !isU(e)&&!past(e);}).forEach(push);
   hit.filter(past).forEach(push);
   return out;
 }
@@ -1023,6 +1029,7 @@ function buildSystem(history,userInput){
     '【场景】'+fill(G.scenario),
     (S.memOn!==false&&S.mem&&S.mem.length>1)?('【长程记忆·太史长卷】以下为本局开局至今全部既定事实的编年纪要（越靠后越接近当下）。正文历史若有缺失，以此卷为准；任何叙事不得与之矛盾：\n'+memChronicle(SPD?1600:7000)):'',
     (function(){var _fd=npcFavorDigest();return _fd?('【人物好感·续记（不得健忘）】以下为曾登场人物最近一次的好感度与近况。他们即便暂时离场，好感与关系也须【延续记忆】：再次出场时自此数值起继续自然演变，严禁凭空重置、归零或大幅跳变；确有剧情推动方可增减：\n'+_fd):'';})(),
+    '【剧情不得原地打转】严禁同类事件循环复读（如连番遇刺、同一桥段反复上演、每到某地必发生同一种事）。近几幕已出现过的事件类型，本幕必须推进出新的因果与后果，或转入截然不同的新场面；玩家若困于某个局面，世界必须主动送来破局变量——援手、转机、敌方失误、事态升级或改向，绝不许把玩家按在同一处反复挨打。',
     '【世界书·激活条目】\n'+lore.map(function(e){return '『'+e.title+'』'+e.content;}).join('\n'),
     SPD?'':('【对话示例】\n'+fill(G.mes_example)),
     SPD
@@ -2371,12 +2378,17 @@ function storyPane(){
   var hide3d=!window.__ZJ3D_OFF__&&HIDE3D;
   var sceneH=(window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mob):((window.__ZJ3D_OFF__&&SVGF)?34:(mob?140:186));
   var barH=S.zen?46:(mob?50:58);
-  var scene='<div id="zjSceneIsle" class="zjHl" style="position:absolute;'+(S.worldFull?'inset:0;border-radius:0;z-index:6;':'top:'+barH+'px;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';height:'+sceneH+'px;border-radius:16px;z-index:4;')+'transform:translateZ(0);-webkit-transform:translateZ(0);overflow:hidden;background:#0b0906;border:1px solid rgba(255,238,205,.16);box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,242,214,.14)">'+(window.THREE?'<div id="zjScene3D" style="position:absolute;inset:0"></div>':sceneSvg(m))+(window.__ZJ3D_OFF__?('<div data-act="svgfold" class="btn" style="position:absolute;top:6px;right:10px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">'+(SVGF?'展开':'收起')+'</div>'+(SVGF?'':'<div data-act="on3d" class="btn" style="position:absolute;top:6px;right:66px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">启 · 三维</div>')):'')
+  /* 场景岛标记提炼为函数：storyPane 与「全屏内手术式开合三维」共用一份，绝不两处漂移 */
+  function sceneIsleHtml(m,mob,barH,sceneH){
+    return '<div id="zjSceneIsle" class="zjHl" style="position:absolute;'+(S.worldFull?'inset:0;border-radius:0;z-index:6;':'top:'+barH+'px;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';height:'+sceneH+'px;border-radius:16px;z-index:4;')+'transform:translateZ(0);-webkit-transform:translateZ(0);overflow:hidden;background:#0b0906;border:1px solid rgba(255,238,205,.16);box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,242,214,.14)">'+(window.THREE?'<div id="zjScene3D" style="position:absolute;inset:0"></div>':sceneSvg(m))+(window.__ZJ3D_OFF__?('<div data-act="svgfold" class="btn" style="position:absolute;top:6px;right:10px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">'+(SVGF?'展开':'收起')+'</div>'+(SVGF?'':'<div data-act="on3d" class="btn" style="position:absolute;top:6px;right:66px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">启 · 三维</div>')):'')
     +'<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">'+particlesHtml(m)+'</div>'
     +(m.place?'<div class="kai" style="position:absolute;top:48px;right:16px;writing-mode:vertical-rl;font-size:17px;letter-spacing:.3em;color:rgba(232,217,176,.92);text-shadow:0 0 16px rgba(0,0,0,.9)">'+esc(m.place)+'</div>':'')
     +(m.wx?'<div style="position:absolute;left:14px;bottom:'+((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded)?30:10)+'px;font-size:11px;letter-spacing:.2em;color:rgba(157,140,107,.9);background:rgba(13,10,8,.55);padding:4px 10px;border:1px solid rgba(201,160,99,.2);border-radius:8px">'+esc(m.wx)+'</div>':'')
     +((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded&&!S.worldFull)?'<div data-act="worldFull" class="btn zjHl" title="三维画面全屏" style="position:absolute;top:40px;left:10px;z-index:7;cursor:pointer;padding:3px 13px;border-radius:99px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em">全屏</div>':'')
     +'</div>';
+  }
+  window.__zjSceneIsleHtml=sceneIsleHtml; /* 供全屏内手术式开合三维复用（同一渲染闭包的最新版本） */
+  var scene=sceneIsleHtml(m,mob,barH,sceneH);
   var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['free','书 · 自由'],['world','控制游戏']];
   /* 模式/开关一律做成柔光金字（与封面、正文操作栏同款），去掉方框：选中/开启＝亮色发光，未选/关闭＝暗灰无光。 */
   var _cpad=isMobile()?'3px 7px':'6px 10px',_cfs=isMobile()?'12px':'13px',_cls=isMobile()?'.05em':'.14em';
@@ -4381,6 +4393,17 @@ root.addEventListener('click',function(e){
       else if(a==='zenWorld'){
         var zwBtn=document.querySelector('[data-act="zenWorld"]');var zwR=zwBtn&&zwBtn.getBoundingClientRect();
         var zwOff=((window.ZJ3D&&ZJ3D.paneH)?ZJ3D.paneH(isMobile()):150)+8;
+        /* 全屏内且外围界面仍是手术式（zjTopBar 还藏在 DOM 里）→ 开合三维走手术路径：只插拔场景岛+改正文
+           paddingTop（带滚动补偿），正文文字节点不销毁不刷新；动过之后清掉 _zenSurgPad，退出全屏走整渲染归位。 */
+        var _zwSurg=S.zen&&!!document.getElementById('zjTopBar')&&!!document.getElementById('zjStory')&&window.__zjSceneIsleHtml;
+        function zwPad(story,newTop){ /* 滚动补偿式改 paddingTop：正在读的行钉在原处 */
+          var w=story.querySelector('[data-zjzoom]');var oldY=w?w.getBoundingClientRect().top:null;
+          story.style.paddingTop=newTop+'px';
+          if(oldY==null||!w)return;
+          var dy=Math.round(oldY-w.getBoundingClientRect().top);
+          if(dy){var mx=Math.max(0,story.scrollHeight-story.clientHeight);story.scrollTop=Math.max(0,Math.min(mx,story.scrollTop-dy));}
+          if(!reducedMotion()&&story.animate){var d2=Math.round(oldY-w.getBoundingClientRect().top);if(Math.abs(d2)>2)story.animate([{transform:'translateY('+d2+'px)'},{transform:'none'}],{duration:320,easing:'cubic-bezier(.3,1,.35,1)'});}
+        }
         function zwCollapse(){if(!S.zenWorld)return;
           var se0=document.getElementById('zjStory');var st0=se0?se0.scrollTop:0;
           S.zenWorld=false;S._noFade=true;render();
@@ -4388,19 +4411,41 @@ root.addEventListener('click',function(e){
           if(st0>zwOff){se1.scrollTop=st0-zwOff;}
           else{se1.scrollTop=0;var inn=se1.firstElementChild;
             if(inn&&inn.animate&&!reducedMotion())inn.animate([{transform:'translateY('+(zwOff-st0)+'px)'},{transform:'none'}],{duration:320,easing:'cubic-bezier(.3,1,.35,1)'});}}
-        if(S.zenWorld){
+        if(S.zenWorld){ /* ---- 收起三维 ---- */
           var zi0=document.getElementById('zjSceneIsle');
-          if(zi0&&zi0.animate&&zwR&&!reducedMotion()){var zr0=zi0.getBoundingClientRect();
-            var zan=zi0.animate([{transform:'translateZ(0)',opacity:1},{transform:'translate('+(zwR.left+zwR.width/2-(zr0.left+zr0.width/2))+'px,'+(zwR.top+zwR.height/2-(zr0.top+zr0.height/2))+'px) scale('+Math.max(.05,zwR.width/zr0.width)+','+Math.max(.05,zwR.height/zr0.height)+')',opacity:.25}],{duration:330,easing:'cubic-bezier(.5,0,.7,.4)'});
-            zan.onfinish=zwCollapse;
+          if(_zwSurg){
+            S.zenWorld=false;S._zenSurgPad=null;
+            var _zwDone=false;
+            var zwFin=function(){if(_zwDone)return;_zwDone=true;
+              [].forEach.call(document.querySelectorAll('[id="zjSceneIsle"]'),function(el){if(el.parentNode)el.parentNode.removeChild(el);});
+              var st9=document.getElementById('zjStory');if(st9)zwPad(st9,56);};
+            if(zi0&&zi0.animate&&zwR&&!reducedMotion()){var zr0=zi0.getBoundingClientRect();
+              var zan=zi0.animate([{transform:'translateZ(0)',opacity:1},{transform:'translate('+(zwR.left+zwR.width/2-(zr0.left+zr0.width/2))+'px,'+(zwR.top+zwR.height/2-(zr0.top+zr0.height/2))+'px) scale('+Math.max(.05,zwR.width/zr0.width)+','+Math.max(.05,zwR.height/zr0.height)+')',opacity:.25}],{duration:330,easing:'cubic-bezier(.5,0,.7,.4)'});
+              zan.onfinish=zwFin;setTimeout(zwFin,700);
+            }else zwFin();
+          }else if(zi0&&zi0.animate&&zwR&&!reducedMotion()){var zr0b=zi0.getBoundingClientRect();
+            var zanb=zi0.animate([{transform:'translateZ(0)',opacity:1},{transform:'translate('+(zwR.left+zwR.width/2-(zr0b.left+zr0b.width/2))+'px,'+(zwR.top+zwR.height/2-(zr0b.top+zr0b.height/2))+'px) scale('+Math.max(.05,zwR.width/zr0b.width)+','+Math.max(.05,zwR.height/zr0b.height)+')',opacity:.25}],{duration:330,easing:'cubic-bezier(.5,0,.7,.4)'});
+            zanb.onfinish=zwCollapse;
             setTimeout(zwCollapse,700);
           }else{zwCollapse();}
-        }else{
+        }else{ /* ---- 展开三维 ---- */
           try{localStorage.removeItem('zj3d_hide');}catch(e){}
           if(SVGF){SVGF=false;try{localStorage.setItem('zj_svgfold','0');}catch(e){}}
-          var se2=document.getElementById('zjStory');var st2=se2?se2.scrollTop:0;
-          S.zenWorld=true;S._noFade=true;render();
-          var se3=document.getElementById('zjStory');if(se3)se3.scrollTop=st2+zwOff;
+          if(_zwSurg){
+            S.zenWorld=true;S._zenSurgPad=null;
+            var stO=document.getElementById('zjStory');var m9=mood();var mo9=isMobile();
+            var sH9=(window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mo9):((window.__ZJ3D_OFF__&&SVGF)?34:(mo9?140:186));
+            /* 进全屏时藏起的旧场景岛还在 DOM 里——先清掉，避免重复 id 导致收起时删错 */
+            [].forEach.call(document.querySelectorAll('[id="zjSceneIsle"]'),function(el){if(el.parentNode)el.parentNode.removeChild(el);});
+            stO.insertAdjacentHTML('beforebegin',window.__zjSceneIsleHtml(m9,mo9,46,sH9));
+            zwPad(stO,46+sH9+18);
+            try{if(window.ZJ3D&&ZJ3D.owns())ZJ3D.onRender(playerLoc().name,m9.night);}catch(e9){}
+            try{if(!window.ZJ3D||!ZJ3D.owns())sc3Mount();}catch(e8){}
+          }else{
+            var se2=document.getElementById('zjStory');var st2=se2?se2.scrollTop:0;
+            S.zenWorld=true;S._noFade=true;render();
+            var se3=document.getElementById('zjStory');if(se3)se3.scrollTop=st2+zwOff;
+          }
           var zi1=document.getElementById('zjSceneIsle');
           if(zi1&&zi1.animate&&zwR&&!reducedMotion()){var zr1=zi1.getBoundingClientRect();
             zi1.animate([{transform:'translate('+(zwR.left+zwR.width/2-(zr1.left+zr1.width/2))+'px,'+(zwR.top+zwR.height/2-(zr1.top+zr1.height/2))+'px) scale('+Math.max(.05,zwR.width/zr1.width)+','+Math.max(.05,zwR.height/zr1.height)+')',opacity:.3},{transform:'translateZ(0)',opacity:1}],{duration:440,easing:'cubic-bezier(.3,1.06,.32,1)'});}
