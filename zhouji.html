@@ -2388,9 +2388,10 @@ function storyPane(){
   var _cmd=(S.cmdHint?'<div id="zjCmdHint" style="margin-top:6px;font-size:12.5px;line-height:1.6;color:#d9a06a'+(INPUTGLASS?';text-shadow:0 1px 3px rgba(0,0,0,.9)':'')+'">令未行：'+esc(S.cmdHint)+'</div>':'');
   var _row='<div style="display:flex;gap:'+(mob?'8px':'12px')+';align-items:flex-end;position:relative">'+_ta+_caret+_micBtn+_sendBtn+'</div>';
   /* 毛玻璃遮罩改用【固定像素】的柔和缓动边——中间实心区随输入框行数增高而增高（像 iMessage 越打越高），
-     上下淡出边固定 48px 不变，故渐变面积随输入框一起长高。 */
-  var _gMask='linear-gradient(0deg,transparent 0px,rgba(0,0,0,.05) 8px,rgba(0,0,0,.17) 17px,rgba(0,0,0,.4) 28px,rgba(0,0,0,.7) 38px,rgba(0,0,0,.9) 48px,rgba(0,0,0,.9) calc(100% - 48px),rgba(0,0,0,.7) calc(100% - 38px),rgba(0,0,0,.4) calc(100% - 28px),rgba(0,0,0,.17) calc(100% - 17px),rgba(0,0,0,.05) calc(100% - 8px),transparent 100%)';
-  var _frost=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-48px;bottom:-48px;z-index:0;pointer-events:none;background:transparent;-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+'"></div>':'';
+     上下淡出边固定 ~58px 不变。淡出边加长后，空/一行时中央全强区收窄回上一版的窄峰观感，
+     不再是一整条又宽又实的模糊带；多行时中央实心区仍随输入框一起长高。 */
+  var _gMask='linear-gradient(0deg,transparent 0px,rgba(0,0,0,.05) 10px,rgba(0,0,0,.16) 20px,rgba(0,0,0,.34) 30px,rgba(0,0,0,.58) 40px,rgba(0,0,0,.8) 49px,rgba(0,0,0,.9) 58px,rgba(0,0,0,.9) calc(100% - 58px),rgba(0,0,0,.8) calc(100% - 49px),rgba(0,0,0,.58) calc(100% - 40px),rgba(0,0,0,.34) calc(100% - 30px),rgba(0,0,0,.16) calc(100% - 20px),rgba(0,0,0,.05) calc(100% - 10px),transparent 100%)';
+  var _frost=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-53px;bottom:-44px;z-index:0;pointer-events:none;background:transparent;-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+'"></div>':'';
   var _inputBox=INPUTGLASS
     ? '<div style="position:relative;pointer-events:auto;padding:'+(mob?'2px 6px 0':'2px 8px 0')+'">'+_frost+'<div style="position:relative;z-index:1">'+_row+_cmd+'</div></div>'
     : '<div class="glass" style="pointer-events:auto;padding:'+(mob?'3px 13px':'4px 15px')+';border-radius:15px">'+_row+_cmd+'</div>';
