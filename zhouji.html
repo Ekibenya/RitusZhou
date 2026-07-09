@@ -4211,18 +4211,25 @@ window.__zjTopIsleHtml=function(){
     +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(_er)+'</span><span aria-hidden="true">'+esc(_er)+'</span></div></div></div>';
 };
 /* 开局后的界面风格选择：两张演示图（电脑给电脑版、手机给手机版）+介绍，二选一；设置·显可随时更换 */
+/* 界面风格选择：手机也两卡并排（竖屏截图正好半宽放下），整屏一眼看全、零滚动；
+   图高用 100dvh-170px 兜底封顶（正常机型远达不到，纯保险），要点一行金字点出核心差异。 */
 function stylePickHtml(){
   var m=isMobile(),sfx=m?'m':'d';
-  return '<div id="zjStylePick" style="position:fixed;inset:0;z-index:90;background:rgba(8,6,4,.9);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto">'
-    +'<div style="max-width:'+(m?'420px':'880px')+';width:100%">'
-    +'<div class="kai" style="text-align:center;font-size:22px;color:var(--gold2);letter-spacing:.22em;margin-bottom:6px;text-shadow:0 0 14px rgba(224,190,130,.4)">择 · 界面风格</div>'
-    +'<div style="text-align:center;font-size:12.5px;color:var(--mut);margin-bottom:16px">点选其一即入正文；之后可在 设置 · 显 随时更换</div>'
-    +'<div style="display:flex;gap:14px;'+(m?'flex-direction:column':'')+'">'
-    +[['glass','液态玻璃设计','经典全框界面：纪年胶囊·全屏键·选项与输入皆有玻璃框，结构一目了然'],['minimal','极简主义设计','无框柔光＋液态玻璃顶栏；适合小屏幕设备，上下文显示面积更大']].map(function(o){
-      return '<div class="btn zjHl" data-act="setStyle" data-style="'+o[0]+'" style="flex:1;cursor:pointer;border:1px solid rgba(224,190,130,.4);border-radius:16px;overflow:hidden;background:rgba(18,13,8,.72);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,242,214,.15)">'
-        +'<img src="core/res/uidemo_'+o[0]+'_'+sfx+'.jpg?v=1" style="width:100%;display:block;pointer-events:none" alt="">'
-        +'<div style="padding:12px 15px 14px"><div class="kai" style="font-size:16.5px;color:var(--gold2);letter-spacing:.15em">'+o[1]+'</div>'
-        +'<div style="font-size:12px;color:var(--mut2);line-height:1.75;margin-top:5px">'+o[2]+'</div></div></div>';}).join('')
+  var opts=[
+    ['glass','液态玻璃','框架分明|纪年胶囊|全屏按钮','经典全框界面：选项与输入皆有玻璃框，结构一目了然'],
+    ['minimal','极简主义','无框柔光|正文区更大|点正文即全屏','顶栏液态玻璃渐变，界面隐入正文；适合小屏幕设备']];
+  return '<div id="zjStylePick" style="position:fixed;inset:0;z-index:90;background:rgba(8,6,4,.92);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:'+(m?'10px':'16px')+';overflow:auto">'
+    +'<div style="max-width:'+(m?'560px':'880px')+';width:100%">'
+    +'<div class="kai" style="text-align:center;font-size:'+(m?'18px':'22px')+';color:var(--gold2);letter-spacing:.22em;margin-bottom:4px;text-shadow:0 0 14px rgba(224,190,130,.4)">择 · 界面风格</div>'
+    +'<div style="text-align:center;font-size:'+(m?'11px':'12.5px')+';color:var(--mut);margin-bottom:'+(m?'10px':'16px')+'">点选其一即入正文；之后可在 设置 · 显 随时更换</div>'
+    +'<div style="display:flex;gap:'+(m?'10px':'14px')+';align-items:stretch">'
+    +opts.map(function(o){
+      return '<div class="btn zjHl" data-act="setStyle" data-style="'+o[0]+'" style="flex:1;min-width:0;cursor:pointer;border:1px solid rgba(224,190,130,.4);border-radius:'+(m?'13px':'16px')+';overflow:hidden;background:rgba(18,13,8,.72);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,242,214,.15)">'
+        +'<img src="core/res/uidemo_'+o[0]+'_'+sfx+'.jpg?v=2" style="width:100%;display:block;pointer-events:none;max-height:calc(100vh - 170px);max-height:calc(100dvh - 170px);object-fit:cover;object-position:top" alt="">'
+        +'<div style="padding:'+(m?'9px 10px 11px':'12px 15px 14px')+'"><div class="kai" style="font-size:'+(m?'14.5px':'16.5px')+';color:var(--gold2);letter-spacing:.13em;white-space:nowrap">'+o[1]+'</div>'
+        +'<div style="font-size:'+(m?'10px':'11.5px')+';color:#d9b988;letter-spacing:.02em;line-height:1.6;margin-top:4px">'+o[2].split('|').map(function(p){return '<span style="white-space:nowrap">'+p+'</span>';}).join(' · ')+'</div>'
+        +(m?'':'<div style="font-size:12px;color:var(--mut2);line-height:1.75;margin-top:4px">'+o[3]+'</div>')
+        +'</div></div>';}).join('')
     +'</div></div></div>';
 }
 /* 正文 paddingTop 的滚动补偿式修改：正在读的行钉在原处；滚动余量不够的残余用 FLIP 平滑过渡。
