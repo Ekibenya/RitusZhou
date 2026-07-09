@@ -2369,8 +2369,8 @@ function storyPane(){
     var c=dis?'var(--mut)':(on?ac:'var(--mut)');
     var ts=on&&!dis?('0 0 11px '+gl+',0 1px 2px rgba(0,0,0,.8)'):'0 1px 2px rgba(0,0,0,.6)';
     /* 每个选项前一颗发光小球（前导光点）：开关类(聊天/骰/策)各自的球随开启亮起、点选时嗖地爆散一下；
-       模式类(曰/行/书/控制游戏)不放固定球，改由一颗共用的「飞行小球」zjModeBall 嗖地滑过去再爆散融字——
-       与「叙事/太史简」灵动岛完全同款。noBall 的选项此处只留同宽占位槽 .zjModeSlot 供飞行球停靠对齐。 */
+       模式类(曰/行/书/控制游戏)不放固定球，只留同宽占位槽 .zjModeSlot——由一颗共用的「飞行小球」zjModeBall
+       嗖地滑到所选项的槽位、再爆散融字，与「叙事/太史简」灵动岛完全同款。聊天模式令曰/行/书失效时小球隐去。 */
     var live=on&&!dis;
     var lead=noBall
       ? '<span class="zjModeSlot" style="display:inline-block;vertical-align:middle;width:6px;height:6px;margin-right:4px"></span>'
@@ -3733,10 +3733,10 @@ function tabIsleAnim(oldTab,newTab){
   setTimeout(function(){
     var b=document.getElementById('zjTabBall');
     if(b&&b.animate)b.animate([
-      {transform:'translate(-50%,-50%) scale(1)',boxShadow:'0 0 5px 1px rgba(255,210,120,.5)',offset:0},
-      {transform:'translate(-50%,-50%) scale(1.45)',boxShadow:'0 0 22px 9px rgba(255,224,150,.85)',offset:.34},
-      {transform:'translate(-50%,-50%) scale(1)',boxShadow:'0 0 34px 5px rgba(255,214,120,0)',offset:1}
-    ],{duration:580,easing:'cubic-bezier(.25,.7,.35,1)'});
+      {boxShadow:'0 0 4px 1px rgba(255,216,132,.5)',offset:0},
+      {boxShadow:'0 0 17px 5px rgba(255,228,158,.72)',offset:.32},
+      {boxShadow:'0 0 44px 12px rgba(255,216,132,0)',offset:1}
+    ],{duration:660,easing:'cubic-bezier(.22,.61,.3,1)'});
     var act=document.getElementById('zjTab_'+newTab);
     if(act&&act.animate)act.animate([
       {textShadow:'0 1px 2px rgba(0,0,0,.8)'},
@@ -3763,39 +3763,47 @@ function chipBallSet(chip,on){
   if(on)chipBloom(b);
 }
 /* 模式选择器(曰/行/书/控制游戏)共用的飞行小球——与「叙事/太史简」灵动岛 tabIsleAnim 一模一样：
-   小球嗖地滑到所选项、再嗖地爆散并把该项文字点亮（融合）。 */
+   小球嗖地滑到所选项、抵达后柔光晕荡开消散并把该项文字点亮（融合）。落点用 offsetLeft 链精确定位，
+   并把 style.left 显式写死，保证即便动画被打断也稳落当前项。聊天模式令曰/行/书失效时小球隐去。 */
 function zjModeBallX(ref,row){var x=0;while(ref&&ref!==row){x+=ref.offsetLeft;ref=ref.offsetParent;}return x;}
 function zjModeBallRef(md){var row=document.getElementById('zjChipsRow');if(!row)return null;var chip=row.querySelector('[data-mode="'+md+'"]');if(!chip)return null;var slot=chip.querySelector('.zjModeSlot');return {row:row,ref:slot||chip};}
 function positionModeBall(){
   try{
     var ball=document.getElementById('zjModeBall');if(!ball)return;
+    if(S.chatOnly&&S.mode!=='world'){ball.style.opacity='0';return;}
     var r=zjModeBallRef(S.mode);if(!r||!r.ref){ball.style.opacity='0';return;}
     ball.style.left=(zjModeBallX(r.ref,r.row)+r.ref.offsetWidth/2)+'px';ball.style.opacity='1';
   }catch(e){}
 }
 function modeBallFly(nmd){
-  var ball=document.getElementById('zjModeBall');var r=zjModeBallRef(nmd);
-  if(!ball||!r||!r.ref)return;
-  var newLeft=zjModeBallX(r.ref,r.row)+r.ref.offsetWidth/2;
-  var oldLeft=parseFloat(ball.style.left);if(isNaN(oldLeft))oldLeft=newLeft;
-  ball.style.opacity='1';
-  if(!ball.animate||reducedMotion()){ball.style.left=newLeft+'px';return;}
-  ball.animate([{left:oldLeft+'px'},{left:newLeft+'px'}],{duration:330,easing:'cubic-bezier(.3,1.05,.3,1)'});
-  ball.style.left=newLeft+'px';
-  setTimeout(function(){
-    var b=document.getElementById('zjModeBall');
-    if(b&&b.animate)b.animate([
-      {transform:'translate(-50%,-50%) scale(1)',boxShadow:'0 0 5px 1px rgba(255,210,120,.5)',offset:0},
-      {transform:'translate(-50%,-50%) scale(1.6)',boxShadow:'0 0 22px 9px rgba(255,224,150,.85)',offset:.34},
-      {transform:'translate(-50%,-50%) scale(1)',boxShadow:'0 0 34px 5px rgba(255,214,120,0)',offset:1}
-    ],{duration:580,easing:'cubic-bezier(.25,.7,.35,1)'});
-    var act=document.querySelector('[data-mode="'+nmd+'"]');
-    if(act&&act.animate)act.animate([
-      {textShadow:'0 1px 2px rgba(0,0,0,.8)'},
-      {textShadow:'0 0 20px rgba(255,224,150,1),0 0 8px rgba(224,190,130,.9),0 1px 2px rgba(0,0,0,.8)',offset:.4},
-      {textShadow:'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)'}
-    ],{duration:600,easing:'ease-out'});
-  },300);
+  try{
+    var ball=document.getElementById('zjModeBall');var r=zjModeBallRef(nmd);
+    if(!ball||!r||!r.ref)return;
+    var dis=(S.chatOnly&&nmd!=='world');
+    if(dis){ball.style.opacity='0';return;}
+    var newLeft=zjModeBallX(r.ref,r.row)+r.ref.offsetWidth/2;
+    var oldLeft=parseFloat(ball.style.left);if(isNaN(oldLeft))oldLeft=newLeft;
+    ball.style.opacity='1';
+    if(!ball.animate||reducedMotion()){ball.style.left=newLeft+'px';return;}
+    ball.style.left=newLeft+'px';
+    var _sl=ball.animate([{left:oldLeft+'px'},{left:newLeft+'px'}],{duration:330,easing:'cubic-bezier(.3,1.05,.3,1)'});
+    setTimeout(function(){try{_sl.cancel();}catch(e){}},360); /* 滑动结束后必撤销动画，保证稳落 style.left（不被停滞的动画帧盖住）*/
+    setTimeout(function(){
+      var b=document.getElementById('zjModeBall');
+      /* 纯柔光晕外扩即隐——小球本体不缩放（缩放实心球会像贴图展开、很假），只让光晕自然荡开消散 */
+      if(b&&b.animate)b.animate([
+        {boxShadow:'0 0 4px 1px rgba(255,216,132,.5)',offset:0},
+        {boxShadow:'0 0 17px 5px rgba(255,228,158,.72)',offset:.32},
+        {boxShadow:'0 0 44px 12px rgba(255,216,132,0)',offset:1}
+      ],{duration:660,easing:'cubic-bezier(.22,.61,.3,1)'});
+      var act=document.querySelector('[data-mode="'+nmd+'"]');
+      if(act&&act.animate)act.animate([
+        {textShadow:'0 1px 2px rgba(0,0,0,.8)'},
+        {textShadow:'0 0 20px rgba(255,224,150,1),0 0 8px rgba(224,190,130,.9),0 1px 2px rgba(0,0,0,.8)',offset:.4},
+        {textShadow:'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)'}
+      ],{duration:600,easing:'ease-out'});
+    },300);
+  }catch(e){}
 }
 function pillFlip(pillId,oldRect){
   if(reducedMotion()||!oldRect)return;
