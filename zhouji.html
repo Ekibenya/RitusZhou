@@ -2387,11 +2387,12 @@ function storyPane(){
   var _caret='<span class="zjCaretHint" aria-hidden="true" style="position:absolute;left:'+(mob?'11px':'13px')+';top:50%;transform:translateY(-50%);width:2px;height:20px;border-radius:2px;background:var(--gold2);box-shadow:0 0 9px rgba(224,190,130,.95),0 0 3px rgba(224,190,130,.85);animation:zjCaretBlink 1.1s infinite;pointer-events:none;z-index:1"></span>';
   var _cmd=(S.cmdHint?'<div id="zjCmdHint" style="margin-top:6px;font-size:12.5px;line-height:1.6;color:#d9a06a'+(INPUTGLASS?';text-shadow:0 1px 3px rgba(0,0,0,.9)':'')+'">令未行：'+esc(S.cmdHint)+'</div>':'');
   var _row='<div style="display:flex;gap:'+(mob?'8px':'12px')+';align-items:flex-end;position:relative">'+_ta+_caret+_micBtn+_sendBtn+'</div>';
-  /* 毛玻璃遮罩改用【固定像素】的柔和缓动边——中间实心区随输入框行数增高而增高（像 iMessage 越打越高），
-     上下淡出边固定 ~58px 不变。淡出边加长后，空/一行时中央全强区收窄回上一版的窄峰观感，
-     不再是一整条又宽又实的模糊带；多行时中央实心区仍随输入框一起长高。 */
-  var _gMask='linear-gradient(0deg,transparent 0px,rgba(0,0,0,.05) 10px,rgba(0,0,0,.16) 20px,rgba(0,0,0,.34) 30px,rgba(0,0,0,.58) 40px,rgba(0,0,0,.8) 49px,rgba(0,0,0,.9) 58px,rgba(0,0,0,.9) calc(100% - 58px),rgba(0,0,0,.8) calc(100% - 49px),rgba(0,0,0,.58) calc(100% - 40px),rgba(0,0,0,.34) calc(100% - 30px),rgba(0,0,0,.16) calc(100% - 20px),rgba(0,0,0,.05) calc(100% - 10px),transparent 100%)';
-  var _frost=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-53px;bottom:-44px;z-index:0;pointer-events:none;background:transparent;-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+'"></div>':'';
+  /* 毛玻璃遮罩【非对称·固定像素缓动边】：上缘紧贴输入框顶（不再上探到「曰行书」那排），
+     顶部只用 ~18px 短淡入（在输入框内快速化开、不糊到上方按钮行）；底部保留 ~50px 长柔淡出、
+     缓缓没入下方切换框。中间实心区随输入框行数增高而增高（像 iMessage 越打越高）。
+     0deg 渐变：0px=底边、100%=顶边，故小像素值=底部长淡出、calc(100%-x)=顶部短淡入。 */
+  var _gMask='linear-gradient(0deg,transparent 0px,rgba(0,0,0,.04) 5px,rgba(0,0,0,.14) 12px,rgba(0,0,0,.3) 21px,rgba(0,0,0,.5) 30px,rgba(0,0,0,.72) 40px,rgba(0,0,0,.9) 50px,rgba(0,0,0,.9) calc(100% - 18px),rgba(0,0,0,.65) calc(100% - 13px),rgba(0,0,0,.32) calc(100% - 8px),rgba(0,0,0,.1) calc(100% - 4px),transparent 100%)';
+  var _frost=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-4px;bottom:-44px;z-index:0;pointer-events:none;background:transparent;-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+'"></div>':'';
   var _inputBox=INPUTGLASS
     ? '<div style="position:relative;pointer-events:auto;padding:'+(mob?'2px 6px 0':'2px 8px 0')+'">'+_frost+'<div style="position:relative;z-index:1">'+_row+_cmd+'</div></div>'
     : '<div class="glass" style="pointer-events:auto;padding:'+(mob?'3px 13px':'4px 15px')+';border-radius:15px">'+_row+_cmd+'</div>';
