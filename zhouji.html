@@ -4470,41 +4470,6 @@ function zenToggle(){
     if(Math.abs(dy2)>2)s.animate([{transform:'translateY('+dy2+'px)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.02,.35,1)'});
   }
   var side=document.getElementById('zjSideCol');
-  /* 玻璃(经典)风格：全屏走经典整渲染路——手术快路径的几何常数按极简风格调校，玻璃走它会
-     留下错位的天下胶囊/错误 padding（双岛、透穿、挤压均源于此）。滑动动画（核心设计）原样保留：
-     进时先滑走再切树，出时切树后滑回；正文位置用锚点补偿，不跳行。 */
-  if(glassUI()){
-    if(!S.zen){
-      var gStory=document.getElementById('zjStory');if(!gStory){zenToggle._busy=0;return;}
-      var gFin=function(){
-        var s=document.getElementById('zjStory');var w=s&&s.querySelector('[data-zjzoom]');
-        var oldY=w?w.getBoundingClientRect().top:null;
-        S.zen=true;S.zenInput=false;S.zenWorld=false;S._noFade=true;S._keepScroll=true;render();
-        if(oldY!=null){var s2=document.getElementById('zjStory');var w2=s2&&s2.querySelector('[data-zjzoom]');
-          if(s2&&w2){var dy=Math.round(oldY-w2.getBoundingClientRect().top);
-            if(dy){var mx=Math.max(0,s2.scrollHeight-s2.clientHeight);s2.scrollTop=Math.max(0,Math.min(mx,s2.scrollTop-dy));}
-            if(!reducedMotion()&&s2.animate){var dy2=Math.round(oldY-w2.getBoundingClientRect().top);if(Math.abs(dy2)>2)s2.animate([{transform:'translateY('+dy2+'px)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.02,.35,1)'});}}}
-      };
-      if(reducedMotion()){gFin();return;}
-      els().forEach(function(g){var el=g[0];if(el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)',fill:'forwards'});});
-      if(side){var _gb=sideBoxes();
-        _gb.forEach(function(b,i){if(!b.animate)return;var r=b.getBoundingClientRect();var dx=Math.round(window.innerWidth-r.left+30);
-          b.animate([{transform:'none',opacity:1},{transform:'translateX('+dx+'px)',opacity:.35}],{duration:300,delay:i*26,easing:'cubic-bezier(.55,0,.75,.4)',fill:'forwards'});});
-        if(side.animate)side.animate([{opacity:1},{opacity:0}],{duration:240,delay:150,easing:'ease',fill:'forwards'});}
-      setTimeout(gFin,295);
-    }else{
-      S.zen=false;S.zenInput=false;S.zenWorld=false;S._zenSurgPad=null;S._zenSurg3D=false;
-      var gOldY=(function(){var s=document.getElementById('zjStory');var w=s&&s.querySelector('[data-zjzoom]');return w?w.getBoundingClientRect().top:null;})();
-      S._noFade=true;S._keepScroll=true;render();
-      if(gOldY!=null){var gs2=document.getElementById('zjStory');var gw2=gs2&&gs2.querySelector('[data-zjzoom]');if(gs2&&gw2){
-        var gdy=Math.round(gOldY-gw2.getBoundingClientRect().top);
-        if(gdy){var gmx=Math.max(0,gs2.scrollHeight-gs2.clientHeight);gs2.scrollTop=Math.max(0,Math.min(gmx,gs2.scrollTop-gdy));}
-        if(!reducedMotion()&&gs2.animate){var gdy2=Math.round(gOldY-gw2.getBoundingClientRect().top);if(Math.abs(gdy2)>2)gs2.animate([{transform:'translateY('+gdy2+'px)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.02,.35,1)'});}}}
-      if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate&&!(g[0]==='zjMiniIsle'&&el.closest&&el.closest('#zjTopBar')))el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)',fill:'backwards'});});
-      sideSlideIn();
-    }
-    return;
-  }
   if(!S.zen){ /* ---- 进全屏（手术式） ---- */
     var story=document.getElementById('zjStory');if(!story){zenToggle._busy=0;return;}
     var list=els();
@@ -4548,6 +4513,8 @@ function zenToggle(){
     var t3=!!S._zenSurg3D;S._zenSurg3D=false;
     var hid3=false;try{hid3=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
     if(t3&&hid3)pad=null; /* 全屏内经 × 隐藏了三维：折叠态组合多，走整渲染归位最稳 */
+    if(glassUI()&&t3)pad=null; /* 玻璃(经典)风格安全阀：全屏内动过三维就走整渲染归位——
+       手术 t3 归位按极简底距/岛位调校，玻璃走它会留错位；普通进出（绝大多数）仍是零重建无闪 */
     var topBar=document.getElementById('zjTopBar');
     if(topBar&&pad&&pad.t!=null){ /* 手术式退出：外围界面都还藏在 DOM 里，显示回来滑入即可，正文分毫未动 */
       var ex=document.getElementById('zjZenExtras');if(ex&&ex.parentNode)ex.parentNode.removeChild(ex);
