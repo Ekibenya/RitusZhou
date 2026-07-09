@@ -1085,7 +1085,7 @@ function profSave(){try{localStorage.setItem(PROFK,JSON.stringify(PROFILES));}ca
 function apiReady(){var c=apiCur();return !!(c.key&&c.model);}
 /* ---------------- 生图设置（接口/采样/提示词预设/参考图/生图世界书；仅存本机） ---------------- */
 var IMGCFGKEY='zhouji_imgcfg_v1';
-var IMGCFG={on:true,auto:false,url:'',key:'',model:'',style:'novelai',sampler:'',noise:'',steps:'',guidance:'',rescale:'',width:'',height:'',size:'1024x1024',seed:'-1',pos:'',neg:'',charRef:false,refImg:null,comfyWorkflow:'',count:1,cam:'auto',disp:'lg',grid:'auto'};
+var IMGCFG={on:true,auto:false,url:'',key:'',model:'',style:'novelai',sampler:'',noise:'',steps:'',guidance:'',rescale:'',width:'',height:'',size:'1024x1024',seed:'-1',pos:'',neg:'',charRef:false,refImg:null,comfyWorkflow:'',comfyLoader:'checkpoint',comfyClip1:'',comfyClip2:'',comfyVae:'',comfyClipType:'sdxl',count:1,cam:'auto',disp:'lg',grid:'auto'};
 var IMGCAM={auto:{label:'自动',frag:''},cinematic:{label:'电影感',frag:'cinematic film still, dramatic volumetric lighting, shallow depth of field, anamorphic widescreen, color graded, movie scene'},illust:{label:'插画',frag:'detailed anime illustration, painterly, vivid colors, clean lineart, official art'},ink:{label:'水墨',frag:'traditional chinese ink wash painting, sumi-e, rice paper texture, flowing brushstrokes'},fpv:{label:'第一人称',frag:'first-person POV, seen through the protagonist own eyes, immersive, own hands and sleeves visible in frame'},god:{label:'上帝视角',frag:"bird's-eye view, high-angle top-down aerial perspective, overhead, vast scale"},real:{label:'写实',frag:'photorealistic, ultra realistic, cinematic photography, detailed skin and fabric, natural light'}};
 try{var _ic=JSON.parse(localStorage.getItem(IMGCFGKEY)||'null');if(_ic&&typeof _ic==='object')Object.assign(IMGCFG,_ic);}catch(e){}
 try{if(!IMGCFG.url&&!IMGCFG.key&&!IMGCFG.model&&API.img&&(API.img.url||API.img.key||API.img.model)){IMGCFG.url=API.img.url||'';IMGCFG.key=API.img.key||'';IMGCFG.model=API.img.model||'';}}catch(e){}
@@ -1222,6 +1222,20 @@ function comfyBuildWorkflow(pos,neg){
     var t=C.comfyWorkflow,sub=function(k,v){t=t.split(k).join(String(v).replace(/\\/g,'\\\\').replace(/"/g,'\\"'));};
     sub('%prompt%',pos);sub('%negative%',neg||'');sub('%seed%',seed);sub('%steps%',steps);sub('%cfg%',cfg);sub('%width%',w);sub('%height%',h);sub('%sampler%',sampler);sub('%scheduler%',sched);sub('%ckpt%',ckpt);
     return JSON.parse(t);
+  }
+  /* UNet 分离式加载（anima 等以 UNet 权重分发的模型用）：UNETLoader 出 MODEL，
+     再由 DualCLIPLoader 出 CLIP、VAELoader 出 VAE——不同于 Checkpoint 全合一。 */
+  if(C.comfyLoader==='unet'){
+    var clip1=C.comfyClip1||'',clip2=C.comfyClip2||'',vae=C.comfyVae||'',ctype=C.comfyClipType||'sdxl';
+    return {"3":{"class_type":"KSampler","inputs":{"seed":seed,"steps":steps,"cfg":cfg,"sampler_name":sampler,"scheduler":sched,"denoise":1,"model":["4",0],"positive":["6",0],"negative":["7",0],"latent_image":["5",0]}},
+      "4":{"class_type":"UNETLoader","inputs":{"unet_name":ckpt,"weight_dtype":"default"}},
+      "5":{"class_type":"EmptyLatentImage","inputs":{"width":w,"height":h,"batch_size":1}},
+      "6":{"class_type":"CLIPTextEncode","inputs":{"text":pos,"clip":["10",0]}},
+      "7":{"class_type":"CLIPTextEncode","inputs":{"text":neg||"","clip":["10",0]}},
+      "8":{"class_type":"VAEDecode","inputs":{"samples":["3",0],"vae":["11",0]}},
+      "9":{"class_type":"SaveImage","inputs":{"filename_prefix":"zhouji","images":["8",0]}},
+      "10":{"class_type":"DualCLIPLoader","inputs":{"clip_name1":clip1,"clip_name2":clip2,"type":ctype}},
+      "11":{"class_type":"VAELoader","inputs":{"vae_name":vae}}};
   }
   return {"3":{"class_type":"KSampler","inputs":{"seed":seed,"steps":steps,"cfg":cfg,"sampler_name":sampler,"scheduler":sched,"denoise":1,"model":["4",0],"positive":["6",0],"negative":["7",0],"latent_image":["5",0]}},
     "4":{"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":ckpt}},
@@ -3374,6 +3388,10 @@ function syncImgForm(){
   if((m=v('zjImgPos'))!=null)IMGCFG.pos=m;
   if((m=v('zjImgNeg'))!=null)IMGCFG.neg=m;
   var cwf=document.getElementById('zjImgComfyWf');if(cwf)IMGCFG.comfyWorkflow=cwf.value;
+  if((m=v('zjImgClip1'))!=null)IMGCFG.comfyClip1=m;
+  if((m=v('zjImgClip2'))!=null)IMGCFG.comfyClip2=m;
+  if((m=v('zjImgVae'))!=null)IMGCFG.comfyVae=m;
+  var cty=document.getElementById('zjImgClipType');if(cty)IMGCFG.comfyClipType=cty.value;
   var sz=document.getElementById('zjImgSize');if(sz)IMGCFG.size=sz.value;
   var a;if((a=ck('zjImgOn'))!=null)IMGCFG.on=a;if((a=ck('zjImgAuto'))!=null)IMGCFG.auto=a;if((a=ck('zjImgCharRef'))!=null)IMGCFG.charRef=a;
   [].forEach.call(document.querySelectorAll('[data-imglorek]'),function(el){var i=+el.getAttribute('data-imglorek');if(IMGLORE[i])IMGLORE[i].keys=el.value.split(/[、,，;；]/).map(function(x){return x.trim();}).filter(Boolean);});
@@ -3435,9 +3453,16 @@ function imgPane(){
         +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:6px">点选即可，免打字免出错。<b style="color:#e8b77d">V4.5/V4 需 NAI Opus 订阅</b>；没订阅就选 <b style="color:var(--gold3)">V3（旧版）</b>。V3/V4 的请求体本游戏已自动区分。</div>'
         +'<details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px;color:var(--mut)">要填别的模型名？点这手动输入</summary><div style="margin-top:6px"><input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="手动填写 NAI 模型名"></div></details>'
       : C.style==='comfyui'
-      ? '<div style="display:flex;gap:10px"><input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="checkpoint 文件名，或点右侧一键拉取"><button data-act="imgComfyModels" class="obtn btn" style="flex:none;font-size:13px;letter-spacing:.1em;padding:0 16px;white-space:nowrap">拉取模型</button></div>'
+      ? seg([['checkpoint','Checkpoint 全合一'],['unet','UNet 分离式']],'imgloader',C.comfyLoader||'checkpoint')
+        +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin:6px 0 8px">全合一 checkpoint（含 模型+CLIP+VAE）选左；<b style="color:#e8b77d">anima 等以 UNet 权重分发</b>的模型选右，需另填 CLIP 与 VAE。</div>'
+        +'<div style="display:flex;gap:10px"><input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="'+((C.comfyLoader==='unet')?'UNet 文件名（models/unet）':'checkpoint 文件名')+'，或点右侧拉取"><button data-act="imgComfyModels" class="obtn btn" style="flex:none;font-size:13px;letter-spacing:.1em;padding:0 16px;white-space:nowrap">拉取模型</button></div>'
         +((S.imgComfyModels&&S.imgComfyModels.length)?seg(S.imgComfyModels.map(function(m){return [m,m];}),'imgmodel',C.model):'')
-        +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:6px">点「拉取模型」自动列出你 ComfyUI 里的全部 checkpoint，点选即可（需先填好接口地址、且 ComfyUI 启动带 <b style="color:#e8b77d">--enable-cors-header "*"</b>）。</div>'
+        +((C.comfyLoader==='unet')
+          ? '<div style="margin-top:10px;display:flex;gap:9px;flex-wrap:wrap"><input id="zjImgClip1" '+half+' value="'+esc(C.comfyClip1)+'" placeholder="CLIP① 如 clip_l.safetensors"><input id="zjImgClip2" '+half+' value="'+esc(C.comfyClip2)+'" placeholder="CLIP② 如 clip_g / t5xxl"></div>'
+            +'<div style="margin-top:9px;display:flex;gap:9px;flex-wrap:wrap;align-items:center"><input id="zjImgVae" '+half+' value="'+esc(C.comfyVae)+'" placeholder="VAE 如 sdxl_vae.safetensors"><select id="zjImgClipType" style="background:rgba(26,20,16,.6);border:1px solid rgba(201,160,99,.3);color:var(--gold3);padding:9px 10px;font-size:13px;border-radius:8px">'+['sdxl','flux','sd3','stable_diffusion','stable_cascade'].map(function(tp){return '<option value="'+tp+'"'+((C.comfyClipType||"sdxl")===tp?' selected':'')+'>'+tp+'</option>';}).join('')+'</select></div>'
+            +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:6px">CLIP①②＝DualCLIPLoader 的两个文件（SDXL：clip_l + clip_g；FLUX：clip_l + t5xxl），放在 ComfyUI 的 <b style="color:#e8b77d">models/clip</b>、VAE 放 <b style="color:#e8b77d">models/vae</b>；类型选对架构（anima 多为 <b style="color:#e8b77d">sdxl</b>）。</div>'
+          : '')
+        +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:6px">点「拉取模型」自动列出你 ComfyUI 里的模型，点选即可（需先填好接口地址、且 ComfyUI 启动带 <b style="color:#e8b77d">--enable-cors-header "*"</b>）。</div>'
       : '<input id="zjImgModel" '+inp+' value="'+esc(C.model)+'" placeholder="如 dall-e-3 / gpt-image-1 / nai-diffusion-3 / flux">')
     +lbl('采样与画质')+'<div style="margin:-2px 0 7px"><span class="btn" data-act="imgReset" style="cursor:pointer;font-size:11.5px;color:var(--gold3);border:1px solid rgba(201,160,99,.3);border-radius:7px;padding:3px 11px">↺ 用本接口推荐默认</span><span style="font-size:11px;color:var(--mut);margin-left:8px">看不懂就用推荐值，直接能出图</span></div>'
     +'<div style="display:flex;gap:9px;flex-wrap:wrap"><input id="zjImgSampler" '+half+' value="'+esc(C.sampler)+'" placeholder="采样器 sampler 如 k_euler_ancestral"><input id="zjImgNoise" '+half+' value="'+esc(C.noise)+'" placeholder="噪点表 noise 如 karras/native"></div>'
@@ -3880,6 +3905,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-sugg')!=null&&t.getAttribute('data-sugg')!==''){if(S.thinking)return;var sgi=parseInt(t.getAttribute('data-sugg'),10);var sgt=(S.suggList||[])[sgi];if(sgt){S.suggList=null;sendText(S.dice?sgt+diceRoll():sgt);}return;}
       if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;if(stb==='imgcache'){S.imgCacheKeys=null;S.imgCacheClearArm=false;}renderOverlay();pillFlip('zjSetPill',spr);return;}
       if(t.getAttribute('data-imgstyle')){syncImgForm();var oldSt=IMGCFG.style,newSt=t.getAttribute('data-imgstyle');var od=imgDefaults(oldSt),nd=imgDefaults(newSt);IMGSAMPFIELDS.forEach(function(k){if(!IMGCFG[k]||IMGCFG[k]===od[k])IMGCFG[k]=nd[k];});IMGCFG.style=newSt;imgCfgSave();renderOverlay();return;}
+      if(t.getAttribute('data-imgloader')){syncImgForm();IMGCFG.comfyLoader=t.getAttribute('data-imgloader');S.imgComfyModels=null;imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgmodel')){syncImgForm();IMGCFG.model=t.getAttribute('data-imgmodel');imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgcount')){syncImgForm();IMGCFG.count=Math.max(1,Math.min(6,parseInt(t.getAttribute('data-imgcount'),10)||1));imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgcam')){syncImgForm();IMGCFG.cam=t.getAttribute('data-imgcam');imgCfgSave();renderOverlay();return;}
@@ -4045,11 +4071,12 @@ root.addEventListener('click',function(e){
         return;}
       else if(a==='imgComfyModels'){syncImgForm();
         if(!IMGCFG.url){S.imgSetMsg='请先填 ComfyUI 接口地址（如 http://127.0.0.1:8188）';S.imgSetMsgC='var(--red2)';renderOverlay();return;}
-        S.imgSetMsg='正在拉取 ComfyUI 模型列表……';S.imgSetMsgC='var(--mut2)';renderOverlay();
-        fetch(imgBase()+'/object_info/CheckpointLoaderSimple').then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(j){
-          var arr=null;try{arr=j.CheckpointLoaderSimple.input.required.ckpt_name[0];}catch(e){}
-          if(arr&&arr.length){S.imgComfyModels=arr;if(!IMGCFG.model&&arr[0]){IMGCFG.model=arr[0];imgCfgSave();}S.imgSetMsg='已拉取 '+arr.length+' 个模型，下面点选即可';S.imgSetMsgC='var(--grn2)';}
-          else{S.imgSetMsg='没拉到 checkpoint（ComfyUI 的 models/checkpoints 里没有模型？）';S.imgSetMsgC='var(--red2)';}
+        var _unet=(IMGCFG.comfyLoader==='unet');var _node=_unet?'UNETLoader':'CheckpointLoaderSimple',_field=_unet?'unet_name':'ckpt_name';
+        S.imgSetMsg='正在拉取 ComfyUI '+(_unet?'UNet':'checkpoint')+'模型列表……';S.imgSetMsgC='var(--mut2)';renderOverlay();
+        fetch(imgBase()+'/object_info/'+_node).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(j){
+          var arr=null;try{arr=j[_node].input.required[_field][0];}catch(e){}
+          if(arr&&arr.length){S.imgComfyModels=arr;if(!IMGCFG.model&&arr[0]){IMGCFG.model=arr[0];imgCfgSave();}S.imgSetMsg='已拉取 '+arr.length+' 个'+(_unet?'UNet ':'')+'模型，下面点选即可';S.imgSetMsgC='var(--grn2)';}
+          else{S.imgSetMsg=_unet?'没拉到 UNet（models/unet 或 models/diffusion_models 里没有？）':'没拉到 checkpoint（ComfyUI 的 models/checkpoints 里没有模型？）';S.imgSetMsgC='var(--red2)';}
           renderOverlay();
         })['catch'](function(err){S.imgSetMsg='拉取失败：'+String(err&&err.message||err).slice(0,130)+'（确认 ComfyUI 已启动、接口地址对、且启动参数带 --enable-cors-header "*"）';S.imgSetMsgC='var(--red2)';renderOverlay();});
         return;}
