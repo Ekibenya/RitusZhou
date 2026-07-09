@@ -1669,7 +1669,7 @@
     requestAnimationFrame(tick);
   }
 
-  var hud = null, joyEl = null, joyKnob = null, doorBtn = null, expBtn = null, locChip = null, tipEl = null, loadEl = null;
+  var hud = null, joyEl = null, joyKnob = null, doorBtn = null, expBtn = null, locChip = null, eraChip = null, tipEl = null, loadEl = null;
   function ensureHud(host) {
     if (hud && hud.parentNode === host) return;
     hud = document.createElement('div');
@@ -1678,6 +1678,10 @@
     locChip = document.createElement('div');
     locChip.style.cssText = 'position:absolute;top:8px;left:10px;padding:3px 10px;background:rgba(24,18,11,.42);-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);border:1px solid rgba(201,160,99,.35);color:#e8cf9e;font-size:12px;letter-spacing:.15em;border-radius:9px;backdrop-filter:blur(2px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
     hud.appendChild(locChip);
+    // 纪年：地名框下方一行半透明小字（不进框），太长自动跑马灯
+    eraChip = document.createElement('div');
+    eraChip.style.cssText = 'position:absolute;top:34px;left:12px;max-width:62%;font-size:10px;letter-spacing:.06em;color:rgba(232,207,158,.5);text-shadow:0 1px 3px rgba(0,0,0,.85);white-space:nowrap;overflow:hidden;pointer-events:none;display:none';
+    hud.appendChild(eraChip);
     applyChip();
     // expand button
     expBtn = document.createElement('div');
@@ -1757,7 +1761,7 @@
       });
       var hr = hud.getBoundingClientRect();
       locChip.style.maxWidth = isFinite(lm) ? Math.max(46, lm - hr.left - 18) + 'px' : '';
-      if (locChip._full) fitChip();
+      if (eraChip && eraChip._full) fitScroll(eraChip, eraChip._full);
     }
     joyEl.style.display = (Z.expanded && isTouch() && !inBuild()) ? 'block' : 'none';
     tipEl.innerHTML = !Z.expanded ? '' : (inBuild()
@@ -1767,41 +1771,43 @@
   }
   function applyChip() {
     if (!locChip) return;
-    var base = Z.chipText || '';
-    var era = Z.eraText || '';
-    var full = base + (base && era ? '  ·  ' : '') + era;
-    if (!full) { locChip.style.display = 'none'; locChip.textContent = ''; locChip._full = ''; return; }
-    locChip.style.display = 'block';
-    locChip._full = full;
-    fitChip();
+    locChip.textContent = Z.chipText || '';
+    locChip.style.display = Z.chipText ? 'block' : 'none';
+    applyEra();
   }
-  /* 地名框放不下就无缝跑马灯：静态量一下宽度，溢出则用首尾相接的两段文字匀速平移；
-     幂等——反复调用只在「该不该滚 / 文字变了」时才重建，不会频繁重启动画。 */
-  function fitChip() {
-    if (!locChip || !locChip._full) return;
-    var full = locChip._full;
+  /* 纪年不进地名框——单独一行半透明小字浮在框下面；太长就无缝跑马灯滚动。 */
+  function applyEra() {
+    if (!eraChip) return;
+    var era = Z.eraText || '';
+    if (!era || !Z.chipText) { eraChip.style.display = 'none'; eraChip.textContent = ''; eraChip._full = ''; return; }
+    eraChip.style.display = 'block';
+    eraChip._full = era;
+    fitScroll(eraChip, era);
+  }
+  /* 放不下就无缝跑马灯：静态量宽度，溢出则首尾相接两段匀速平移；幂等，不频繁重启动画。 */
+  function fitScroll(el, full) {
+    if (!el || !full) return;
     var probe = document.createElement('span');
     probe.style.cssText = 'position:absolute;left:-9999px;top:0;white-space:nowrap;letter-spacing:inherit;font:inherit';
     probe.textContent = full;
-    locChip.appendChild(probe);
+    el.appendChild(probe);
     var need = probe.scrollWidth;
-    locChip.removeChild(probe);
-    var avail = locChip.clientWidth;
-    var wantMarq = need > avail + 2;
-    var hasMarq = !!locChip.querySelector('.zj3dMarq');
-    if (wantMarq === hasMarq && (hasMarq || locChip.textContent === full)) return;
-    locChip.textContent = '';
-    if (!wantMarq) { locChip.textContent = full; return; }
+    el.removeChild(probe);
+    var wantMarq = need > el.clientWidth + 2;
+    var hasMarq = !!el.querySelector('.zj3dMarq');
+    if (wantMarq === hasMarq && (hasMarq || el.textContent === full)) return;
+    el.textContent = '';
+    if (!wantMarq) { el.textContent = full; return; }
     var track = document.createElement('div');
     track.className = 'zj3dMarq';
     track.style.cssText = 'display:inline-flex;white-space:nowrap;will-change:transform';
     var s1 = document.createElement('span'); s1.textContent = full;
-    var s2 = document.createElement('span'); s2.textContent = full; s2.style.paddingLeft = '32px'; s2.setAttribute('aria-hidden', 'true');
+    var s2 = document.createElement('span'); s2.textContent = full; s2.style.paddingLeft = '30px'; s2.setAttribute('aria-hidden', 'true');
     track.appendChild(s1); track.appendChild(s2);
-    locChip.appendChild(track);
-    track.style.animationDuration = Math.max(6, (need + 32) / 30) + 's';
+    el.appendChild(track);
+    track.style.animationDuration = Math.max(6, (need + 30) / 26) + 's';
   }
-  Z.setEra = function (s) { s = (s == null ? '' : String(s)); if (Z.eraText === s) return; Z.eraText = s; applyChip(); };
+  Z.setEra = function (s) { s = (s == null ? '' : String(s)); if (Z.eraText === s) return; Z.eraText = s; applyEra(); };
   function hudCity(st, locName) {
     Z.chipText = locName + ' · ' + st.name + (LOC2[locName] && LOC2[locName].flavor === 'luoyi' ? '王城' : '');
     applyChip();
