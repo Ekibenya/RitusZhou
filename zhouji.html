@@ -2394,7 +2394,7 @@ function storyPane(){
   /* 液态玻璃：几乎看不见的透明质感——主要靠强背景模糊把身后内容柔化（利于阅读），只加一丝极淡暖调，绝不是黑色遮罩。整层用 mask 向上淡出。 */
   /* 液态玻璃只罩输入区：一整条上下对称的长钟形柔和渐变——输入框处最实，向上向下都很缓地淡出（多档缓动，
      切换框有框、其背后只余极淡的渐变尾巴，绝无一刀切）。 */
-  var _gMask='linear-gradient(0deg,transparent 0%,rgba(0,0,0,.08) 12%,rgba(0,0,0,.22) 24%,rgba(0,0,0,.5) 36%,rgba(0,0,0,.78) 44%,rgba(0,0,0,.9) 50%,rgba(0,0,0,.78) 57%,rgba(0,0,0,.55) 67%,rgba(0,0,0,.32) 77%,rgba(0,0,0,.15) 88%,transparent 100%)';
+  var _gMask='linear-gradient(0deg,transparent 0%,rgba(0,0,0,.05) 8%,rgba(0,0,0,.2) 18%,rgba(0,0,0,.5) 26%,rgba(0,0,0,.8) 31%,rgba(0,0,0,.92) 40%,rgba(0,0,0,.92) 52%,rgba(0,0,0,.8) 61%,rgba(0,0,0,.55) 69%,rgba(0,0,0,.34) 79%,rgba(0,0,0,.16) 89%,transparent 100%)';
   var _glassBg=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:'+(mob?'-24px':'-30px')+';bottom:'+(mob?'-44px':'calc(-8px - env(safe-area-inset-bottom))')+';pointer-events:none;background:transparent;-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+';box-shadow:none"></div>':'';
   var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(52px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none">'
     +_glassBg
