@@ -331,6 +331,8 @@ var TABISLE=true;try{TABISLE=localStorage.getItem('zhouji_tabisle')!=='0';}catch
 /* 【实验】顶栏液态玻璃：默认开——顶部一整排（纪年地点/切换/全屏/设置…归）去掉各自方框，只在顶上铺一层液态玻璃渐变。
    与毛玻璃不同：强饱和+提亮的通透质感 + 高光条纹 + 亮边镜面。设置·显可一键切回旧的分框样式。 */
 var LIQGLASS=true;try{LIQGLASS=localStorage.getItem('zhouji_liqglass')!=='0';}catch(e){}
+/* 液态玻璃折射滤镜：静态挂在 body 上（root 重渲染不影响它），顶栏与输入区玻璃共用一份定义 */
+try{if(!document.getElementById('zjLiqRefract'))document.body.insertAdjacentHTML('beforeend','<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true"><filter id="zjLiqRefract" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.005 0.011" numOctaves="2" seed="11" result="n"/><feGaussianBlur in="n" stdDeviation="1.6" result="nb"/><feDisplacementMap in="SourceGraphic" in2="nb" scale="13" xChannelSelector="R" yChannelSelector="G"/></filter></svg>');}catch(e){}
 if(LOWFX)document.documentElement.classList.add('zjLow');
 function lowApply(on){
   LOWFX=!!on;
@@ -2380,7 +2382,8 @@ function storyPane(){
   var _cpad=isMobile()?'3px 7px':'6px 10px',_cfs=isMobile()?'12px':'13px',_cls=isMobile()?'.05em':'.14em';
   var gchip=function(label,on,ac,gl,attrs,dis,noBall){
     var c=dis?'var(--mut)':(on?ac:'var(--mut)');
-    var ts=on&&!dis?('0 0 11px '+gl+',0 1px 2px rgba(0,0,0,.8)'):'0 1px 2px rgba(0,0,0,.6)';
+    /* 整排都罩暖金柔光（与顶栏同款）：未选是低亮微光、选中是本色强光，状态仍一眼可辨 */
+    var ts=on&&!dis?('0 0 11px '+gl+',0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)'):'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';
     /* 每个选项前一颗发光小球（前导光点）：开关类(聊天/骰/策)各自的球随开启亮起、点选时嗖地爆散一下；
        模式类(曰/行/书/控制游戏)不放固定球，只留同宽占位槽 .zjModeSlot——由一颗共用的「飞行小球」zjModeBall
        嗖地滑到所选项的槽位、再爆散融字，与「叙事/太史简」灵动岛完全同款。聊天模式令曰/行/书失效时小球隐去。 */
@@ -2414,7 +2417,13 @@ function storyPane(){
      缓缓没入下方切换框。中间实心区随输入框行数增高而增高（像 iMessage 越打越高）。
      0deg 渐变：0px=底边、100%=顶边，故小像素值=底部长淡出、calc(100%-x)=顶部短淡入。 */
   var _gMask='linear-gradient(0deg,transparent 0px,rgba(0,0,0,.04) 5px,rgba(0,0,0,.14) 12px,rgba(0,0,0,.3) 21px,rgba(0,0,0,.5) 30px,rgba(0,0,0,.72) 40px,rgba(0,0,0,.9) 50px,rgba(0,0,0,.9) calc(100% - 18px),rgba(0,0,0,.65) calc(100% - 13px),rgba(0,0,0,.32) calc(100% - 8px),rgba(0,0,0,.1) calc(100% - 4px),transparent 100%)';
-  var _frost=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-4px;bottom:-44px;z-index:0;pointer-events:none;background:transparent;-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+'"></div>':'';
+  /* 输入区玻璃与顶栏同配方：一次 blur+saturate ＋ 折射位移层 ＋ 极淡底纹（旧 22px 重模糊淘汰）；遮罩与几何原样保留 */
+  var _fgeo='position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-4px;bottom:-44px;z-index:0;pointer-events:none;-webkit-mask-image:'+_gMask+';mask-image:'+_gMask;
+  var _frost=INPUTGLASS
+    ?'<div aria-hidden="true" style="'+_fgeo+';-webkit-backdrop-filter:blur(5px) saturate(150%);backdrop-filter:blur(5px) saturate(150%)"></div>'
+    +'<div aria-hidden="true" style="'+_fgeo+';-webkit-backdrop-filter:url(#zjLiqRefract);backdrop-filter:url(#zjLiqRefract)"></div>'
+    +'<div aria-hidden="true" style="'+_fgeo+';background:rgba(20,14,9,.08)"></div>'
+    :'';
   var _inputBox=INPUTGLASS
     ? '<div style="position:relative;pointer-events:auto;padding:'+(mob?'2px 6px 0':'2px 8px 0')+'">'+_frost+'<div style="position:relative;z-index:1">'+_row+_cmd+'</div></div>'
     : '<div class="glass" style="pointer-events:auto;padding:'+(mob?'3px 13px':'4px 15px')+';border-radius:15px">'+_row+_cmd+'</div>';
@@ -2468,8 +2477,7 @@ function gameView(){
        ② 折射层只带 url() 位移（缓波长纹理，柔性揉动不出碎条纹）；Safari 不认 backdrop-filter:url() 时
           该层整条声明无效、自动只剩基础层，绝不塌；
        ③ 底纹极淡，只为顶排文字留一点对比。 */
-    ?'<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true"><filter id="zjLiqRefract" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.005 0.011" numOctaves="2" seed="11" result="n"/><feGaussianBlur in="n" stdDeviation="1.6" result="nb"/><feDisplacementMap in="SourceGraphic" in2="nb" scale="13" xChannelSelector="R" yChannelSelector="G"/></filter></svg>'
-      +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(5px) saturate(150%);backdrop-filter:blur(5px) saturate(150%);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
+    ?'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(5px) saturate(150%);backdrop-filter:blur(5px) saturate(150%);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
       +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:url(#zjLiqRefract);backdrop-filter:url(#zjLiqRefract);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
       +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(20,14,9,.1) 0%,rgba(18,13,8,.04) 55%,transparent 100%);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
     :'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.84) 0%,rgba(12,8,5,.5) 58%,rgba(12,8,5,0) 100%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>';
@@ -3845,9 +3853,9 @@ function modeBallFly(nmd){
       ],{duration:660,easing:'cubic-bezier(.22,.61,.3,1)'});
       var act=document.querySelector('[data-mode="'+nmd+'"]');
       if(act&&act.animate)act.animate([
-        {textShadow:'0 1px 2px rgba(0,0,0,.8)'},
+        {textShadow:'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.8)'},
         {textShadow:'0 0 20px rgba(255,224,150,1),0 0 8px rgba(224,190,130,.9),0 1px 2px rgba(0,0,0,.8)',offset:.4},
-        {textShadow:'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)'}
+        {textShadow:'0 0 11px rgba(224,190,130,.6),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)'}
       ],{duration:600,easing:'ease-out'});
     },300);
   }catch(e){}
@@ -4200,7 +4208,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-mode')){var nmd=t.getAttribute('data-mode');if(S.chatOnly&&nmd!=='world')return;
         if(nmd===S.mode){if(S.chatOnly&&nmd==='world'){S.mode='say';S.cmdHint=null;S._noFade=true;render();}return;}S.mode=nmd;S.cmdHint=null;
         var mchips=document.querySelectorAll('[data-mode]');
-        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.textShadow=mon?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';}
+        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.textShadow=mon?'0 0 11px rgba(224,190,130,.6),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)':'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';}
         modeBallFly(nmd);
         var mta=document.getElementById('zjInput');if(mta)mta.placeholder=MODE_PH[nmd];
         var mh=document.getElementById('zjCmdHint');if(mh&&mh.parentNode)mh.parentNode.removeChild(mh);
@@ -4445,7 +4453,7 @@ root.addEventListener('click',function(e){
       else if(a==='apiTest'){apiTestRun();}
       else if(a==='diceTog'){S.dice=!S.dice;savePref();
         var dch=document.querySelector('[data-act="diceTog"]');
-        if(dch){var don2=S.dice;dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.textShadow=don2?'0 0 11px rgba(233,180,110,.65),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';chipBallSet(dch,don2);}
+        if(dch){var don2=S.dice;dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.textShadow=don2?'0 0 11px rgba(233,180,110,.65),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)':'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';chipBallSet(dch,don2);}
         else{S._noFade=true;render();}}
       else if(a==='micTog'){sttToggle();}
       else if(a==='lowTog'){lowApply(!LOWFX);S._noFade=true;render();}
@@ -4456,7 +4464,7 @@ root.addEventListener('click',function(e){
       else if(a==='chatTog'){S.chatOnly=!S.chatOnly;savePref();S._noFade=true;render();}
       else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;savePref();
         var sch=document.querySelector('[data-act="suggTog"]');
-        if(sch){var son2=S.sugg!==false;sch.style.color=son2?'var(--gold2)':'var(--mut)';sch.style.textShadow=son2?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';chipBallSet(sch,son2);}
+        if(sch){var son2=S.sugg!==false;sch.style.color=son2?'var(--gold2)':'var(--mut)';sch.style.textShadow=son2?'0 0 11px rgba(224,190,130,.6),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)':'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';chipBallSet(sch,son2);}
         if(S.sugg===false){S.suggList=null;var srw=document.getElementById('zjSuggRow');if(srw&&srw.parentNode)srw.parentNode.removeChild(srw);try{fitStoryPad();}catch(e8){}}
         else genSuggestions();
         if(!sch){S._noFade=true;render();}}
