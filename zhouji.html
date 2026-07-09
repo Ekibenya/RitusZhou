@@ -107,6 +107,7 @@ textarea,input{border-radius:10px}
 .zjPillHl::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(120% 70% at 20% -10%,rgba(255,244,220,.14),rgba(255,244,220,0) 58%)}
 .zjPillHl::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.75),rgba(255,246,224,0))}
 @keyframes zjIsleGlow{0%,100%{box-shadow:0 0 5px 1px rgba(255,210,120,.4)}50%{box-shadow:0 0 15px 5px rgba(255,210,120,.95)}}
+@keyframes zjChipPulse{0%,100%{box-shadow:0 0 4px 0 var(--cbg,rgba(224,190,130,.5))}50%{box-shadow:0 0 11px 3px var(--cbg,rgba(224,190,130,.5))}}
 .zjHl{position:relative;overflow:hidden}
 .zjHl::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;pointer-events:none;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.6),rgba(255,246,224,0))}
 .gbtn{position:relative;overflow:hidden}
@@ -2367,7 +2368,11 @@ function storyPane(){
   var gchip=function(label,on,ac,gl,attrs,dis){
     var c=dis?'var(--mut)':(on?ac:'var(--mut)');
     var ts=on&&!dis?('0 0 11px '+gl+',0 1px 2px rgba(0,0,0,.8)'):'0 1px 2px rgba(0,0,0,.6)';
-    return '<div class="btn" '+attrs+' style="cursor:'+(dis?'default':'pointer')+';opacity:'+(dis?'.4':'1')+';flex:none;white-space:nowrap;line-height:1.4;padding:'+_cpad+';font-size:'+_cfs+';letter-spacing:'+_cls+';color:'+c+';text-shadow:'+ts+';transition:color .2s,text-shadow .2s">'+label+'</div>';
+    /* 与「叙事/太史简」灵动岛同款发光小球：选中/开启即亮起并轻轻呼吸，点选时嗖地爆散一下——
+       告诉用户这排（曰行书…到策）都是可点的功能选项。未选时保留占位、球隐去(不闪不占眼)。 */
+    var live=on&&!dis;
+    var ball='<span class="zjChipBall" data-glow="'+gl+'" style="--cbg:'+gl+';display:inline-block;vertical-align:middle;width:6px;height:6px;margin-right:4px;border-radius:50%;background:radial-gradient(circle,#fff6e2,'+ac+');opacity:'+(live?'1':'0')+';box-shadow:0 0 7px 1px '+gl+(live?';animation:zjChipPulse 2.4s ease-in-out infinite':'')+'"></span>';
+    return '<div class="btn" '+attrs+' style="cursor:'+(dis?'default':'pointer')+';opacity:'+(dis?'.4':'1')+';flex:none;white-space:nowrap;line-height:1.4;padding:'+_cpad+';font-size:'+_cfs+';letter-spacing:'+_cls+';color:'+c+';text-shadow:'+ts+';transition:color .2s,text-shadow .2s">'+ball+label+'</div>';
   };
   var modeChip=function(md){var on=md[0]===S.mode;var dis=S.chatOnly&&md[0]!=='world';return gchip(isMobile()?md[1].replace(/\s/g,''):md[1],on,'var(--gold2)','rgba(224,190,130,.6)','data-mode="'+md[0]+'"',dis);};
   var chips=MODES.slice(0,3).map(modeChip).join('');
@@ -3735,6 +3740,23 @@ function tabIsleAnim(oldTab,newTab){
     ],{duration:600,easing:'ease-out'});
   },300);
 }
+/* 曰行书…策 各功能选项小球的「点选爆散」特效——与灵动岛小球 tabIsleAnim 同款：缩放+光晕炸开再收，
+   颜色取各选项自身的辉光色(data-glow)，故金/蓝/琥珀各按本色炸。 */
+function chipBloom(ball){
+  if(!ball||!ball.animate||reducedMotion())return;
+  var g=ball.getAttribute('data-glow')||'rgba(224,190,130,.6)';
+  var strong=g.replace(/[\d.]+\)\s*$/,'.95)'),gone=g.replace(/[\d.]+\)\s*$/,'0)');
+  ball.animate([
+    {transform:'scale(1)',boxShadow:'0 0 5px 1px '+g,offset:0},
+    {transform:'scale(1.85)',boxShadow:'0 0 20px 8px '+strong,offset:.34},
+    {transform:'scale(1)',boxShadow:'0 0 30px 5px '+gone,offset:1}
+  ],{duration:560,easing:'cubic-bezier(.25,.7,.35,1)'});
+}
+function chipBallSet(chip,on){
+  if(!chip)return;var b=chip.querySelector('.zjChipBall');if(!b)return;
+  b.style.opacity=on?'1':'0';b.style.animation=on?'zjChipPulse 2.4s ease-in-out infinite':'';
+  if(on)chipBloom(b);
+}
 function pillFlip(pillId,oldRect){
   if(reducedMotion()||!oldRect)return;
   var p=document.getElementById(pillId);if(!p||!p.animate)return;
@@ -3975,7 +3997,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-mode')){var nmd=t.getAttribute('data-mode');if(S.chatOnly&&nmd!=='world')return;
         if(nmd===S.mode){if(S.chatOnly&&nmd==='world'){S.mode='say';S.cmdHint=null;S._noFade=true;render();}return;}S.mode=nmd;S.cmdHint=null;
         var mchips=document.querySelectorAll('[data-mode]');
-        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.textShadow=mon?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';}
+        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.textShadow=mon?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';chipBallSet(mchips[mi],mon);}
         var mta=document.getElementById('zjInput');if(mta)mta.placeholder=MODE_PH[nmd];
         var mh=document.getElementById('zjCmdHint');if(mh&&mh.parentNode)mh.parentNode.removeChild(mh);
         return;}
@@ -4227,7 +4249,7 @@ root.addEventListener('click',function(e){
       else if(a==='apiTest'){apiTestRun();}
       else if(a==='diceTog'){S.dice=!S.dice;savePref();
         var dch=document.querySelector('[data-act="diceTog"]');
-        if(dch){var don2=S.dice;dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.textShadow=don2?'0 0 11px rgba(233,180,110,.65),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';}
+        if(dch){var don2=S.dice;dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.textShadow=don2?'0 0 11px rgba(233,180,110,.65),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';chipBallSet(dch,don2);}
         else{S._noFade=true;render();}}
       else if(a==='micTog'){sttToggle();}
       else if(a==='lowTog'){lowApply(!LOWFX);S._noFade=true;render();}
@@ -4238,7 +4260,7 @@ root.addEventListener('click',function(e){
       else if(a==='chatTog'){S.chatOnly=!S.chatOnly;savePref();S._noFade=true;render();}
       else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;savePref();
         var sch=document.querySelector('[data-act="suggTog"]');
-        if(sch){var son2=S.sugg!==false;sch.style.color=son2?'var(--gold2)':'var(--mut)';sch.style.textShadow=son2?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';}
+        if(sch){var son2=S.sugg!==false;sch.style.color=son2?'var(--gold2)':'var(--mut)';sch.style.textShadow=son2?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';chipBallSet(sch,son2);}
         if(S.sugg===false){S.suggList=null;var srw=document.getElementById('zjSuggRow');if(srw&&srw.parentNode)srw.parentNode.removeChild(srw);try{fitStoryPad();}catch(e8){}}
         else genSuggestions();
         if(!sch){S._noFade=true;render();}}
