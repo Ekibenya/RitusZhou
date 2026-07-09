@@ -2392,9 +2392,9 @@ function storyPane(){
     : '<div class="glass" style="pointer-events:auto;padding:'+(mob?'3px 13px':'4px 15px')+';border-radius:15px">'+_row+_cmd+'</div>';
   /* 底部渐变毛玻璃背板（默认样式）：与自定义开局同款——从输入区往下罩住屏幕底、向上淡出，输入内容悬浮其上、字带阴影清晰可读 */
   /* 液态玻璃：几乎看不见的透明质感——主要靠强背景模糊把身后内容柔化（利于阅读），只加一丝极淡暖调，绝不是黑色遮罩。整层用 mask 向上淡出。 */
-  /* 液态玻璃只罩输入区：输入框处最实，向上一整条柔和长渐变淡出（正文/曰行书渐清），向下短渐变淡出到叙事/太史简之上。 */
-  var _gMask='linear-gradient(0deg,transparent 0%,#000 15%,#000 40%,transparent 82%)';
-  var _glassBg=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-6px;bottom:'+(mob?'-2px':'calc(-8px - env(safe-area-inset-bottom))')+';pointer-events:none;background:rgba(36,27,17,.12);-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+';box-shadow:none"></div>':'';
+  /* 液态玻璃只罩输入区：输入框处最实，向上一整条很长很缓的渐变淡出（多档缓动、正文/曰行书自然渐清），向下也缓缓淡出到叙事/太史简之上。 */
+  var _gMask='linear-gradient(0deg,transparent 0%,rgba(0,0,0,.4) 6%,rgba(0,0,0,.85) 14%,#000 20%,rgba(0,0,0,.85) 30%,rgba(0,0,0,.62) 42%,rgba(0,0,0,.44) 54%,rgba(0,0,0,.28) 66%,rgba(0,0,0,.16) 78%,rgba(0,0,0,.07) 90%,transparent 100%)';
+  var _glassBg=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:'+(mob?'-22px':'-30px')+';bottom:'+(mob?'-2px':'calc(-8px - env(safe-area-inset-bottom))')+';pointer-events:none;background:rgba(36,27,17,.12);-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+';box-shadow:none"></div>':'';
   var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(52px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none">'
     +_glassBg
     +'<div style="max-width:860px;margin:0 auto;position:relative">'
