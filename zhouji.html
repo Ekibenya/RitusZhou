@@ -134,6 +134,10 @@ textarea,input{border-radius:10px}
 @keyframes rise{0%{transform:translateY(0) scale(1);opacity:0}15%{opacity:1}100%{transform:translateY(-440px) scale(.35);opacity:0}}
 @keyframes fadeup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes blink{0%,80%,100%{opacity:.15}40%{opacity:1}}
+@keyframes zjCaretBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
+/* 输入框内的柔光光标：仅在「空且未聚焦」时显示（有字或聚焦时让位给系统原生光标） */
+.zjCaretHint{transition:opacity .12s}
+#zjInput:focus+.zjCaretHint,#zjInput:not(:placeholder-shown)+.zjCaretHint{opacity:0}
 .fade{animation:fadeup .45s ease}
 .zjNoFade .fade{animation:none!important}
 .dot{display:inline-block;width:6px;height:6px;border-radius:50%}
@@ -2357,10 +2361,13 @@ function storyPane(){
   var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(66px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none"><div style="max-width:860px;margin:0 auto">'
     +((S.suggList&&S.suggList.length&&!S.thinking)?'<div id="zjSuggRow" style="pointer-events:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'+S.suggList.map(function(sg,si){return '<div class="btn zjHl" data-sugg="'+si+'" style="cursor:pointer;font-size:'+(mob?'11px':'12px')+';line-height:1.5;letter-spacing:.02em;padding:'+(mob?'6px 10px':'6px 12px')+';border-radius:12px;color:#c8b48e;border:1px solid rgba(255,238,205,.18);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.03));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);box-shadow:inset 0 1px 0 rgba(255,242,214,.18),0 2px 8px rgba(0,0,0,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sg)+'</div>';}).join('')+'</div>':'')
     +'<div id="zjChipsRow" style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:8px;padding:2px 2px 3px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch">'+chips+'</div>'
-    +'<div class="glass" style="pointer-events:auto;padding:'+(mob?'7px 9px 8px':'8px 12px 9px')+';border-radius:20px">'
-    +'<div style="display:flex;gap:8px;align-items:stretch"><textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'" style="flex:1;resize:none;background:rgba(20,15,11,.28);border:1px solid rgba(201,160,99,.28);border-radius:12px;color:var(--gold3);font-size:16px;line-height:1.7;padding:'+(mob?'6px 10px':'6px 12px')+'">'+esc(S.input)+'</textarea>'
-    +((sttOK()&&(S.micOn===true||(S.micOn==null&&!mob)))?'<button id="zjMicBtn" data-act="micTog" class="btn glass" title="语音输入（说完自动停）" style="flex:none;width:'+(mob?'38px':'44px')+';font-size:15px;color:'+(S.rec?'#e06a50':'var(--mut2)')+';border-color:'+(S.rec?'rgba(224,106,80,.65)':'rgba(255,238,205,.25)')+';border-radius:12px;cursor:pointer">'+(S.rec?'●':'声')+'</button>':'')
-    +'<button data-act="send" class="btn glass kai" style="flex:none;width:'+(mob?'44px':'56px')+';font-size:14px;letter-spacing:.15em;writing-mode:vertical-rl;color:var(--gold2);border-color:rgba(224,190,130,.5);border-radius:12px;cursor:pointer;opacity:'+(S.thinking?.5:1)+'">递呈</button></div>'+(S.cmdHint?'<div id="zjCmdHint" style="margin-top:7px;font-size:12.5px;line-height:1.6;color:#d9a06a">令未行：'+esc(S.cmdHint)+'</div>':'')+'</div></div></div>';
+    +'<div class="glass" style="pointer-events:auto;padding:'+(mob?'3px 13px':'4px 15px')+';border-radius:15px">'
+    +'<div style="display:flex;gap:12px;align-items:center;position:relative">'
+    +'<textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'" style="flex:1;resize:none;background:transparent;border:none;outline:none;color:var(--gold3);font-size:16px;line-height:1.65;padding:'+(mob?'6px 2px 6px 11px':'6px 2px 6px 13px')+';caret-color:var(--gold2)">'+esc(S.input)+'</textarea>'
+    +'<span class="zjCaretHint" aria-hidden="true" style="position:absolute;left:'+(mob?'11px':'13px')+';top:50%;transform:translateY(-50%);width:2px;height:20px;border-radius:2px;background:var(--gold2);box-shadow:0 0 9px rgba(224,190,130,.95),0 0 3px rgba(224,190,130,.85);animation:zjCaretBlink 1.1s infinite;pointer-events:none;z-index:1"></span>'
+    +((sttOK()&&(S.micOn===true||(S.micOn==null&&!mob)))?'<button id="zjMicBtn" data-act="micTog" class="btn kai" title="语音输入（说完自动停）" style="flex:none;background:transparent;border:none;padding:2px 3px;font-size:16px;cursor:pointer;color:'+(S.rec?'#e06a50':'var(--gold2)')+';text-shadow:0 0 10px '+(S.rec?'rgba(224,106,80,.75)':'rgba(224,190,130,.55)')+',0 1px 2px rgba(0,0,0,.8)">'+(S.rec?'●':'声')+'</button>':'')
+    +'<button data-act="send" class="btn kai" style="flex:none;background:transparent;border:none;padding:2px 3px;font-size:16px;letter-spacing:.15em;writing-mode:vertical-rl;cursor:pointer;color:var(--gold2);text-shadow:0 0 12px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.85);opacity:'+(S.thinking?.5:1)+'">递呈</button>'
+    +'</div>'+(S.cmdHint?'<div id="zjCmdHint" style="margin-top:6px;font-size:12.5px;line-height:1.6;color:#d9a06a">令未行：'+esc(S.cmdHint)+'</div>':'')+'</div></div></div>';
   if(S.worldFull){input='';}
   else if(S.zen){
     input=S.zenInput
@@ -4117,7 +4124,7 @@ root.addEventListener('click',function(e){
       else if(a==='apiTest'){apiTestRun();}
       else if(a==='diceTog'){S.dice=!S.dice;savePref();
         var dch=document.querySelector('[data-act="diceTog"]');
-        if(dch){var don2=S.dice;dch.style.border='1px solid '+(don2?'rgba(217,160,106,.8)':'rgba(255,238,205,.22)');dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.background=don2?'linear-gradient(135deg,rgba(233,180,110,.18),rgba(201,140,80,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}
+        if(dch){var don2=S.dice;dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.textShadow=don2?'0 0 11px rgba(233,180,110,.65),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';}
         else{S._noFade=true;render();}}
       else if(a==='micTog'){sttToggle();}
       else if(a==='lowTog'){lowApply(!LOWFX);S._noFade=true;render();}
@@ -4128,7 +4135,7 @@ root.addEventListener('click',function(e){
       else if(a==='chatTog'){S.chatOnly=!S.chatOnly;savePref();S._noFade=true;render();}
       else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;savePref();
         var sch=document.querySelector('[data-act="suggTog"]');
-        if(sch){var son2=S.sugg!==false;sch.style.border='1px solid '+(son2?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)');sch.style.color=son2?'var(--gold2)':'var(--mut)';sch.style.background=son2?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}
+        if(sch){var son2=S.sugg!==false;sch.style.color=son2?'var(--gold2)':'var(--mut)';sch.style.textShadow=son2?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';}
         if(S.sugg===false){S.suggList=null;var srw=document.getElementById('zjSuggRow');if(srw&&srw.parentNode)srw.parentNode.removeChild(srw);try{fitStoryPad();}catch(e8){}}
         else genSuggestions();
         if(!sch){S._noFade=true;render();}}
