@@ -3774,6 +3774,7 @@ function fitStoryPad(){
 }
 /* iMessage 式自增高输入框：随行数变高（到上限后内部滚动）。高度变了输入框变高，其毛玻璃（挂在输入框上、边缘固定像素淡出）也随之变高。 */
 function autoGrowInput(ta){ta=ta||document.getElementById('zjInput');if(!ta)return;var _ph=null;if(!ta.value){_ph=ta.getAttribute('placeholder');if(_ph!=null)ta.removeAttribute('placeholder');}var max=isMobile()?128:150;ta.style.height='auto';var h=ta.scrollHeight;ta.style.height=Math.min(h,max)+'px';ta.style.overflowY=(h>max)?'auto':'hidden';if(_ph!=null)ta.setAttribute('placeholder',_ph);}
+var _scrPrev;
 function render(){
   window.__ZJSCR=S.screen;
   try{if(S.screen==='game')memSync();}catch(e){}
@@ -3798,6 +3799,10 @@ function render(){
      这样即便某处误调了整页 render()（而非 renderOverlay），浮层也绝不会闪一下或弹回顶部。 */
   var ovBox=S.overlay?document.getElementById('zjOvBox'):null;
   var ovScroll=ovBox?scrollCapture(ovBox):null;
+  /* 换屏丝滑化：屏幕（题名/择局/向导/正文）切换时不再硬切——旧屏的活节点整体挪进一层「纱」，
+     盖在新屏上缓缓溶解。所有换屏入口（启新局/入局/归/向导进出/续前缘）自动享受，无需各自处理。 */
+  var _swapOld=(_scrPrev!==undefined&&_scrPrev!==S.screen&&!reducedMotion()&&root.children.length)?Array.prototype.slice.call(root.children):null;
+  _scrPrev=S.screen;
   var noF=S._noFade||!!S.overlay;S._noFade=false;
   if(noF)root.classList.add('zjNoFade');
   root.innerHTML=view();
@@ -3840,6 +3845,27 @@ function render(){
     ZJ3D.onStory(_lm&&_lm.text?_lm.text:'');
   }
   if(S.screen==='game'&&!UISTYLE)try{showStylePick();}catch(e){}
+  if(_swapOld&&_swapOld.length){
+    var _v0=document.getElementById('zjScrVeil');if(_v0&&_v0.parentNode)_v0.parentNode.removeChild(_v0);
+    var _veil=document.createElement('div');
+    _veil.id='zjScrVeil';
+    /* 挂 body 而非 root：换屏后紧跟的重渲染（如首次点击顺带启动乐音的那次）动不到它，纱稳稳散完 */
+    _veil.style.cssText='position:fixed;inset:0;z-index:88;pointer-events:none;overflow:hidden';
+    for(var _vi=0;_vi<_swapOld.length;_vi++)_veil.appendChild(_swapOld[_vi]);
+    document.body.appendChild(_veil);
+    if(_veil.animate){
+      var _va=_veil.animate([{opacity:1},{opacity:0}],{duration:LOWFX?240:380,easing:'ease-out',fill:'forwards'});
+      var _vrm=function(){if(_veil.parentNode)_veil.parentNode.removeChild(_veil);};
+      _va.onfinish=_va.oncancel=_vrm;setTimeout(_vrm,700);
+    }else if(_veil.parentNode)_veil.parentNode.removeChild(_veil);
+    /* 到「择局」时：零号卡与各开局卡在纱下依次浮起，纱散尽正好收尾 */
+    if(S.screen==='select'&&!LOWFX){
+      var _cs=root.querySelectorAll('[data-act="wzOpen"],[data-act="opReplay"],[data-start]');
+      for(var _ci=0;_ci<_cs.length&&_ci<12;_ci++){if(_cs[_ci].animate)_cs[_ci].animate(
+        [{opacity:0,transform:'translateY(14px)'},{opacity:1,transform:'none'}],
+        {duration:400,delay:36*_ci,easing:'cubic-bezier(.25,.9,.3,1)',fill:'backwards'});}
+    }
+  }
 }
 window.ZJ3D_onExpand=function(){
   /* 引擎三种时机都会走到这里：①资源就绪 ②横条上点 ×（引擎在回调前刚写 zj3d_hide=1）③展开/收起横条。
