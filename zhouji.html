@@ -326,6 +326,21 @@ var LOWFX=false;try{LOWFX=localStorage.getItem('zhouji_lowfx')==='1';}catch(e){}
 var INPUTGLASS=true;try{INPUTGLASS=localStorage.getItem('zhouji_inputglass')!=='0';}catch(e){}
 /* 王之言行气泡边框：默认无框；用户可在设置·显切回带框 */
 var WANGFRAME=false;try{WANGFRAME=localStorage.getItem('zhouji_wangframe')==='1';}catch(e){}
+/* 界面风格二选一：'glass'=液态玻璃设计（经典全框） 'minimal'=极简主义（现行无框柔光）。
+   未选=''：开局进入正文后弹选择界面（按设备给对应演示图）。选择驱动下面全部子开关。 */
+var UISTYLE='';try{UISTYLE=localStorage.getItem('zhouji_uistyle')||'';}catch(e){}
+function glassUI(){return UISTYLE==='glass';}
+function applyUiStyle(st){
+  UISTYLE=(st==='glass'||st==='minimal')?st:'';
+  var g=UISTYLE==='glass';
+  LIQGLASS=!g;INPUTGLASS=!g;TABISLE=!g;WANGFRAME=g;
+  try{localStorage.setItem('zhouji_uistyle',UISTYLE);
+    localStorage.setItem('zhouji_liqglass',LIQGLASS?'1':'0');
+    localStorage.setItem('zhouji_inputglass',INPUTGLASS?'1':'0');
+    localStorage.setItem('zhouji_tabisle',TABISLE?'1':'0');
+    localStorage.setItem('zhouji_wangframe',WANGFRAME?'1':'0');}catch(e){}
+}
+if(UISTYLE)applyUiStyle(UISTYLE); /* 已选过：开机按风格矫正子开关，防残留 */
 /* 手机版底部「叙事/太史简」切换：默认灵动岛发光小球（无内框、只文字），滑到哪就在哪爆散融字点亮；设置·显可切回旧玻璃框 */
 var TABISLE=true;try{TABISLE=localStorage.getItem('zhouji_tabisle')!=='0';}catch(e){}
 /* 【实验】顶栏液态玻璃：默认开——顶部一整排（纪年地点/切换/全屏/设置…归）去掉各自方框，只在顶上铺一层液态玻璃渐变。
@@ -2401,7 +2416,7 @@ function storyPane(){
   var hideScene=window.__ZJ3D_OFF__&&SVGF&&mob;
   var hide3d=!window.__ZJ3D_OFF__&&HIDE3D;
   var sceneH=(window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mob):((window.__ZJ3D_OFF__&&SVGF)?34:(mob?140:186));
-  var barH=S.zen?46:(mob?50:58);
+  var barH=S.zen?46:(mob?(glassUI()?96:50):58); /* 玻璃风格＝经典双行头，占位更高 */
   /* 场景岛标记提炼为函数：storyPane 与「全屏内手术式开合三维」共用一份，绝不两处漂移 */
   function sceneIsleHtml(m,mob,barH,sceneH){
     return '<div id="zjSceneIsle" class="zjHl" style="position:absolute;'+(S.worldFull?'inset:0;border-radius:0;z-index:6;':'top:'+barH+'px;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';height:'+sceneH+'px;border-radius:16px;z-index:4;')+'transform:translateZ(0);-webkit-transform:translateZ(0);overflow:hidden;background:#0b0906;border:1px solid rgba(255,238,205,.16);box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,242,214,.14)">'+(window.THREE?'<div id="zjScene3D" style="position:absolute;inset:0"></div>':sceneSvg(m))+(window.__ZJ3D_OFF__?('<div data-act="svgfold" class="btn" style="position:absolute;top:6px;right:10px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">'+(SVGF?'展开':'收起')+'</div>'+(SVGF?'':'<div data-act="on3d" class="btn" style="position:absolute;top:6px;right:66px;padding:2px 9px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em;cursor:pointer;border-radius:8px">启 · 三维</div>')):'')
@@ -2412,8 +2427,14 @@ function storyPane(){
     +'</div>';
   }
   window.__zjSceneIsleHtml=sceneIsleHtml; /* 供全屏内手术式开合三维复用（同一渲染闭包的最新版本） */
-  /* 手机端折叠灵动岛（滚动纪年·地点胶囊）：storyPane 与「非全屏手术式收起三维」共用 */
+  /* 折叠灵动岛：极简风格＝滚动纪年·地点胶囊；玻璃风格＝经典「天下」小胶囊。storyPane 与手术式收起共用 */
   function miniIsleHtml(h3){
+    if(glassUI()){
+      var bG=S.zen?46:(isMobile()?96:58);
+      return '<div id="zjMiniIsle" data-act="'+(h3!==false?'show3d':'svgfold')+'" class="btn zjHl" title="展开天下画面" style="position:absolute;top:'+(bG+2)+'px;left:50%;margin-left:-47px;width:94px;height:27px;z-index:4;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;gap:7px">'
+        +'<span style="width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
+        +'<span style="font-size:11px;letter-spacing:.22em;color:var(--gold2);font-family:var(--kai)">天下</span></div>';
+    }
     var bH2=S.zen?46:50;
     var _mp=currentPanel(),_mcw=_mp?_mp.world:{};
     var _mera=[_mcw['纪年'],_mcw['时地']].filter(Boolean).join(' · ')||(currentOpening()?currentOpening().era:'')||'展开天下画面';
@@ -2427,6 +2448,10 @@ function storyPane(){
   /* 模式/开关一律做成柔光金字（与封面、正文操作栏同款），去掉方框：选中/开启＝亮色发光，未选/关闭＝暗灰无光。 */
   var _cpad=isMobile()?'3px 7px':'6px 10px',_cfs=isMobile()?'12px':'13px',_cls=isMobile()?'.05em':'.14em';
   var gchip=function(label,on,ac,gl,attrs,dis,noBall){
+    if(glassUI()){ /* 玻璃风格：经典玻璃药丸框（无光球） */
+      var cg=dis?'var(--mut)':(on?ac:'var(--mut)');
+      return '<div class="btn zjHl" '+attrs+' style="pointer-events:auto;cursor:'+(dis?'default':'pointer')+';opacity:'+(dis?'.35':'1')+';flex:none;white-space:nowrap;line-height:1.45;padding:'+(mob?'5px 11px':'5px 15px')+';font-size:'+(mob?'11px':'12.5px')+';letter-spacing:'+(mob?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(on&&!dis?gl.replace(/[\d.]+\)\s*$/,'.75)'):'rgba(255,238,205,.22)')+';color:'+cg+';background:'+(on&&!dis?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+label+'</div>';
+    }
     var c=dis?'var(--mut)':(on?ac:'var(--mut)');
     /* 整排都罩暖金柔光（与顶栏同款）：未选是低亮微光、选中是本色强光，状态仍一眼可辨 */
     var ts=on&&!dis?('0 0 11px '+gl+',0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)'):'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';
@@ -2454,7 +2479,7 @@ function storyPane(){
      光晕最大半径约 60px（爆散 44px+12px 扩散），内边距垂直 64 / 水平 60，全部用负 margin 抵消——
      布局占位与从前逐像素相同，裁剪边却永远接触不到任何光。行本体 pointer-events:none
      （巨大的透明翻边不吃正文/输入框/四策的点击），各选项字自己 pointer-events:auto。 */
-  var _chipsRow='<div id="zjChipsRow" style="pointer-events:none;position:relative;display:flex;gap:'+(mob?'6px':'8px')+';margin:-62px -58px '+(mob?'-60px':'-55px')+';padding:64px 60px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch">'+chips+_modeBall+'</div>';
+  var _chipsRow='<div id="zjChipsRow" style="pointer-events:none;position:relative;display:flex;gap:'+(mob?'6px':'8px')+';margin:-62px -58px '+(mob?'-60px':'-55px')+';padding:64px 60px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch">'+chips+(glassUI()?'':_modeBall)+'</div>';
   var _taSh=INPUTGLASS?';text-shadow:0 1px 4px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.85)':'';
   var _micBtn=(sttOK()&&(S.micOn===true||(S.micOn==null&&!mob)))?'<button id="zjMicBtn" data-act="micTog" class="btn" title="语音输入（说完自动停）" style="flex:none;background:transparent;border:none;padding:3px;cursor:pointer;color:'+(S.rec?'#e06a50':'var(--gold2)')+';filter:drop-shadow(0 0 7px '+(S.rec?'rgba(224,106,80,.7)':'rgba(224,190,130,.5)')+')">'+micIcon(mob?21:23,S.rec)+'</button>':'';
   var _sendBtn='<button data-act="send" class="btn" title="递呈（回车）" style="flex:none;background:transparent;border:none;padding:0;cursor:pointer;filter:drop-shadow(0 0 8px rgba(224,190,130,.5));opacity:'+(S.thinking?.5:1)+'">'+sendIcon(mob?32:34)+'</button>';
@@ -2491,8 +2516,8 @@ function storyPane(){
   }
   if(S.zen&&!S.zenWorld){scene='';sceneH=0;}
   else if(!S.zen&&(hideScene||hide3d)){
-    if(!mob){scene='';sceneH=0;} /* 电脑端：灵动岛已住进顶栏留白，正文直接上移 */
-    else{scene=miniIsleHtml(hide3d);sceneH=8;}
+    if(!mob&&!glassUI()){scene='';sceneH=0;} /* 极简电脑端：灵动岛已住进顶栏留白，正文直接上移 */
+    else{scene=miniIsleHtml(hide3d);sceneH=glassUI()?16:8;}
   }
   /* 背景毛玻璃独立成非滚动层：backdrop-filter 一旦置于滚动容器(#zjStory)上，
      安卓 Chromium 合成器会漏绘/残影，导致正文缺字。此层不随内容滚动，规避该 bug。 */
@@ -2542,12 +2567,28 @@ function gameView(){
     ?'<div class="grow zjHl" style="min-width:0;padding:5px 12px;display:flex;align-items:center;'+eraPill+'"><div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)"><div class="zjMarq" style="font-size:12.5px;letter-spacing:.1em;color:var(--mut2)"><span>'+esc(era)+'</span><span aria-hidden="true">'+esc(era)+'</span></div></div>'+stDot+'</div>'
     :'<div class="grow zjHl" style="min-width:0;padding:5px 14px;display:flex;align-items:center;'+eraPill+'"><span style="flex:1;min-width:0;text-align:center;font-size:12.5px;letter-spacing:.1em;color:var(--mut2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(era)+'</span>'+stDot+'</div>';
   var top;
-  if(mob){
-    // 手机端单行头：功能键(设置…归)独占最顶一排；纪年地点已移到三维场景地名框，全屏改为点正文进出，故此处不再有状态行与全屏键
+  if(mob&&glassUI()){
+    /* 玻璃风格·手机双行头（经典）：一行状态(标志+纪年胶囊+全屏)，一行功能键 */
+    top='<div id="zjTopBar" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:22px">'
+      +_topBg
+      +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;gap:7px;padding:6px 10px 0">'+logo+eraDiv+conn+'</div>'
+      +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:3px;padding:7px 10px 6px">'+topBtns+'</div>'
+      +'</div>';
+  }else if(mob){
+    // 极简·手机端单行头：功能键(设置…归)独占最顶一排；纪年地点在三维场景/灵动岛，全屏点正文进出
     top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:'+(_lg?'20px':'14px')+'">'
       +_topBg
       +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:3px;padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 6px">'+topBtns+'</div>'
       +'</div>';
+  }else if(glassUI()){
+    /* 玻璃风格·桌面单行头（经典）：标志+标题+纪年胶囊+版式+全屏+功能键 */
+    top='<div id="zjTopBar" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:20px">'
+      +_topBg
+      +'<div style="position:relative;pointer-events:auto;height:56px;display:flex;align-items:center;gap:9px;padding:4px 12px 0">'
+      +logo
+      +'<div class="kai" style="font-size:16px;letter-spacing:.12em;color:var(--gold2);white-space:nowrap">周纪·千年天下</div>'
+      +eraDiv
+      +devSeg+conn+topBtns+'</div></div>';
   }else{
     top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:'+(_lg?'16px':'20px')+'">'
       +_topBg
@@ -2589,7 +2630,7 @@ function gameView(){
     top='<button data-act="worldFull" class="obtn btn" title="退出三维全屏" style="position:absolute;left:50%;margin-left:-48px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:8;font-size:12px;letter-spacing:.14em;padding:7px 18px">退出全屏</button>';
     body=mob?'<div class="grow zjPane" style="position:relative;min-height:0">'+storyPane()+'</div>':'<div class="row grow">'+storyPane()+'</div>';
   }
-  return '<div class="col" style="position:relative">'+top+body+'</div>'+(S.bgmOpen?bgmPanel():'')+(S.overlay?overlayView():'');
+  return '<div class="col" style="position:relative">'+top+body+'</div>'+(S.bgmOpen?bgmPanel():'')+(S.overlay?overlayView():'')+(!UISTYLE?stylePickHtml():'');
 }
 
 /* ---------------- BGM PANEL ---------------- */
@@ -3257,11 +3298,11 @@ function fontPane(){
    +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptSugg" type="checkbox" style="accent-color:#c9a063"'+(S.sugg!==false?' checked':'')+'>懒人四策：每幕后 AI 拟四条可点选项（每轮多一次杂务调用）</label>'
    +'<div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-top:4px">四策也可用输入栏上的「策」钮随时开关，两处同步。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">外观样式</div>'
-   +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptInputBox" type="checkbox" style="accent-color:#c9a063"'+(INPUTGLASS?'':' checked')+'>传统输入框（默认关：底部用渐变毛玻璃、无框、发送/语音用图标）</label>'
-   +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptWangFrame" type="checkbox" style="accent-color:#c9a063"'+(WANGFRAME?' checked':'')+'>「王之言行」加气泡边框（默认关：只留右对齐柔光文字）</label>'
-   +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptTabIsle" type="checkbox" style="accent-color:#c9a063"'+(TABISLE?'':' checked')+'>手机版「叙事/太史简」用旧玻璃框（默认关：改用灵动岛发光小球，无内框、切换时滑动爆散融字点亮）</label>'
-   +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptLiqGlass" type="checkbox" style="accent-color:#c9a063"'+(LIQGLASS?' checked':'')+'>顶栏液态玻璃（实验，默认开）：纪年地点·切换·全屏·设置…归 去掉各自方框，顶上只铺一层液态玻璃渐变；取消勾选即退回旧的分框样式</label>'
-   +'<div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-top:4px">三项即时生效，仅存于本机。液态玻璃＝强饱和提亮通透＋高光镜面，与毛玻璃不同；觉得不好看随时取消勾选还原。</div>'
+   +'<div style="display:flex;gap:12px;flex-wrap:wrap">'
+   +[['glass','液态玻璃设计','经典全框界面：纪年胶囊·全屏键·选项与输入皆有玻璃框，结构一目了然'],['minimal','极简主义设计','无框柔光＋液态玻璃顶栏，适合小屏幕设备，上下文显示面积更大']].map(function(o){var on=UISTYLE===o[0]||(UISTYLE===''&&o[0]==='minimal');
+     return '<div class="btn" data-act="setStyle" data-style="'+o[0]+'" style="flex:1;min-width:220px;cursor:pointer;border:1px solid '+(on?'rgba(224,190,130,.75)':'rgba(201,160,99,.25)')+';border-radius:14px;padding:13px 15px;background:'+(on?'linear-gradient(135deg,rgba(255,236,200,.12),rgba(201,160,99,.05))':'rgba(255,255,255,.02)')+'"><div class="kai" style="font-size:15.5px;letter-spacing:.12em;color:'+(on?'var(--gold2)':'var(--mut2)')+'">'+o[1]+(on?' ✓':'')+'</div><div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-top:5px">'+o[2]+'</div></div>';}).join('')
+   +'</div>'
+   +'<div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-top:8px">即时生效，仅存于本机；开局后的风格选择界面选的也是这两种。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">对话字色</div>'
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.8">正文里引号内的台词以此色区分。示例：灯花哔剥响了一声。<span id="zjDlgPrev" style="color:'+(DLGC==='off'?'inherit':DLGC)+'">「王、王上……灯。」</span></div>'
    +'<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px">'
@@ -3817,7 +3858,7 @@ window.ZJ3D_onExpand=function(){
     var hid2=false;try{hid2=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
     var isle2=document.getElementById('zjSceneIsle');var story3=document.getElementById('zjStory');
     if(hid2&&isle2&&story3){
-      var mo2=isMobile(),bH2=mo2?50:58;
+      var mo2=isMobile(),bH2=glassUI()?(mo2?96:58):(mo2?50:58);var padF2=bH2+(glassUI()?16:(mo2?8:0))+18;
       /* 目标点：手机=正文上方的灵动岛位；电脑=顶栏中位 */
       var tgt;var tm2=document.getElementById('zjTopMid');
       if(!mo2&&tm2){var tr2=tm2.getBoundingClientRect();tgt={x:tr2.left+tr2.width/2,y:tr2.top+tr2.height/2};}
@@ -3826,9 +3867,9 @@ window.ZJ3D_onExpand=function(){
       var fin2=function(){if(_done2)return;_done2=true;
         [].forEach.call(document.querySelectorAll('[id="zjSceneIsle"]'),function(el){if(el.parentNode)el.parentNode.removeChild(el);});
         var st4=document.getElementById('zjStory');
-        if(st4){storyPadComp(st4,76);
-          if(mo2&&window.__zjMiniHtml)st4.insertAdjacentHTML('beforebegin',window.__zjMiniHtml(true));
-          else if(tm2&&window.__zjTopIsleHtml)tm2.innerHTML=window.__zjTopIsleHtml();
+        if(st4){storyPadComp(st4,padF2);
+          if(!mo2&&!glassUI()&&tm2&&window.__zjTopIsleHtml)tm2.innerHTML=window.__zjTopIsleHtml();
+          else if(window.__zjMiniHtml)st4.insertAdjacentHTML('beforebegin',window.__zjMiniHtml(true));
         }};
       if(isle2.animate&&!reducedMotion()){var ri2=isle2.getBoundingClientRect();
         var an2=isle2.animate([{transform:'translateZ(0)',opacity:1},{transform:'translate('+(tgt.x-(ri2.left+ri2.width/2))+'px,'+(tgt.y-(ri2.top+ri2.height/2))+'px) scale('+Math.max(.05,280/ri2.width)+','+Math.max(.05,27/ri2.height)+')',opacity:.25}],{duration:330,easing:'cubic-bezier(.5,0,.7,.4)'});
@@ -4167,6 +4208,21 @@ window.__zjTopIsleHtml=function(){
     +'<span style="flex:none;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
     +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(_er)+'</span><span aria-hidden="true">'+esc(_er)+'</span></div></div></div>';
 };
+/* 开局后的界面风格选择：两张演示图（电脑给电脑版、手机给手机版）+介绍，二选一；设置·显可随时更换 */
+function stylePickHtml(){
+  var m=isMobile(),sfx=m?'m':'d';
+  return '<div id="zjStylePick" style="position:fixed;inset:0;z-index:90;background:rgba(8,6,4,.9);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto">'
+    +'<div style="max-width:'+(m?'420px':'880px')+';width:100%">'
+    +'<div class="kai" style="text-align:center;font-size:22px;color:var(--gold2);letter-spacing:.22em;margin-bottom:6px;text-shadow:0 0 14px rgba(224,190,130,.4)">择 · 界面风格</div>'
+    +'<div style="text-align:center;font-size:12.5px;color:var(--mut);margin-bottom:16px">点选其一即入正文；之后可在 设置 · 显 随时更换</div>'
+    +'<div style="display:flex;gap:14px;'+(m?'flex-direction:column':'')+'">'
+    +[['glass','液态玻璃设计','经典全框界面：纪年胶囊·全屏键·选项与输入皆有玻璃框，结构一目了然'],['minimal','极简主义设计','无框柔光＋液态玻璃顶栏；适合小屏幕设备，上下文显示面积更大']].map(function(o){
+      return '<div class="btn zjHl" data-act="setStyle" data-style="'+o[0]+'" style="flex:1;cursor:pointer;border:1px solid rgba(224,190,130,.4);border-radius:16px;overflow:hidden;background:rgba(18,13,8,.72);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,242,214,.15)">'
+        +'<img src="core/res/uidemo_'+o[0]+'_'+sfx+'.jpg?v=1" style="width:100%;display:block;pointer-events:none" alt="">'
+        +'<div style="padding:12px 15px 14px"><div class="kai" style="font-size:16.5px;color:var(--gold2);letter-spacing:.15em">'+o[1]+'</div>'
+        +'<div style="font-size:12px;color:var(--mut2);line-height:1.75;margin-top:5px">'+o[2]+'</div></div></div>';}).join('')
+    +'</div></div></div>';
+}
 /* 正文 paddingTop 的滚动补偿式修改：正在读的行钉在原处；滚动余量不够的残余用 FLIP 平滑过渡。
    全屏切换/三维开合（全屏内外）共用。 */
 function storyPadComp(story,newTop){
@@ -4261,7 +4317,7 @@ function zenToggle(){
       var ex=document.getElementById('zjZenExtras');if(ex&&ex.parentNode)ex.parentNode.removeChild(ex);
       var story2=document.getElementById('zjStory');
       if(t3){ /* 全屏内动过三维且现在开着：把场景岛调回非全屏位、按当前岛高重算 padding，同样不整渲染 */
-        var mo3=isMobile(),bH3=mo3?50:58;
+        var mo3=isMobile(),bH3=glassUI()?(mo3?96:58):(mo3?50:58);
         var isle3=document.getElementById('zjSceneIsle');
         var sH3=isle3?Math.round(isle3.getBoundingClientRect().height):((window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mo3):(mo3?140:186));
         flipStory(function(){
@@ -4348,8 +4404,10 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-mode')){var nmd=t.getAttribute('data-mode');if(S.chatOnly&&nmd!=='world')return;
         if(nmd===S.mode){if(S.chatOnly&&nmd==='world'){S.mode='say';S.cmdHint=null;S._noFade=true;render();}return;}S.mode=nmd;S.cmdHint=null;
         var mchips=document.querySelectorAll('[data-mode]');
-        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.textShadow=mon?'0 0 11px rgba(224,190,130,.6),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)':'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';}
-        modeBallFly(nmd);
+        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;
+          if(glassUI()){mcs.border='1px solid '+(mon?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)');mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.background=mon?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}
+          else{mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.textShadow=mon?'0 0 11px rgba(224,190,130,.6),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)':'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';}}
+        if(!glassUI())modeBallFly(nmd);
         var mta=document.getElementById('zjInput');if(mta)mta.placeholder=MODE_PH[nmd];
         var mh=document.getElementById('zjCmdHint');if(mh&&mh.parentNode)mh.parentNode.removeChild(mh);
         return;}
@@ -4491,6 +4549,7 @@ root.addEventListener('click',function(e){
       else if(a==='imgCacheClear'){if(!S.imgCacheClearArm){S.imgCacheClearArm=true;renderOverlay();return;}S.imgCacheClearArm=false;idbClearAll(function(){S.imgCacheKeys=[];if(S.overlay==='set'&&S.setTab==='imgcache')renderOverlay();});return;}
       else if(a==='openDataSet'){S.setTab='font';S.overlay='set';S.wipeArm=false;renderOverlay();return;}
       else if(a==='zen'){zenToggle();return;}
+      else if(a==='setStyle'){applyUiStyle(t.getAttribute('data-style'));S._noFade=true;render();return;}
       else if(a==='worldFull'){
         var wfI=document.getElementById('zjSceneIsle');var wfR=wfI&&wfI.getBoundingClientRect();
         S.worldFull=!S.worldFull;S._noFade=true;render();
@@ -4608,7 +4667,7 @@ root.addEventListener('click',function(e){
         var mi0=document.getElementById('zjMiniIsle');var mr0=mi0&&mi0.getBoundingClientRect();
         var st3=document.getElementById('zjStory');
         if(st3&&window.__zjSceneIsleHtml&&!S.zen){ /* 手术式展开：正文不重建、paddingTop 滚动补偿，不再把字往下推 */
-          var mo4=isMobile(),bH4=mo4?50:58,m4=mood();
+          var mo4=isMobile(),bH4=glassUI()?(mo4?96:58):(mo4?50:58),m4=mood();
           var sH4=(window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mo4):((window.__ZJ3D_OFF__&&SVGF)?34:(mo4?140:186));
           if(mi0){var tm4=document.getElementById('zjTopMid');if(mi0.closest&&mi0.closest('#zjTopBar')&&tm4)tm4.innerHTML='';else if(mi0.parentNode)mi0.parentNode.removeChild(mi0);}
           [].forEach.call(document.querySelectorAll('[id="zjSceneIsle"]'),function(el){if(el.parentNode)el.parentNode.removeChild(el);});
@@ -4628,7 +4687,7 @@ root.addEventListener('click',function(e){
       else if(a==='apiTest'){apiTestRun();}
       else if(a==='diceTog'){S.dice=!S.dice;savePref();
         var dch=document.querySelector('[data-act="diceTog"]');
-        if(dch){var don2=S.dice;dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.textShadow=don2?'0 0 11px rgba(233,180,110,.65),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)':'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';chipBallSet(dch,don2);}
+        if(dch){var don2=S.dice;if(glassUI()){dch.style.border='1px solid '+(don2?'rgba(233,180,110,.75)':'rgba(255,238,205,.22)');dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.background=don2?'linear-gradient(135deg,rgba(233,180,110,.16),rgba(160,110,60,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}else{dch.style.color=don2?'#e8b77d':'var(--mut)';dch.style.textShadow=don2?'0 0 11px rgba(233,180,110,.65),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)':'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';chipBallSet(dch,don2);}}
         else{S._noFade=true;render();}}
       else if(a==='micTog'){sttToggle();}
       else if(a==='lowTog'){lowApply(!LOWFX);S._noFade=true;render();}
@@ -4639,7 +4698,7 @@ root.addEventListener('click',function(e){
       else if(a==='chatTog'){S.chatOnly=!S.chatOnly;savePref();S._noFade=true;render();}
       else if(a==='suggTog'){S.sugg=S.sugg===false?true:false;savePref();
         var sch=document.querySelector('[data-act="suggTog"]');
-        if(sch){var son2=S.sugg!==false;sch.style.color=son2?'var(--gold2)':'var(--mut)';sch.style.textShadow=son2?'0 0 11px rgba(224,190,130,.6),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)':'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';chipBallSet(sch,son2);}
+        if(sch){var son2=S.sugg!==false;if(glassUI()){sch.style.border='1px solid '+(son2?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)');sch.style.color=son2?'var(--gold2)':'var(--mut)';sch.style.background=son2?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}else{sch.style.color=son2?'var(--gold2)':'var(--mut)';sch.style.textShadow=son2?'0 0 11px rgba(224,190,130,.6),0 0 3px rgba(255,232,180,.4),0 1px 2px rgba(0,0,0,.8)':'0 0 8px rgba(255,228,166,.3),0 1px 2px rgba(0,0,0,.6)';chipBallSet(sch,son2);}}
         if(S.sugg===false){S.suggList=null;var srw=document.getElementById('zjSuggRow');if(srw&&srw.parentNode)srw.parentNode.removeChild(srw);try{fitStoryPad();}catch(e8){}}
         else genSuggestions();
         if(!sch){S._noFade=true;render();}}
