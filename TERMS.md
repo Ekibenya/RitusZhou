@@ -93,3 +93,4 @@ The author may update these Terms at any time; updates take effect upon publicat
 
 ### 10. Severability
 If any provision is held invalid or unenforceable, the remainder stays in effect and that provision shall be construed as closely as possible to its original intent.
+
