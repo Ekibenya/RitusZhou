@@ -386,7 +386,7 @@ if(UISTYLE)applyUiStyle(UISTYLE); /* 已选过：开机按风格矫正子开关�
    正好撞上三维引擎/场景资源的下载高峰，慢网手机上会「卡住出不来」。 */
 if(!UISTYLE){setTimeout(function(){try{
   var _sfx0=window.innerWidth<920?'m':'d';
-  ['glass','minimal'].forEach(function(st){var im=new Image();im.decoding='async';im.src='core/res/uidemo_'+st+'_'+_sfx0+'.jpg?v=3';});
+  window.__zjDemoPre=['glass','minimal'].map(function(st){var im=new Image();im.decoding='async';im.src='core/res/uidemo_'+st+'_'+_sfx0+'.jpg?v=3';return im;}); /* 存住引用防被回收 */
 }catch(e){}},1200);}
 /* 手机版底部「叙事/太史简」切换：默认灵动岛发光小球（无内框、只文字），滑到哪就在哪爆散融字点亮；设置·显可切回旧玻璃框 */
 var TABISLE=true;try{TABISLE=localStorage.getItem('zhouji_tabisle')!=='0';}catch(e){}
@@ -4378,6 +4378,14 @@ function showStylePick(){
   if(UISTYLE||document.getElementById('zjStylePick'))return;
   document.body.insertAdjacentHTML('beforeend',stylePickHtml());
   var ov=document.getElementById('zjStylePick');
+  /* 悬死请求看门狗：onerror 只管「失败」，管不了「一直悬着不回」（手机上被三维资源挤占带宽时的常态）。
+     4 秒仍没加载完就换个缓存戳强行重发，9 秒再补一刀。 */
+  [4000,9000].forEach(function(wd,wi){setTimeout(function(){
+    if(!ov.isConnected)return;
+    [].forEach.call(ov.querySelectorAll('img'),function(im){
+      if(!(im.complete&&im.naturalWidth>0))im.src=im.src.split('&r=')[0].split('&w=')[0]+'&w='+(wi+1)+'_'+Date.now();
+    });
+  },wd);});
   ov.addEventListener('click',function(e){
     var n=e.target,card=null,go=null;
     while(n&&n!==ov){

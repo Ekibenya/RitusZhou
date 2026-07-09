@@ -3,5 +3,13 @@
   "rewrites": [
     { "source": "/", "destination": "/zhouji.html" },
     { "source": "/deploy", "destination": "/api/deploy" }
+  ],
+  "headers": [
+    {
+      "source": "/core/res/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
   ]
 }
