@@ -625,7 +625,7 @@ function ttsStop(soft){
   try{if(window.speechSynthesis)speechSynthesis.cancel();}catch(e){}
   if(TTSP.audio){try{TTSP.audio.pause();}catch(e){}TTSP.audio=null;}
   ttsDuck(false);
-  if(!soft)renderSoft();
+  if(!soft){S._noFade=true;S._keepScroll=true;renderSoft();}
 }
 function ttsSpeak(i,sampleText){
   if(TTSP.playing)ttsStop(true);
@@ -633,7 +633,7 @@ function ttsSpeak(i,sampleText){
   if(!txt.trim())return;
   TTSP.playing=true;TTSP.idx=sampleText!=null?-1:i;
   var my=++TTSP.seq;
-  ttsDuck(true);renderSoft();
+  ttsDuck(true);S._noFade=true;S._keepScroll=true;renderSoft();
   function done(){if(TTSP.seq!==my)return;ttsStop();}
   if(TTS.src==='api'&&ttsApiReady()){
     var chunks=ttsChunks(txt,800),ci=0;
@@ -1737,7 +1737,7 @@ function rerollPanel(idx){
   var narr=stripMvu(h.text).replace(/\s+$/,'');
   var ask='（请仅据这一幕正文，重新输出【完整准确】的结尾状态栏 <mvu_panel>：<sec_char>含◆衣冠/持物/御体/观瞻/神格(0-100)/史笔；<sec_npc>每在场者一行◈名字|状态|好感(0-100)|心声|身份|所在|年龄|性别；<sec_world>含◇纪年/时地/天气/安稳(0-100)/大势/将临。只输出 <mvu_panel>…</mvu_panel> 本身，不要正文、不要解释、不要复述正文。）';
   var cont=msgs.concat([{role:'assistant',content:h.text},{role:'user',content:ask}]);
-  S.fixing=true;S.fixingIdx=idx;S._noFade=true;render();
+  S.fixing=true;S.fixingIdx=idx;S._noFade=true;S._keepScroll=true;render();
   callCustomAI(sys,cont).then(function(t2){
     S.fixing=false;S.fixingIdx=null;
     var s2=String(t2||'');
@@ -1746,8 +1746,8 @@ function rerollPanel(idx){
     if(panelTxt){var newText=narr+'\n'+panelTxt;var p=parseMvu(newText);
       if(p&&p.world&&Object.keys(p.world).length&&p.char&&Object.keys(p.char).length){h.text=newText;h.panel=p;try{memSync();}catch(e){}savePref();}
     }
-    S._noFade=true;render();
-  },function(){S.fixing=false;S.fixingIdx=null;S._noFade=true;render();});
+    S._noFade=true;S._keepScroll=true;render();
+  },function(){S.fixing=false;S.fixingIdx=null;S._noFade=true;S._keepScroll=true;render();});
 }
 function advanceLocal(base,text){
   var done=function(reply,live){
@@ -1840,7 +1840,7 @@ function reroll(idx){
   var oldW=h[idx];
   /* 仅最后一幕累积历稿；旧幕重演另起 */
   S._swipeFrom=isLast?(oldW.alts&&oldW.alts.length?oldW.alts.slice():[oldW.text]).slice(-7):null;
-  S.thinking=true;S.history=h.slice(0,idx);render();
+  S.thinking=true;S._noFade=true;S._keepScroll=true;S.history=h.slice(0,idx);render();
   advanceLocal(base,user.text);
 }
 
@@ -2216,7 +2216,7 @@ function storyPane(){
         ubody='<div style="max-width:82%;flex:1"><textarea id="zjMsgEditBox" style="width:100%;min-height:90px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:#e3b6a0;font-size:14px;line-height:1.8;padding:10px 13px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
           +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:7px"><div class="btn obtn" data-act="mCancel" style="font-size:12px;padding:5px 14px">取消</div><div class="btn gbtn" data-act="mSave" style="font-size:12px;letter-spacing:.15em;padding:5px 16px">保存</div></div></div>';
       }else{
-        ubody='<div class="glass" style="max-width:82%;border:1px solid rgba(166,59,38,.34);border-radius:17px;background:linear-gradient(135deg,rgba(180,66,42,.20),rgba(120,42,28,.07) 44%,rgba(18,13,8,.03));padding:12px 16px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e9c0aa;white-space:pre-wrap">'+esc(h.text)+'</div></div>';
+        ubody='<div class="glass" style="max-width:82%;border:1px solid rgba(200,92,66,.26);border-radius:17px;background:linear-gradient(135deg,rgba(214,96,64,.10),rgba(150,62,42,.028) 46%,rgba(255,255,255,.006));-webkit-backdrop-filter:blur(10px) saturate(155%);backdrop-filter:blur(10px) saturate(155%);padding:12px 16px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e9c0aa;white-space:pre-wrap">'+esc(h.text)+'</div></div>';
       }
       var utools='<div class="zjMT" data-mt="'+i+'" style="display:'+((S.msgTools===i&&S.msgEdit!==i)?'flex':'none')+';gap:8px;justify-content:flex-end;margin-top:7px">'
         +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此言</div>'
@@ -2258,23 +2258,22 @@ function storyPane(){
         +'<div style="font-size:11.5px;color:var(--mut)">'+(six+1)+'／'+h.alts.length+'</div>'
         +'<div class="btn obtn" data-act="swNext" title="'+(six>=h.alts.length-1?'再演新稿':'看下一稿')+'" style="font-size:12px;padding:6px 13px;line-height:1">'+chev(1)+(six>=h.alts.length-1?'<span style="vertical-align:1px">＋</span>':'')+'</div>';
     }
-    /* 每一幕世界消息常驻一排操作（旧幕也全有）：重演/重出状态栏/绘此幕/诵此幕/(旧幕)回到此处/修。
-       全部 flex:1 等宽同尺寸、铺满一排，绝不横滑；宁可字号缩小也要一排显全。 */
-    /* 正文下方常驻一排操作：重演／重出状态栏／诵读／(旧幕)回到此处 等宽铺满一排、高度一致，末尾「修」只占小小一格（笔头＋一字）。绘此幕/重绘不在此排——已单独拎到插画上下方。绝不横滑、绝不换行。字号高度与旧版一致，图标用小一号 span 让长标签也放得下。 */
-    var _rb='flex:1 1 0;min-width:0;box-sizing:border-box;font-size:11px;letter-spacing:-.2px;padding:5px 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;line-height:1.5';
-    var _rbFix='flex:0 0 auto;box-sizing:border-box;font-size:11px;padding:5px 8px;white-space:nowrap;line-height:1.5';
-    var _ti=function(s){return '<span style="font-size:.76em;opacity:.9;margin-right:1px">'+s+'</span>';};
+    /* 正文下方常驻一排操作：重演／重出状态栏／诵读／(旧幕)回到此处／修。
+       —— 不再套框，只留发着柔光的字（与封面「启新局／链·接入」同款金色柔光），一排居中、绝不横滑换行。 */
+    var _glow='0 0 11px rgba(224,190,130,.5),0 1px 2px rgba(0,0,0,.8)';
+    var _rb='flex:0 0 auto;font-size:12.5px;letter-spacing:.05em;padding:4px 2px;white-space:nowrap;cursor:pointer;color:var(--gold2);text-shadow:'+_glow;
+    var _ti=function(s){return '<span style="font-size:.78em;opacity:.9;margin-right:2px">'+s+'</span>';};
     var retry='';
     if(!S.thinking&&i>=0&&!typing&&h.role==='world'){
-      var _row='<div style="display:flex;flex-wrap:nowrap;gap:4px;align-items:stretch;margin-top:5px">'
+      var _row='<div style="display:flex;flex-wrap:nowrap;gap:clamp(10px,4vw,22px);align-items:center;justify-content:center;margin-top:7px;overflow:hidden">'
         +(isLast&&h.alts&&h.alts.length>1?sw:'')
-        +'<div class="btn obtn" data-rr="'+i+'" title="重新演绎这一幕" style="'+_rb+'">'+_ti('⟲')+'重演</div>'
-        +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div class="btn obtn" style="'+_rb+';color:var(--gold);border-color:rgba(224,190,130,.5)">补录中…</div>':'<div class="btn obtn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式/漏字段时用）" style="'+_rb+';'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">'+_ti('⟲')+'重出状态栏</div>'))
-        +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="'+_rb+';color:var(--gold2);border-color:rgba(224,190,130,.6)">'+_ti('■')+'停诵</div>':'<div class="btn obtn" data-tts="'+i+'" title="朗读这一幕" style="'+_rb+'">'+_ti('♪')+'诵读</div>'):'')
-        +(!isLast?'<div class="btn obtn" data-backto="'+i+'" title="舍弃其后剧情，回到这一幕继续" style="'+_rb+';color:#d9a06a;border-color:rgba(217,160,106,.45)">'+_ti(chev(-1,9))+'回到此处</div>':'')
-        +'<div class="btn obtn" data-wedit="'+i+'" title="修改此幕正文" style="'+_rbFix+'">'+pen(11)+' 修</div>'
+        +'<div class="btn" data-rr="'+i+'" title="重新演绎这一幕" style="'+_rb+'">'+_ti('⟲')+'重演</div>'
+        +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div class="btn" style="'+_rb+';color:var(--gold)">'+_ti('⟲')+'补录中…</div>':'<div class="btn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式/漏字段时用）" style="'+_rb+(panelComplete(h.text)?'':';color:#f0d29a;text-shadow:0 0 13px rgba(240,205,140,.75),0 1px 2px rgba(0,0,0,.8)')+'">'+_ti('⟲')+'重出状态栏</div>'))
+        +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn" data-act="ttsStop" style="'+_rb+'">'+_ti('■')+'停诵</div>':'<div class="btn" data-tts="'+i+'" title="朗读这一幕" style="'+_rb+'">'+_ti('♪')+'诵读</div>'):'')
+        +(!isLast?'<div class="btn" data-backto="'+i+'" title="舍弃其后剧情，回到这一幕继续" style="'+_rb+';color:#e2ab7d;text-shadow:0 0 11px rgba(217,160,106,.5),0 1px 2px rgba(0,0,0,.8)">'+_ti(chev(-1,9))+'回到此处</div>':'')
+        +'<div class="btn" data-wedit="'+i+'" title="修改此幕正文" style="'+_rb+';display:inline-flex;align-items:center;gap:2px">'+pen(11)+'修</div>'
         +'</div>';
-      var _errline=(S.imgErr&&isLast)?'<div style="display:flex;gap:6px;align-items:center;margin-top:5px"><div style="font-size:10.5px;color:#d9a06a;flex:1;min-width:0">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="font-size:10px;padding:4px 10px;flex:none;color:var(--gold3)">⚙ 设置</div></div>':'';
+      var _errline=(S.imgErr&&isLast)?'<div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:5px"><div style="font-size:10.5px;color:#d9a06a">'+esc(S.imgErr)+'</div><div class="btn" data-act="openImgSet" style="font-size:11px;padding:2px 6px;color:var(--gold3);cursor:pointer;text-shadow:'+_glow+'">设置</div></div>':'';
       retry=_row+_errline;
     }
     /* AI 正文不再挂「⋯」菜单——修改功能已并入下方那一排的「修」按钮 */
@@ -3502,9 +3501,11 @@ function render(){
   try{edictSync();}catch(e){}
   var focused=document.activeElement&&document.activeElement.id==='zjInput';
   var selStart=focused?document.activeElement.selectionStart:null;
-  /* 滚动策略：回看历史时重渲染不再把画面拽回底部 */
+  /* 滚动策略：回看历史时重渲染不再把画面拽回底部。S._keepScroll 置真时【无条件】原位保留正文滚动，
+     供正文操作栏（修/重出状态栏/诵读/回到此处等非新增消息的操作）用——点了绝不跳、不闪。 */
   var ps=document.getElementById('zjStory');
-  var keepPos=(ps&&ps.scrollTop+ps.clientHeight<ps.scrollHeight-60)?ps.scrollTop:null;
+  var forceKeep=S._keepScroll;S._keepScroll=false;
+  var keepPos=(ps&&(forceKeep||ps.scrollTop+ps.clientHeight<ps.scrollHeight-60))?ps.scrollTop:null;
   var chipsEl=document.getElementById('zjChipsRow');
   var chipsL=chipsEl?chipsEl.scrollLeft:null;
   var pw=document.getElementById('zjWizScroll');var wizPos=pw?pw.scrollTop:null;
@@ -3800,7 +3801,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-imgnext')!=null&&t.getAttribute('data-imgnext')!==''){var _ni=parseInt(t.getAttribute('data-imgnext'),10);var _nh=S.history[_ni];var _nv=_nh&&imgVers(_nh);if(_nv&&_nv.length){var _cy=(_nh.verIx==null?_nv.length-1:_nh.verIx);if(_cy<_nv.length-1){_nh.verIx=_cy+1;_nh.img=(_nv[_nh.verIx]||[])[0]||_nh.img;savePref();illuSwap(_ni,_nh);}}return;}
       if(t.getAttribute('data-imgzoom')!=null&&t.getAttribute('data-imgzoom')!==''){var _zi=parseInt(t.getAttribute('data-imgzoom'),10);var _zh=S.history[_zi];if(_zh){var _zord=['lg','md','sm','mini'];var _zcur=_zh.dispSize||IMGCFG.disp||'lg';var _zk=_zord.indexOf(_zcur);if(_zk<0)_zk=0;var _zn=_zord[(_zk+1)%_zord.length];_zh.dispSize=_zn;var _zw=t.parentElement;if(_zw&&_zw.getAttribute('data-imgwrap'))_zw.style.maxWidth=imgDispW(_zn);savePref();}return;}
       if(t.getAttribute('data-drawidx')!=null&&t.getAttribute('data-drawidx')!==''){var _di=parseInt(t.getAttribute('data-drawidx'),10);if(S.imgBusy==null&&imgReady()&&S.history[_di]&&S.history[_di].role==='world')drawWorld(_di);return;}
-      if(t.getAttribute('data-wedit')!=null&&t.getAttribute('data-wedit')!==''){var _wei=parseInt(t.getAttribute('data-wedit'),10);if(S.history[_wei]){if(TYPE.msg===S.history[_wei]){typedSet.add(S.history[_wei]);TYPE.msg=null;}S.msgTools=null;S.msgEdit=_wei;S._noFade=true;render();}return;}
+      if(t.getAttribute('data-wedit')!=null&&t.getAttribute('data-wedit')!==''){var _wei=parseInt(t.getAttribute('data-wedit'),10);if(S.history[_wei]){if(TYPE.msg===S.history[_wei]){typedSet.add(S.history[_wei]);TYPE.msg=null;}S.msgTools=null;S.msgEdit=_wei;S._noFade=true;S._keepScroll=true;render();}return;}
       if(t.getAttribute('data-rr')!=null&&t.getAttribute('data-rr')!==''){reroll(parseInt(t.getAttribute('data-rr'),10));return;}
       if(t.getAttribute('data-rrfmt')!=null&&t.getAttribute('data-rrfmt')!==''){rerollPanel(parseInt(t.getAttribute('data-rrfmt'),10));return;}
       if(t.getAttribute('data-tts')!=null&&t.getAttribute('data-tts')!==''){var _ti=parseInt(t.getAttribute('data-tts'),10);if(S.history[_ti]&&S.history[_ti].role==='world')ttsSpeak(_ti);return;}
@@ -3810,7 +3811,7 @@ root.addEventListener('click',function(e){
           var _brj=worldOrdinal(_bi),_bkept=[],_bcw=0;
           S.mem.forEach(function(me){if(me.manual){_bkept.push(me);return;}if(_bcw<=_brj)_bkept.push(me);_bcw++;});
           S.mem=_bkept;S.history=S.history.slice(0,_bi+1);S.memN=_brj+1;
-          S.suggList=null;S.msgTools=null;S.msgEdit=null;savePref();render();}
+          S.suggList=null;S.msgTools=null;S.msgEdit=null;S._noFade=true;S._keepScroll=true;savePref();render();}
         return;}
       if(t.getAttribute('data-imgfull')&&t.getAttribute('src')){var _fu=t.getAttribute('src');var _ov=document.createElement('div');_ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.93);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:12px';var _im=document.createElement('img');_im.src=_fu;_im.style.cssText='max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6)';_ov.appendChild(_im);_ov.addEventListener('click',function(){_ov.remove();});document.body.appendChild(_ov);return;}
       if(t.getAttribute('data-start')){startOpening(parseInt(t.getAttribute('data-start'),10));return;}
@@ -4109,14 +4110,14 @@ root.addEventListener('click',function(e){
           else{ULORE.push({title:lt.slice(0,40),keys:lks.slice(0,20),keys2:lks2.slice(0,20),order:lord,prob:lprob,content:lc,constant:lcons,on:true});S.loreMsg='已添加「'+lt.slice(0,40)+'」';}
           uloreSave();S.loreDelIx=null;renderOverlay();}}
       else if(a==='mEdit'){var ei9=S.msgTools;if(ei9!=null&&S.history[ei9]){if(TYPE.msg===S.history[ei9]){typedSet.add(S.history[ei9]);TYPE.msg=null;}S.msgEdit=ei9;S._noFade=true;render();}}
-      else if(a==='mCancel'){S.msgEdit=null;S._noFade=true;render();}
+      else if(a==='mCancel'){S.msgEdit=null;S._noFade=true;S._keepScroll=true;render();}
       else if(a==='mSave'){var sb9=document.getElementById('zjMsgEditBox');var si9=S.msgEdit;
         if(sb9&&si9!=null&&S.history[si9]){var hh9=S.history[si9];hh9.text=sb9.value;
           if(hh9.role==='world'){hh9.panel=parseMvu(hh9.text);typedSet.add(hh9);
             var wj9=worldOrdinal(si9),wmi9=memWorldIdx(wj9);
             if(wmi9>=0&&!S.mem[wmi9].manual)S.mem[wmi9]=memEntryOf(hh9,si9>0&&S.history[si9-1].role==='user'?S.history[si9-1].text:'');
           }
-          S.msgEdit=null;S.msgTools=null;S._noFade=true;savePref();render();}}
+          S.msgEdit=null;S.msgTools=null;S._noFade=true;S._keepScroll=true;savePref();render();}}
       else if(a==='mDel'){var di9=S.msgTools;
         if(di9!=null&&S.history[di9]&&di9>0&&!S.thinking){
           var dh9=S.history[di9];
