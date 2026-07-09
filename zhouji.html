@@ -182,7 +182,10 @@ var clamp = function(n){return Math.max(0,Math.min(100,parseInt(n,10)||0));};
 
 /* ---------------- FX: typewriter / three.js / audio ---------------- */
 var typedSet = (typeof WeakSet!=='undefined')?new WeakSet():{has:function(){return true;},add:function(){},delete:function(){}};
-var TYPE = {msg:null,full:'',pos:0,timer:null};
+/* 正文转换记忆化：stripMvu→抽思维链→用户正则→分段转义着色 这条管线对每条历史每次整渲染都要全跑一遍，
+   长局（几十幕）在手机上是整渲染的 JS 大头。文本不变则直接复用；正则规则变更靠 RXE 世代号失效。 */
+var MSGC=(typeof WeakMap!=='undefined')?new WeakMap():null;var RXE=0;
+var TYPE = {msg:null,full:'',pos:0,timer:null,wait:false,chase:false};
 var DLGC='#e0be82';try{DLGC=localStorage.getItem('zhouji_dlgc')||'#e0be82';}catch(e){}
 function dlgSpan(html){if(DLGC==='off')return html;return String(html).replace(/(「[^」]{0,400}」|『[^』]{0,400}』|“[^”]{0,400}”|【[^】]{0,200}】|&quot;[^&]{0,400}?&quot;)/g,'<span class="zjDlg" style="color:'+DLGC+'">$1</span>');}
 /* 切换对话字色：就地改色不重渲染（自关闭态开启才需一次重绘补 span） */
@@ -198,7 +201,32 @@ function dlgApply(prev){
     el.style.color=on?'var(--gold2)':'var(--mut2)';
   });
 }
-function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return t.split(/\n+/).filter(Boolean).map(function(p){return '<p style="margin:0 0 14px;font-size:16px;line-height:2.05;color:var(--ink);text-align:justify">'+dlgSpan(esc(p))+'</p>';}).join('');}
+var PSTYLE='margin:0 0 14px;font-size:16px;line-height:2.05;color:var(--ink);text-align:justify';
+function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return t.split(/\n+/).filter(Boolean).map(function(p){return '<p style="'+PSTYLE+'">'+dlgSpan(esc(p))+'</p>';}).join('');}
+/* 打字机增量绘制：已定稿的段落一个节点都不动，只重写「正在打的最后一段」，
+   新起段落就地补一个 <p>。此前每 20ms 用 innerHTML 重建整块（含全部段落的转义+着色正则），
+   长段落下是 O(n²) 的主线程消耗，手机上打字期间明显发烫掉帧。 */
+function typeBoxDraw(){
+  var box=document.getElementById('zjTypeBox');if(!box)return false;
+  var ps=TYPE.full.slice(0,TYPE.pos).split(/\n+/).filter(Boolean);
+  var cur=box._zjCur;
+  if(!cur||box._zjMsg!==TYPE.msg||!cur.isConnected){
+    box.innerHTML=worldParas(TYPE.full,TYPE.pos)+'<span class="tcursor">▍</span>';
+    box._zjMsg=TYPE.msg;box._zjCur=box.lastChild;box._zjDone=Math.max(0,ps.length-1);
+    return true;
+  }
+  var pEls=box.getElementsByTagName('p');
+  if(pEls.length>ps.length){ /* 段落数不应缩水；万一（文本被外部改动）整重一次自愈 */
+    box.innerHTML=worldParas(TYPE.full,TYPE.pos)+'<span class="tcursor">▍</span>';
+    box._zjMsg=TYPE.msg;box._zjCur=box.lastChild;box._zjDone=Math.max(0,ps.length-1);
+    return true;
+  }
+  while(pEls.length<ps.length){var np=document.createElement('p');np.setAttribute('style',PSTYLE);box.insertBefore(np,cur);}
+  var from=box._zjDone||0,last=ps.length-1;
+  for(var k=from;k>=0&&k<=last;k++)pEls[k].innerHTML=dlgSpan(esc(ps[k]));
+  box._zjDone=Math.max(0,last);
+  return true;
+}
 /* iOS 风描边 chevron 图标（替代会被移动端渲染成彩色 emoji 的实心三角字符），d<0 左 / d>0 右 */
 function chev(d,sz){var s=sz||11;return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px">'+(d<0?'<path d="M15 4 7 12 15 20"/>':'<path d="M9 4 17 12 9 20"/>')+'</svg>';}
 /* 闪电描边图标（极速模式用；矢量图非 emoji），on 时亮金发光、off 时全灰 */
@@ -318,10 +346,16 @@ function ensureTyping(){
   if(TYPE.timer){return;}
   TYPE.timer=setInterval(function(){
     if(!TYPE.msg||typedSet.has(TYPE.msg)){clearInterval(TYPE.timer);TYPE.timer=null;return;}
-    TYPE.pos+=2;
-    if(TYPE.pos>=TYPE.full.length){TYPE.pos=TYPE.full.length;typedSet.add(TYPE.msg);clearInterval(TYPE.timer);TYPE.timer=null;renderSoft();return;}
-    var box=document.getElementById('zjTypeBox');
-    if(box){box.innerHTML=worldParas(TYPE.full,TYPE.pos)+'<span class="tcursor">▍</span>';}
+    if(TYPE.wait&&!GENAC)TYPE.wait=false; /* 兜底：生成已收场却没清等待旗 */
+    /* 追流自适应步长：常速 2 字/拍；被流甩开或收尾补打时按差距加速，不让读者等打字机 */
+    var lag=TYPE.full.length-TYPE.pos;
+    TYPE.pos+=(TYPE.chase&&lag>120)?Math.ceil(lag/60):2;
+    if(TYPE.pos>=TYPE.full.length){
+      TYPE.pos=TYPE.full.length;
+      if(TYPE.wait){typeBoxDraw();return;} /* 打字机追上了流：光标原地闪，等新字 */
+      typedSet.add(TYPE.msg);clearInterval(TYPE.timer);TYPE.timer=null;renderSoft();return;
+    }
+    typeBoxDraw();
     var st=document.getElementById('zjStory');if(st)st.scrollTop=st.scrollHeight;
   },20);
 }
@@ -390,16 +424,22 @@ function glInit(){
     var f1=field(680,2.6,0xe0a45e,0.55,150), f2=field(120,5.6,0xffd9a0,0.85,130);
     GL.done=true;
     window.addEventListener('resize',function(){var w=window.innerWidth,h=window.innerHeight;cam.aspect=w/h;cam.updateProjectionMatrix();rnd.setSize(w,h);});
-    var t0=Date.now(),glLast=0;
+    var t0=Date.now(),glLast=0,glPrev=0;
     (function loop(){
       requestAnimationFrame(loop);
+      var nw9=Date.now();
       if(LOWFX){
         if(document.hidden)return;
         if(window.__ZJSCR==='game')return; /* 游戏内被正文全幅覆盖，白画 */
-        var nw9=Date.now();if(nw9-glLast<33)return;glLast=nw9; /* 锁30帧 */
+        if(nw9-glLast<33)return; /* 锁30帧 */
       }
-      var dt=(Date.now()-t0)/1000;
-      [f1,f2].forEach(function(f,idx){var a=f.g.attributes.position.array;var v=idx?0.11:0.06;for(var k=0;k<f.n;k++){a[k*3+1]+=v;if(a[k*3+1]>85)a[k*3+1]=-85;a[k*3]+=Math.sin(dt*.4+k)*0.004;}f.g.attributes.position.needsUpdate=true;f.p.rotation.y=Math.sin(dt*.05)*.12;});
+      /* 正常档：游戏页且背景近实（默认 0.9 透明度）时光雾被盖住九成以上，30 帧与 60 帧肉眼无别，
+         省一半粒子更新与 GPU 提交——生成/打字期间手机不再被这层暗雾偷走主线程。背景调透明则照旧全速。 */
+      else if(window.__ZJSCR==='game'&&BGBLUR>=8&&nw9-glLast<33)return;
+      glLast=nw9;
+      var fs=glPrev?Math.min(6,(nw9-glPrev)/16.7):1;glPrev=nw9; /* 按真实帧距推进：120Hz 屏不再飘两倍速，降帧也不变慢 */
+      var dt=(nw9-t0)/1000;
+      [f1,f2].forEach(function(f,idx){var a=f.g.attributes.position.array;var v=(idx?0.11:0.06)*fs;var xw=0.004*fs;for(var k=0;k<f.n;k++){a[k*3+1]+=v;if(a[k*3+1]>85)a[k*3+1]=-85;a[k*3]+=Math.sin(dt*.4+k)*xw;}f.g.attributes.position.needsUpdate=true;f.p.rotation.y=Math.sin(dt*.05)*.12;});
       cam.position.x=Math.sin(dt*.06)*4; cam.lookAt(0,0,0);
       rnd.render(scene,cam);
     })();
@@ -481,15 +521,17 @@ function sc3Init(){
     var dg=new T.BufferGeometry(); dg.setAttribute('position',new T.BufferAttribute(dp,3));
     var dust=new T.Points(dg,new T.PointsMaterial({color:0xe0a45e,size:.28,transparent:true,opacity:.5,blending:T.AdditiveBlending,depthWrite:false})); sc.add(dust);
     SC3.ok=true;SC3.cv=cv;SC3.rnd=rnd;SC3.sc=sc;SC3.cam=cam;SC3.amb=amb;SC3.winMat=winMat;SC3.floorMat=floorMat;
-    var t0=Date.now();
+    var t0=Date.now(),scPrev=0;
     (function loop(){
       requestAnimationFrame(loop);
-      if(!cv.isConnected)return;
-      var t=(Date.now()-t0)/1000;
+      if(!cv.isConnected){scPrev=0;return;}
+      var nw=Date.now();
+      var fs=scPrev?Math.min(6,(nw-scPrev)/16.7):1;scPrev=nw; /* 浮尘按真实帧距推进，高刷屏不再双速 */
+      var t=(nw-t0)/1000;
       lights.forEach(function(o,i){o.l.intensity=o.b+Math.sin(t*o.f*3+i*2.1)*.07+Math.sin(t*7.3+i)*.04;});
       sprites.forEach(function(sp,i){sp.material.opacity=.85+Math.sin(t*5+i)*.12;});
       var a=dg.attributes.position.array;
-      for(var k2=0;k2<dn;k2++){a[k2*3+1]+=.008;a[k2*3]+=Math.sin(t*.5+k2)*.002;if(a[k2*3+1]>23)a[k2*3+1]=0;}
+      for(var k2=0;k2<dn;k2++){a[k2*3+1]+=.008*fs;a[k2*3]+=Math.sin(t*.5+k2)*.002*fs;if(a[k2*3+1]>23)a[k2*3+1]=0;}
       dg.attributes.position.needsUpdate=true;
       cam.position.x=Math.sin(t*.1)*1.8; cam.position.y=9+Math.sin(t*.07)*.35;
       cam.lookAt(0,7.4,-8);
@@ -863,7 +905,7 @@ window.addEventListener('message',function(e){
 /* ---------------- 玩家正则（兼容酒馆正则脚本JSON） ---------------- */
 var RXKEY='zhouji_regex_v1';
 var UREGEX=[];try{UREGEX=JSON.parse(localStorage.getItem(RXKEY)||'[]')||[];}catch(e){}if(!Array.isArray(UREGEX))UREGEX=[];
-function uregexSave(){try{localStorage.setItem(RXKEY,JSON.stringify(UREGEX.map(function(r){return {name:r.name,find:r.find,replace:r.replace,mode:r.mode,on:r.on};})));}catch(e){}}
+function uregexSave(){RXE++;try{localStorage.setItem(RXKEY,JSON.stringify(UREGEX.map(function(r){return {name:r.name,find:r.find,replace:r.replace,mode:r.mode,on:r.on};})));}catch(e){}}
 function rxCompile(f){f=String(f||'');var m=/^\/([\s\S]+)\/([a-z]*)$/.exec(f);
   try{if(m)return new RegExp(m[1],m[2].indexOf('g')<0?m[2]+'g':m[2]);return new RegExp(f,'g');}catch(e){return null;}}
 function applyRegex(text,scope){
@@ -1897,8 +1939,17 @@ function advanceLocal(base,text){
       var live={role:'world',text:'',panel:null};var started=false,lastR=0;
       callCustomAIStream(sys,msgs,function(full){
         live.text=full;
-        if(!started){started=true;S.thinking=false;S.aiLive=true;S.history=base.concat([{role:'user',text:text},live]);render();lastR=Date.now();}
-        else if(Date.now()-lastR>650){lastR=Date.now();renderSoft();}
+        if(!started){started=true;S.thinking=false;S.aiLive=true;S.history=base.concat([{role:'user',text:text},live]);render();
+          if(TYPE.msg===live){TYPE.wait=true;TYPE.chase=true;} /* 立刻挂上等字旗：首块字少，打字机若先打完不得自我了断 */
+          lastR=Date.now();}
+        else if(Date.now()-lastR>250){lastR=Date.now();
+          /* 流式喂字：正文还在打字机手里时，只把新文字喂给它（增量绘制），不再每 650ms 整页重建——
+             长局在中端手机上一次整页重建要以秒计，生成期间的卡顿大头就在这。打字机不在场才退回软渲染。 */
+          if(TYPE.msg===live&&!typedSet.has(live)&&document.getElementById('zjTypeBox')){
+            var _cx9=extractCoT(stripMvu(full));TYPE.full=applyRegex(_cx9.text,'display');
+            TYPE.wait=true;TYPE.chase=true;ensureTyping();
+          }else renderSoft();
+        }
         /* 早启生图：正文还在流式输出时，一旦场景文字够了就先动手画，不等整段写完，抵消生图延迟 */
         if(started&&IMGCFG.on&&IMGCFG.auto&&imgReady()&&!live._earlyDraw&&S.imgBusy==null&&(parseInt(IMGCFG.count,10)||1)<=1){
           var _nar=stripCoT(stripMvu(full)).replace(/^【[^】]*】/,'').replace(/\s/g,'');
@@ -1907,12 +1958,13 @@ function advanceLocal(base,text){
       }).then(function(t){
         if(!t||!String(t).trim())throw new Error('接口返回了空回复');
         return ensureComplete(sys,msgs,t).then(function(t3){
-          t3=deLoop(t3);live.text=t3;live.panel=parseMvu(t3);S.thinking=false;S.aiLive=true;
+          t3=deLoop(t3);live.text=t3;live.panel=parseMvu(t3);S.thinking=false;S.aiLive=true;TYPE.wait=false;
           if(S._swipeFrom){live.alts=S._swipeFrom.concat([t3]).slice(-8);live.altIx=live.alts.length-1;S._swipeFrom=null;}
           if(!started)S.history=base.concat([{role:'user',text:text},live]);
           GENAC=null;render();savePref();genSuggestions();maybeAutoDraw();
         });
       }).catch(function(){
+        TYPE.wait=false;
         /* 用户取消：撤下半截、静默收场，不重试不报错 */
         if(S._genCancel){S._genCancel=false;GENAC=null;if(started){var lxc=S.history.indexOf(live);if(lxc>=0)S.history.splice(lxc,1);}S.thinking=false;S.aiLive=false;render();savePref();return;}
         /* 流式中断：撤下半截，回退整段生成重试一次 */
@@ -2355,12 +2407,19 @@ function storyPane(){
         +'</div>';
       return '<div class="fade" data-msg="'+i+'" style="margin-bottom:22px"><div style="display:flex;justify-content:flex-end;gap:6px">'+utb+ubody+'</div>'+utools+'</div>';
     }
-    var text=stripMvu(h.text);var chap='';
-    var cotX=extractCoT(text);text=applyRegex(cotX.text,'display');
+    var chap='';
+    var _mc=MSGC?MSGC.get(h):null;var _mk=(i===0?'0':'x')+'\u0001'+DLGC+'\u0001'+RXE+'\u0001'+h.text;
+    if(!_mc||_mc.k!==_mk){
+      var _tx=stripMvu(h.text);var _cx=extractCoT(_tx);_tx=applyRegex(_cx.text,'display');
+      var _cm0=(i===0)?/^【[^】]*】/.exec(_tx):null;
+      if(_cm0)_tx=_tx.slice(_cm0[0].length).trim();
+      _mc={k:_mk,text:_tx,cot:_cx.cot,chap0:!!_cm0,paras:null};
+      if(MSGC)MSGC.set(h,_mc);
+    }
+    var text=_mc.text,cotX={text:text,cot:_mc.cot};
     var illu='<div class="zjIllu" data-illu="'+i+'">'+illuHtml(h,i)+'</div>';
     var cotHtml=cotX.cot?'<details class="zjCot" style="margin:0 0 12px"><summary style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:12px;letter-spacing:.14em;color:var(--mut);border:1px solid rgba(201,160,99,.25);border-radius:99px;padding:5px 14px;background:rgba(255,255,255,.02)">✦ 推演之思</summary><div style="margin-top:8px;border-left:3px solid rgba(201,160,99,.3);border-radius:8px;background:rgba(255,255,255,.018);padding:10px 13px;font-size:13px;line-height:1.9;color:#9d8c6b;white-space:pre-wrap">'+esc(cotX.cot)+'</div></details>':'';
-    var cm=/^【[^】]*】/.exec(text);
-    if(cm&&i===0){chap='<div style="text-align:center;margin:4px 0 30px"><div style="font-size:12px;letter-spacing:.42em;color:var(--mut)">'+esc(op?op.era:'')+'</div><div class="kai" style="font-size:clamp(23px,3.4vw,30px);color:var(--gold2);letter-spacing:.1em;margin-top:8px">'+esc(op?op.scene:'')+'</div><div class="slip" style="width:190px;margin:14px auto 0"></div></div>';text=text.slice(cm[0].length).trim();}
+    if(_mc.chap0){chap='<div style="text-align:center;margin:4px 0 30px"><div style="font-size:12px;letter-spacing:.42em;color:var(--mut)">'+esc(op?op.era:'')+'</div><div class="kai" style="font-size:clamp(23px,3.4vw,30px);color:var(--gold2);letter-spacing:.1em;margin-top:8px">'+esc(op?op.scene:'')+'</div><div class="slip" style="width:190px;margin:14px auto 0"></div></div>';}
     var isLast=(i===S.history.length-1);
     /* 仅对话模式：正文若为「名字：「台词」」清单，渲染成聊天气泡 */
     var chatL=null;
@@ -2380,8 +2439,8 @@ function storyPane(){
         return '<div style="display:flex;justify-content:flex-start;margin:0 0 10px"><div style="max-width:80%;border:1px solid rgba(255,238,205,.18);border-radius:16px 16px 16px 5px;background:linear-gradient(135deg,rgba(255,236,200,.07),rgba(18,13,8,.05));box-shadow:inset 0 1px 0 rgba(255,242,214,.16),0 2px 8px rgba(0,0,0,.25);padding:9px 14px"><div style="font-size:10.5px;letter-spacing:.15em;color:var(--gold);margin-bottom:3px">'+esc(mm9[1])+'</div><div style="font-size:15px;line-height:1.75;color:var(--ink)">'+esc(sp9)+'</div></div></div>';
       }).join('')+'</div>';
     }
-    else if(typing){ if(TYPE.msg!==h){TYPE.msg=h;TYPE.full=text;TYPE.pos=0;} paras='<div id="zjTypeBox">'+worldParas(text,TYPE.pos)+'<span class="tcursor">▍</span></div>'; }
-    else{ paras='<div>'+worldParas(text)+'</div>'; }
+    else if(typing){ if(TYPE.msg!==h){TYPE.msg=h;TYPE.pos=0;TYPE.chase=false;TYPE.wait=false;} TYPE.full=text; /* 每次渲染同步最新文本，根治旧实现里 TYPE.full 停在首块流文本的隐患 */ paras='<div id="zjTypeBox">'+worldParas(text,TYPE.pos)+'<span class="tcursor">▍</span></div>'; }
+    else{ if(_mc.paras==null)_mc.paras='<div>'+worldParas(text)+'</div>'; paras=_mc.paras; }
     var sw='';
     if(isLast&&h.alts&&h.alts.length>1){
       var six=(h.altIx==null?h.alts.length-1:h.altIx);
