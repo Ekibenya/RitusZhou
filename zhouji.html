@@ -1886,6 +1886,12 @@ function driveTavern(text){
 /* 断续自动补全：状态栏恒在正文末尾，故「缺失或不完整的 mvu_panel」即「被截断或漏写」的可靠信号。
    命中时自动续写一次，接着把话说完并补齐状态栏，从根上避免「变量不更新 / AI截断」两类问题。 */
 function panelComplete(t){var p=parseMvu(t);return !!(p&&p.world&&Object.keys(p.world).length&&p.char&&Object.keys(p.char).length);}
+/* 渲染热路径用：吃消息对象上已缓存的 panel（所有改文入口都会同步刷新 h.panel），
+   免得整渲染对每条正文重跑一遍状态栏正则解析 */
+function panelCompleteMsg(h){
+  if(h.panel===undefined)h.panel=parseMvu(h.text);
+  var p=h.panel;return !!(p&&p.world&&Object.keys(p.world).length&&p.char&&Object.keys(p.char).length);
+}
 function speedOn(){return !!(API.gen&&API.gen.speed==='1');} /* 极速模式：牺牲正文/变量/记忆/演绎质量，换更快出字。默认关——满血全配置 */
 function autofixOn(){return !(API.gen&&API.gen.autofix==='0')&&!speedOn();} /* 断续自动补全开关，默认开；极速模式下不补 */
 function ensureComplete(sys,msgs,t){
@@ -2464,7 +2470,7 @@ function storyPane(){
       var _row='<div style="display:flex;flex-wrap:nowrap;gap:clamp(10px,4vw,22px);align-items:center;justify-content:center;margin-top:7px;overflow:hidden">'
         +(isLast&&h.alts&&h.alts.length>1?sw:'')
         +'<div class="btn" data-rr="'+i+'" title="重新演绎这一幕" style="'+_rb+'">'+_ti('⟲')+'重演</div>'
-        +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div class="btn" style="'+_rb+';color:var(--gold)">'+_ti('⟲')+'补录中…</div>':'<div class="btn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式/漏字段时用）" style="'+_rb+(panelComplete(h.text)?'':';color:#f0d29a;text-shadow:0 0 13px rgba(240,205,140,.75),0 1px 2px rgba(0,0,0,.8)')+'">'+_ti('⟲')+'重出状态栏</div>'))
+        +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div class="btn" style="'+_rb+';color:var(--gold)">'+_ti('⟲')+'补录中…</div>':'<div class="btn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式/漏字段时用）" style="'+_rb+(panelCompleteMsg(h)?'':';color:#f0d29a;text-shadow:0 0 13px rgba(240,205,140,.75),0 1px 2px rgba(0,0,0,.8)')+'">'+_ti('⟲')+'重出状态栏</div>'))
         +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn" data-act="ttsStop" style="'+_rb+'">'+_ti('■')+'停诵</div>':'<div class="btn" data-tts="'+i+'" title="朗读这一幕" style="'+_rb+'">'+_ti('♪')+'诵读</div>'):'')
         +(!isLast?'<div class="btn" data-backto="'+i+'" title="舍弃其后剧情，回到这一幕继续" style="'+_rb+';color:#e2ab7d;text-shadow:0 0 11px rgba(217,160,106,.5),0 1px 2px rgba(0,0,0,.8)">'+_ti(chev(-1,9))+'回到此处</div>':'')
         +'<div class="btn" data-wedit="'+i+'" title="修改此幕正文" style="'+_rb+';display:inline-flex;align-items:center;gap:2px">'+pen(11)+'修</div>'
