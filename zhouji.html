@@ -2369,7 +2369,7 @@ function sidebar(){
   var worldRows=['纪年','时地','天气'].filter(function(k){return cw[k];}).map(function(k){return '<div style="display:flex;gap:12px;font-size:13px;line-height:1.7;margin:3px 0"><span style="flex:none;width:2.6em;color:var(--mut)">'+k+'</span><span style="flex:1;color:var(--ink2)">'+esc(cw[k])+'</span></div>';}).join('');
   var dashi=(cw['大势']||'').split(/[｜|]/).map(function(t){return t.trim();}).filter(Boolean).map(function(t){return '<div style="display:flex;gap:8px;font-size:12.5px;line-height:1.7;color:#b3a17d"><span style="color:var(--gold)">◦</span><span>'+esc(t)+'</span></div>';}).join('');
   function head(open,act,color,title,mark){return '<div class="btn" data-act="'+act+'" style="display:flex;align-items:center;gap:10px;padding:12px 15px;cursor:pointer"><span class="diamond" style="background:'+color+'"></span><span class="kai" style="font-size:16px;letter-spacing:.22em;color:var(--gold2);flex:1">'+title+'</span><span style="color:var(--mut);font-size:11px">'+(open?'▾ 收':'▸ 展')+'</span></div>';}
-  return '<div id="zjPanelScroll" class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:transparent;zoom:'+FS+';padding-top:'+(isMobile()?'100px':'62px')+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
+  return '<div id="zjPanelScroll" class="bambooV" data-zjzoom style="height:100%;overflow-y:auto;background:transparent;zoom:'+FS+';padding-top:'+(isMobile()?(glassUI()?'128px':'100px'):'62px')+';padding-bottom:'+(isMobile()?'calc(78px + env(safe-area-inset-bottom))':'0')+'">'
     +'<div style="padding:15px 15px 3px"><div class="kai" style="font-size:19px;letter-spacing:.26em;color:var(--gold2);text-align:center">太史简 · 起居注</div><div class="slip" style="margin-top:9px"></div></div>'
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secC,'tgC','var(--red)','王 · 起 居',S.secC)
       +(S.secC?'<div class="fade" style="padding:0 15px 16px">'+charRows
@@ -2660,7 +2660,7 @@ function gameView(){
     /* 玻璃风格·手机双行头（经典）：一行状态(标志+纪年胶囊+全屏)，一行功能键 */
     top='<div id="zjTopBar" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:22px">'
       +_gTopBg
-      +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;gap:7px;padding:6px 10px 0">'+logo+eraDiv+conn+'</div>'
+      +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;gap:7px;padding:calc(env(safe-area-inset-top,0px) + 6px) 10px 0">'+logo+eraDiv+conn+'</div>'
       +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:3px;padding:7px 10px 6px">'+topBtns+'</div>'
       +'</div>';
   }else if(mob){
