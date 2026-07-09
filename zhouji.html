@@ -2383,21 +2383,20 @@ function storyPane(){
   var _taSh=INPUTGLASS?';text-shadow:0 1px 4px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.85)':'';
   var _micBtn=(sttOK()&&(S.micOn===true||(S.micOn==null&&!mob)))?'<button id="zjMicBtn" data-act="micTog" class="btn" title="语音输入（说完自动停）" style="flex:none;background:transparent;border:none;padding:3px;cursor:pointer;color:'+(S.rec?'#e06a50':'var(--gold2)')+';filter:drop-shadow(0 0 7px '+(S.rec?'rgba(224,106,80,.7)':'rgba(224,190,130,.5)')+')">'+micIcon(mob?21:23,S.rec)+'</button>':'';
   var _sendBtn='<button data-act="send" class="btn" title="递呈（回车）" style="flex:none;background:transparent;border:none;padding:0;cursor:pointer;filter:drop-shadow(0 0 8px rgba(224,190,130,.5));opacity:'+(S.thinking?.5:1)+'">'+sendIcon(mob?32:34)+'</button>';
-  var _ta='<textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'" style="flex:1;resize:none;background:transparent;border:none;outline:none;color:var(--gold3)'+_taSh+';font-size:16px;line-height:1.65;padding:'+(mob?'6px 2px 6px 11px':'6px 2px 6px 13px')+';caret-color:var(--gold2)">'+esc(S.input)+'</textarea>';
+  var _ta='<textarea id="zjInput" rows="1" placeholder="'+esc(ph)+'" style="flex:1;resize:none;overflow-y:hidden;background:transparent;border:none;outline:none;color:var(--gold3)'+_taSh+';font-size:16px;line-height:1.65;padding:'+(mob?'6px 2px 6px 11px':'6px 2px 6px 13px')+';caret-color:var(--gold2)">'+esc(S.input)+'</textarea>';
   var _caret='<span class="zjCaretHint" aria-hidden="true" style="position:absolute;left:'+(mob?'11px':'13px')+';top:50%;transform:translateY(-50%);width:2px;height:20px;border-radius:2px;background:var(--gold2);box-shadow:0 0 9px rgba(224,190,130,.95),0 0 3px rgba(224,190,130,.85);animation:zjCaretBlink 1.1s infinite;pointer-events:none;z-index:1"></span>';
   var _cmd=(S.cmdHint?'<div id="zjCmdHint" style="margin-top:6px;font-size:12.5px;line-height:1.6;color:#d9a06a'+(INPUTGLASS?';text-shadow:0 1px 3px rgba(0,0,0,.9)':'')+'">令未行：'+esc(S.cmdHint)+'</div>':'');
-  var _row='<div style="display:flex;gap:'+(mob?'8px':'12px')+';align-items:center;position:relative">'+_ta+_caret+_micBtn+_sendBtn+'</div>';
+  var _row='<div style="display:flex;gap:'+(mob?'8px':'12px')+';align-items:flex-end;position:relative">'+_ta+_caret+_micBtn+_sendBtn+'</div>';
+  /* 毛玻璃遮罩改用【固定像素】的柔和缓动边——中间实心区随输入框行数增高而增高（像 iMessage 越打越高），
+     上下淡出边固定 48px 不变，故渐变面积随输入框一起长高。 */
+  var _gMask='linear-gradient(0deg,transparent 0px,rgba(0,0,0,.05) 8px,rgba(0,0,0,.17) 17px,rgba(0,0,0,.4) 28px,rgba(0,0,0,.7) 38px,rgba(0,0,0,.9) 48px,rgba(0,0,0,.9) calc(100% - 48px),rgba(0,0,0,.7) calc(100% - 38px),rgba(0,0,0,.4) calc(100% - 28px),rgba(0,0,0,.17) calc(100% - 17px),rgba(0,0,0,.05) calc(100% - 8px),transparent 100%)';
+  var _frost=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-48px;bottom:-48px;z-index:0;pointer-events:none;background:transparent;-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+'"></div>':'';
   var _inputBox=INPUTGLASS
-    ? '<div style="position:relative;pointer-events:auto;padding:'+(mob?'2px 6px 0':'2px 8px 0')+'">'+_row+_cmd+'</div>'
+    ? '<div style="position:relative;pointer-events:auto;padding:'+(mob?'2px 6px 0':'2px 8px 0')+'">'+_frost+'<div style="position:relative;z-index:1">'+_row+_cmd+'</div></div>'
     : '<div class="glass" style="pointer-events:auto;padding:'+(mob?'3px 13px':'4px 15px')+';border-radius:15px">'+_row+_cmd+'</div>';
   /* 底部渐变毛玻璃背板（默认样式）：与自定义开局同款——从输入区往下罩住屏幕底、向上淡出，输入内容悬浮其上、字带阴影清晰可读 */
   /* 液态玻璃：几乎看不见的透明质感——主要靠强背景模糊把身后内容柔化（利于阅读），只加一丝极淡暖调，绝不是黑色遮罩。整层用 mask 向上淡出。 */
-  /* 液态玻璃只罩输入区：一整条上下对称的长钟形柔和渐变——输入框处最实，向上向下都很缓地淡出（多档缓动，
-     切换框有框、其背后只余极淡的渐变尾巴，绝无一刀切）。 */
-  var _gMask='linear-gradient(0deg,transparent 0%,rgba(0,0,0,.05) 8%,rgba(0,0,0,.2) 18%,rgba(0,0,0,.5) 26%,rgba(0,0,0,.8) 31%,rgba(0,0,0,.92) 40%,rgba(0,0,0,.92) 52%,rgba(0,0,0,.8) 61%,rgba(0,0,0,.55) 69%,rgba(0,0,0,.34) 79%,rgba(0,0,0,.16) 89%,transparent 100%)';
-  var _glassBg=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:'+(mob?'-24px':'-30px')+';bottom:'+(mob?'-44px':'calc(-8px - env(safe-area-inset-bottom))')+';pointer-events:none;background:transparent;-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:'+_gMask+';mask-image:'+_gMask+';box-shadow:none"></div>':'';
   var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(52px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none">'
-    +_glassBg
     +'<div style="max-width:860px;margin:0 auto;position:relative">'
     +_suggRow+_chipsRow+_inputBox
     +'</div></div>';
@@ -3614,6 +3613,8 @@ function fitStoryPad(){
   var need=Math.max(120,Math.round(sr.bottom-ir.top+26));
   st.style.paddingBottom=need+'px';
 }
+/* iMessage 式自增高输入框：随行数变高（到上限后内部滚动）。高度变了输入框变高，其毛玻璃（挂在输入框上、边缘固定像素淡出）也随之变高。 */
+function autoGrowInput(ta){ta=ta||document.getElementById('zjInput');if(!ta)return;var _ph=null;if(!ta.value){_ph=ta.getAttribute('placeholder');if(_ph!=null)ta.removeAttribute('placeholder');}var max=isMobile()?128:150;ta.style.height='auto';var h=ta.scrollHeight;ta.style.height=Math.min(h,max)+'px';ta.style.overflowY=(h>max)?'auto':'hidden';if(_ph!=null)ta.setAttribute('placeholder',_ph);}
 function render(){
   window.__ZJSCR=S.screen;
   try{if(S.screen==='game')memSync();}catch(e){}
@@ -3664,6 +3665,7 @@ function render(){
     else if(_wc<SBX.wc){SBX.wc=_wc;}
   }catch(e){}
   ensureTyping();
+  try{autoGrowInput();}catch(e){}
   try{imgHydrate();}catch(e){}
   try{graphHydrate();}catch(e){}
   if(window.ZJ3D&&ZJ3D.owns()){
@@ -3792,7 +3794,7 @@ function morphClose(boxId,srcSel,done){
 }
 root.addEventListener('input',function(e){
   if(!e.target)return;
-  if(e.target.id==='zjInput'){S.input=e.target.value;return;}
+  if(e.target.id==='zjInput'){S.input=e.target.value;autoGrowInput(e.target);return;}
   if(e.target.id==='zjWzYear'){if(S.wiz){S.wiz.customYear=e.target.value;
     var wzp=wizParseYear(S.wiz.customYear);
     var wzb=document.querySelector('[data-act="wzNext"]');
