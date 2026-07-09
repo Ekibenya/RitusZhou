@@ -2244,14 +2244,14 @@ function sidebar(){
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secC,'tgC','var(--red)','王 · 起 居',S.secC)
       +(S.secC?'<div class="fade" style="padding:0 15px 16px">'+charRows
         +'<div style="margin:8px 0 6px">'+gaugeBar('神格',shenge,'#8a2f1c,#c44a2e,#e0a45e','var(--red2)')+'</div>'
-        +'<div style="border:1px solid rgba(166,59,38,.3);border-left:3px solid var(--red);border-radius:10px;background:linear-gradient(135deg,rgba(166,59,38,.13),rgba(166,59,38,.05));box-shadow:inset 0 1px 0 rgba(255,220,200,.12);padding:9px 13px;margin-top:4px"><div style="font-size:10px;letter-spacing:.32em;color:var(--red2);margin-bottom:4px">太史令 · 秉笔直书</div><div style="font-size:13px;line-height:1.8;color:#d8a08c;font-style:italic">'+esc(cc['史笔']||'……')+'</div></div>'
+        +'<div style="border:1px solid rgba(166,59,38,.3);border-radius:10px;background:linear-gradient(135deg,rgba(166,59,38,.13),rgba(166,59,38,.05));box-shadow:inset 0 1px 0 rgba(255,220,200,.12);padding:9px 13px;margin-top:4px"><div style="font-size:10px;letter-spacing:.32em;color:var(--red2);margin-bottom:4px">太史令 · 秉笔直书</div><div style="font-size:13px;line-height:1.8;color:#d8a08c;font-style:italic">'+esc(cc['史笔']||'……')+'</div></div>'
         +'</div>':'')+'</div>'
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secN,'tgN','var(--grn)','在 场 之 人',S.secN)+(S.secN?'<div class="fade zjSideNpcs" style="padding:0 15px 12px">'+npcs+'</div>':'')+'</div>'
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secW,'tgW','var(--gold)','岁 月 · 天 下',S.secW)
       +(S.secW?'<div class="fade" style="padding:0 15px 22px">'+worldRows
         +'<div style="margin:8px 0 6px">'+gaugeBar('安稳',anwen,'#3f5f4a,#7ba88f,#a9cbb8','var(--grn2)')+'</div>'
         +(dashi?'<div style="margin-top:6px"><div style="font-size:10px;letter-spacing:.32em;color:var(--mut);margin-bottom:4px">大 势</div>'+dashi+'</div>':'')
-        +'<div style="border:1px solid rgba(95,133,116,.35);border-left:3px solid var(--grn3);border-radius:10px;background:linear-gradient(135deg,rgba(95,133,116,.14),rgba(95,133,116,.05));box-shadow:inset 0 1px 0 rgba(210,235,220,.12);padding:9px 13px;margin-top:8px"><div style="font-size:10px;letter-spacing:.3em;color:var(--grn);margin-bottom:4px">将 临 · 天机仅示于王</div><div style="font-size:12.5px;line-height:1.8;color:var(--grn2)">'+esc(cw['将临']||'……')+'</div></div>'
+        +'<div style="border:1px solid rgba(95,133,116,.35);border-radius:10px;background:linear-gradient(135deg,rgba(95,133,116,.14),rgba(95,133,116,.05));box-shadow:inset 0 1px 0 rgba(210,235,220,.12);padding:9px 13px;margin-top:8px"><div style="font-size:10px;letter-spacing:.3em;color:var(--grn);margin-bottom:4px">将 临 · 天机仅示于王</div><div style="font-size:12.5px;line-height:1.8;color:var(--grn2)">'+esc(cw['将临']||'……')+'</div></div>'
         +'</div>':'')+'</div>'
     +'<div class="glass" style="margin:11px 12px 0;border-radius:14px">'+head(S.secG,'tgG','#7ea892','人 物 图 谱',S.secG)+(S.secG?'<div class="fade" style="padding:0 15px 16px">'+graphInner()+'</div>':'')+'</div>'
     +'<div class="glass" style="margin:11px 12px 14px;border-radius:14px">'+head(S.secA,'tgA','#9db8d8','编 年 史',S.secA)+(S.secA?'<div class="fade" style="padding:0 15px 16px">'+axisInner()+'</div>':'')+'</div>'
