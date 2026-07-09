@@ -2456,17 +2456,16 @@ function gameView(){
   var _fr=_lg?'':'border:1px solid rgba(255,238,205,.2);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02));-webkit-backdrop-filter:blur(2px) saturate(150%);backdrop-filter:blur(2px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,242,214,.25);';
   /* 顶栏背板：液态玻璃＝强饱和提亮的通透玻璃 + 斜向高光条纹 + 左上光斑 + 亮上边缘（镜面感），向下渐隐融入正文；
      关闭时＝原来的深色渐变遮罩。液态玻璃与毛玻璃的区别就在这层高光镜面与提亮通透，而非单纯模糊。 */
-  /* 玻璃遮罩收窄：只罩住上面那排内容、快速淡出，绝不把模糊拖进下方三维天下画面 */
-  var _mk='linear-gradient(180deg,#000 48%,rgba(0,0,0,.38) 68%,transparent 84%)';
+  /* 玻璃遮罩：上面那排内容处保持、往下多档缓缓淡出（不再一刀切），到底彻底透明、不把模糊拖进三维画面 */
+  var _mk='linear-gradient(180deg,#000 44%,rgba(0,0,0,.86) 58%,rgba(0,0,0,.58) 70%,rgba(0,0,0,.32) 81%,rgba(0,0,0,.12) 91%,transparent 100%)';
   var _topBg=_lg
     /* ① SVG 折射滤镜：分形噪声驱动位移图，把玻璃背后的内容像真镜片一样揉出液态扭曲。
        ② 基础玻璃层（无 url，Safari/全平台兜底）＋ 折射玻璃层（带 url，Chrome/安卓生效；Safari 不支持则该层失效、自动露出下面的基础玻璃，绝不塌）。
        ③ 暖色底纹＋亮上下边缘＋斜向高光条纹＋左上光斑（镜面/湿润感）。 */
     ?'<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true"><filter id="zjLiqRefract" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.008 0.018" numOctaves="2" seed="11" result="n"/><feGaussianBlur in="n" stdDeviation="1.3" result="nb"/><feDisplacementMap in="SourceGraphic" in2="nb" scale="16" xChannelSelector="R" yChannelSelector="G"/></filter></svg>'
-      +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(14px) saturate(200%) brightness(1.12);backdrop-filter:blur(14px) saturate(200%) brightness(1.12);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
-      +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(10px) saturate(205%) brightness(1.12) url(#zjLiqRefract);backdrop-filter:blur(10px) saturate(205%) brightness(1.12) url(#zjLiqRefract);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
-      +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(30,21,12,.26) 0%,rgba(28,20,12,.15) 46%,rgba(18,12,7,.05) 74%,transparent 100%);box-shadow:inset 0 -14px 26px -18px rgba(255,238,208,.45);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
-      +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 16%,rgba(255,234,192,.06) 32%,rgba(255,226,176,.34) 46%,rgba(255,234,192,.07) 53%,transparent 70%),radial-gradient(135% 95% at 12% -28%,rgba(255,236,198,.32),transparent 60%);-webkit-mask-image:linear-gradient(180deg,#000 46%,transparent 82%);mask-image:linear-gradient(180deg,#000 46%,transparent 82%)"></div>'
+      +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(13px) saturate(185%) brightness(1.05);backdrop-filter:blur(13px) saturate(185%) brightness(1.05);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
+      +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(9px) saturate(190%) brightness(1.05) url(#zjLiqRefract);backdrop-filter:blur(9px) saturate(190%) brightness(1.05) url(#zjLiqRefract);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
+      +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(26,18,11,.13) 0%,rgba(24,17,10,.07) 52%,rgba(16,11,6,.02) 80%,transparent 100%);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
     :'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.84) 0%,rgba(12,8,5,.5) 58%,rgba(12,8,5,0) 100%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>';
   var conn='<div class="btn zjHl" data-act="zen" title="全屏阅读，只留正文" style="cursor:pointer;display:flex;align-items:center;font-size:11px;letter-spacing:.14em;color:var(--mut2);'+_fr+'padding:4px 12px;border-radius:20px">全屏</div>';
   var topBtns='<button data-ov="set" class="obtn btn" title="设置" style="width:34px;height:34px;font-size:15px;color:'+(apiReady()?'var(--gold2)':'var(--mut)')+'"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="3.1"/><path d="M19.3 12c0-.5-.05-.99-.15-1.46l2-1.56-1.8-3.12-2.37.95a7.4 7.4 0 0 0-2.52-1.46L14.1 2.8h-4.2l-.36 2.55a7.4 7.4 0 0 0-2.52 1.46l-2.37-.95-1.8 3.12 2 1.56c-.1.47-.15.96-.15 1.46s.05.99.15 1.46l-2 1.56 1.8 3.12 2.37-.95c.75.65 1.6 1.15 2.52 1.46l.36 2.55h4.2l.36-2.55a7.4 7.4 0 0 0 2.52-1.46l2.37.95 1.8-3.12-2-1.56c.1-.47.15-.96.15-1.46z"/></svg></button>'
@@ -2489,12 +2488,12 @@ function gameView(){
   var top;
   if(mob){
     // 手机端单行头：功能键(设置…归)独占最顶一排；纪年地点已移到三维场景地名框，全屏改为点正文进出，故此处不再有状态行与全屏键
-    top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:'+(_lg?'8px':'14px')+'">'
+    top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:'+(_lg?'20px':'14px')+'">'
       +_topBg
       +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:3px;padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 6px">'+topBtns+'</div>'
       +'</div>';
   }else{
-    top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:'+(_lg?'6px':'20px')+'">'
+    top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:'+(_lg?'16px':'20px')+'">'
       +_topBg
       +'<div style="position:relative;pointer-events:auto;height:56px;display:flex;align-items:center;gap:9px;padding:4px 12px 0">'
       +logo
