@@ -183,6 +183,8 @@ function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return
 function chev(d,sz){var s=sz||11;return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px">'+(d<0?'<path d="M15 4 7 12 15 20"/>':'<path d="M9 4 17 12 9 20"/>')+'</svg>';}
 /* 闪电描边图标（极速模式用；矢量图非 emoji），on 时亮金发光、off 时全灰 */
 function bolt(on){var c=on?'#ffdca0':'#8a7f68';return '<svg viewBox="0 0 24 24" width="22" height="22" fill="'+c+'" style="display:block'+(on?';filter:drop-shadow(0 0 5px rgba(255,200,110,.7))':'')+'"><path d="M13 2 4.6 13.1c-.34.45-.02 1.1.53 1.1H11l-1.2 7.1c-.11.66.72 1.02 1.12.48L19.4 10c.34-.45.02-1.1-.53-1.1H13l1.2-6.5c.12-.63-.68-1-1.2-.4z"/></svg>';}
+/* 笔头描边图标（修改此幕用；矢量图非 emoji），替代会被移动端渲染成彩色 emoji 的 ✎ 字符 */
+function pen(s){s=s||11;return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l3 3"/></svg>';}
 /* 单图显示尺寸 迷你/小/中/大 → 容器最大宽度（大=满栏，即原样）。多图并排列数由 gridCols 自动决定，不受此项影响。 */
 function imgDispW(sz){return sz==='mini'?'32%':sz==='sm'?'46%':sz==='md'?'70%':'100%';}
 /* 多图并排列数：auto=2–4张两列、5–6张三列（迷你）；c2 恒两列；c3 恒三列（迷你） */
@@ -222,17 +224,18 @@ function illuHtml(h,i){
           +'<div class="btn" data-imgzoom="'+i+'" title="缩放：迷你 / 小 / 中 / 大" style="position:absolute;top:8px;right:8px;z-index:3;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;color:#f6e8c4;background:rgba(14,9,5,.62);border:1px solid rgba(255,238,205,.34);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 2px 10px rgba(0,0,0,.5)">'+zoomIcon(19)+'</div>'
         +'</div>';
     }
-    var _pastRedraw=(i!==S.history.length-1)&&imgReady();
-    if(_multiVer||_pastRedraw){
+    /* 版本切换器（第X/Y版）＋「重绘」按钮：放在插画正下方。绘此幕/重绘单独拎在插画上下方，正文下那一排不再放，腾出空间让其余框一排显全。 */
+    var _showRedraw=imgReady()&&!S.thinking&&!!h.img;
+    if(_multiVer||_showRedraw){
       illu+='<div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:0 0 14px">';
       if(_multiVer){illu+='<div class="btn obtn" data-imgprev="'+i+'" title="上一版（旧图）" style="font-size:13px;padding:3px 12px;line-height:1;'+(_vix<=0?'opacity:.35;':'')+'">'+chev(-1,12)+'</div>'
         +'<span style="font-size:11px;color:var(--mut);letter-spacing:.06em">第 '+(_vix+1)+' / '+_vers.length+' 版'+(_cur.length>=2?' · '+_cur.length+' 图':'')+'</span>'
         +'<div class="btn obtn" data-imgnext="'+i+'" title="下一版" style="font-size:13px;padding:3px 12px;line-height:1;'+(_vix>=_vers.length-1?'opacity:.35;':'')+'">'+chev(1,12)+'</div>';}
-      if(_pastRedraw){illu+=(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-drawidx="'+i+'" title="为这一幕重新生成插画" style="font-size:12px;letter-spacing:.18em;padding:5px 14px">✦ 重绘</div>');}
+      if(_showRedraw){illu+=(S.imgBusy===i?'<div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-drawidx="'+i+'" title="为这一幕重新生成插画" style="font-size:12px;letter-spacing:.18em;padding:5px 14px">✦ 重绘</div>');}
       illu+='</div>';
     }
   }
-  if(!h.img&&h.role==='world'&&i!==S.history.length-1&&imgReady()){
+  if(!h.img&&h.role==='world'&&imgReady()&&!S.thinking){
     illu+='<div style="text-align:center;margin:2px 0 16px">'+(S.imgBusy===i?'<span style="font-size:12px;letter-spacing:.15em;color:var(--gold)">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></span>':'<div class="btn obtn" data-drawidx="'+i+'" title="为这一幕生成插画" style="display:inline-block;font-size:12px;letter-spacing:.18em;padding:5px 14px;color:var(--gold3)">✦ 绘此幕</div>')+'</div>';
   }
   return illu;
@@ -2185,13 +2188,13 @@ function storyPane(){
   var older=hStart>0?'<div style="text-align:center;margin:0 0 24px"><div class="btn obtn" data-act="histmore" style="display:inline-block;font-size:12px;letter-spacing:.18em;padding:7px 18px;border-radius:9px">▲ 展开更早 '+Math.min(30,hStart)+' 幕</div><div style="font-size:11px;color:var(--mut);margin-top:7px;letter-spacing:.1em">其前 '+hStart+' 幕未载入以保流畅，剧情已尽录于太史长卷（忆）</div></div>':'';
   var items=older+S.history.slice(hStart).map(function(h,ri){var i=hStart+ri;
     if(h.role==='user'){
-      var utb='<div class="btn" data-mtool="'+(i+1)+'" title="修改或删去此言" style="flex:none;align-self:flex-end;color:#cdbf9e;opacity:.75;padding:2px 10px;font-size:15px;letter-spacing:1px;background:rgba(30,22,14,.5);border:1px solid rgba(201,160,99,.3);border-radius:8px;line-height:1.5">⋯</div>';
+      var utb='<div class="btn" data-mtool="'+(i+1)+'" title="修改或删去此言" style="flex:none;align-self:flex-end;color:#cdbf9e;opacity:.55;padding:2px 6px;font-size:18px;letter-spacing:2px;line-height:1.1;cursor:pointer">⋯</div>';
       var ubody;
       if(S.msgEdit===i){
         ubody='<div style="max-width:82%;flex:1"><textarea id="zjMsgEditBox" style="width:100%;min-height:90px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:#e3b6a0;font-size:14px;line-height:1.8;padding:10px 13px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
           +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:7px"><div class="btn obtn" data-act="mCancel" style="font-size:12px;padding:5px 14px">取消</div><div class="btn gbtn" data-act="mSave" style="font-size:12px;letter-spacing:.15em;padding:5px 16px">保存</div></div></div>';
       }else{
-        ubody='<div style="max-width:82%;border:1px solid rgba(166,59,38,.28);border-right:3px solid var(--red);border-radius:12px;background:linear-gradient(135deg,rgba(166,59,38,.11),rgba(166,59,38,.04));box-shadow:inset 0 1px 0 rgba(255,220,200,.1);padding:11px 15px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e3b6a0;white-space:pre-wrap">'+esc(h.text)+'</div></div>';
+        ubody='<div class="glass" style="max-width:82%;border:1px solid rgba(166,59,38,.34);border-right:3px solid var(--red);border-radius:17px;background:linear-gradient(135deg,rgba(180,66,42,.20),rgba(120,42,28,.07) 44%,rgba(18,13,8,.03));padding:12px 16px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e9c0aa;white-space:pre-wrap">'+esc(h.text)+'</div></div>';
       }
       var utools='<div class="zjMT" data-mt="'+i+'" style="display:'+((S.msgTools===i&&S.msgEdit!==i)?'flex':'none')+';gap:8px;justify-content:flex-end;margin-top:7px">'
         +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此言</div>'
@@ -2233,27 +2236,31 @@ function storyPane(){
         +'<div style="font-size:11.5px;color:var(--mut)">'+(six+1)+'／'+h.alts.length+'</div>'
         +'<div class="btn obtn" data-act="swNext" title="'+(six>=h.alts.length-1?'再演新稿':'看下一稿')+'" style="font-size:12px;padding:6px 13px;line-height:1">'+chev(1)+(six>=h.alts.length-1?'<span style="vertical-align:1px">＋</span>':'')+'</div>';
     }
-    var _rb='font-size:11px;letter-spacing:.04em;padding:5px 11px;white-space:nowrap;flex:none';
-    /* 每一幕世界消息都常驻一排操作（旧消息也全有）：重演/重出状态栏/绘此幕/诵此幕；旧消息再多一个「回到此处」。nowrap 强制一排、可横滑。 */
-    var retry=(!S.thinking&&i>0&&!typing&&h.role==='world')?'<div style="display:flex;flex-wrap:nowrap;gap:6px;align-items:center;margin-top:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px">'
-      +(isLast?sw:'')
-      +'<div class="btn obtn" data-rr="'+i+'" style="'+_rb+'">⟲ 重演此幕</div>'
-      +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div style="font-size:11px;letter-spacing:.04em;color:var(--gold);white-space:nowrap;flex:none">补状态栏<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式时用）" style="'+_rb+';'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">⟲ '+(panelComplete(h.text)?'重出状态栏':'补状态栏')+'</div>'))
-      +(imgReady()?(S.imgBusy===i?'<div style="font-size:11px;letter-spacing:.04em;color:var(--gold);white-space:nowrap;flex:none">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-drawidx="'+i+'" style="'+_rb+'">'+(h.img?'⟲ 重绘':'✦ 绘此幕')+'</div>'):'<div class="btn obtn" data-act="openImgSet" title="配置生图接口后即可为此幕绘制插画" style="'+_rb+';color:var(--gold3)">✦ 生图设置</div>')
-      +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="'+_rb+';color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停诵</div>':'<div class="btn obtn" data-tts="'+i+'" style="'+_rb+'">♪ 诵此幕</div>'):'')
-      +(!isLast?'<div class="btn obtn" data-backto="'+i+'" title="舍弃其后剧情，回到这一幕继续" style="'+_rb+';color:#d9a06a;border-color:rgba(217,160,106,.45)">'+chev(-1,11)+' 回到此处</div>':'')
-      +(S.imgErr&&isLast?'<div style="font-size:11px;color:#d9a06a;white-space:nowrap;flex:none">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="'+_rb+';color:var(--gold3)">⚙ 设置</div>':'')+'</div>':'';
-    var wtb='<div class="btn" data-mtool="'+(i+1)+'" title="修改或删去此幕" style="position:absolute;top:2px;right:2px;color:#cdbf9e;opacity:.75;padding:2px 10px;font-size:15px;letter-spacing:1px;z-index:2;background:rgba(30,22,14,.5);border:1px solid rgba(201,160,99,.3);border-radius:8px;line-height:1.5">⋯</div>';
-    var wtools='<div class="zjMT" data-mt="'+i+'" style="display:'+((S.msgTools===i&&S.msgEdit!==i)?'flex':'none')+';gap:8px;flex-wrap:wrap;margin:2px 0 12px">'
-      +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此幕</div>'
-      +(i>0&&!S.thinking?'<div class="btn" data-act="mDel" style="cursor:pointer;font-size:12px;padding:5px 14px;background:transparent;border:1px solid rgba(166,59,38,.4);border-radius:9px;color:#b06a55">删此幕</div>':'')
-      +'</div>';
+    /* 每一幕世界消息常驻一排操作（旧幕也全有）：重演/重出状态栏/绘此幕/诵此幕/(旧幕)回到此处/修。
+       全部 flex:1 等宽同尺寸、铺满一排，绝不横滑；宁可字号缩小也要一排显全。 */
+    /* 正文下方常驻一排操作：重演／重出状态栏／诵此幕／(旧幕)回到此处 等宽铺满一排，末尾「修」只占小小一格（笔头＋一字）。绘此幕/重绘不在此排——已单独拎到插画上下方。绝不横滑、绝不换行。 */
+    var _rb='flex:1 1 0;min-width:0;box-sizing:border-box;font-size:12px;letter-spacing:.02em;padding:6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;line-height:1.5';
+    var _rbFix='flex:0 0 auto;box-sizing:border-box;font-size:12px;padding:6px 11px;white-space:nowrap;line-height:1.5';
+    var retry='';
+    if(!S.thinking&&i>0&&!typing&&h.role==='world'){
+      var _row='<div style="display:flex;flex-wrap:nowrap;gap:5px;align-items:stretch;margin-top:5px">'
+        +(isLast&&h.alts&&h.alts.length>1?sw:'')
+        +'<div class="btn obtn" data-rr="'+i+'" title="重新演绎这一幕" style="'+_rb+'">重演</div>'
+        +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div class="btn obtn" style="'+_rb+';color:var(--gold);border-color:rgba(224,190,130,.5)">补录中…</div>':'<div class="btn obtn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式时用）" style="'+_rb+';'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">'+(panelComplete(h.text)?'重出状态':'补状态')+'</div>'))
+        +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="'+_rb+';color:var(--gold2);border-color:rgba(224,190,130,.6)">停诵</div>':'<div class="btn obtn" data-tts="'+i+'" title="朗读这一幕" style="'+_rb+'">诵读</div>'):'')
+        +(!isLast?'<div class="btn obtn" data-backto="'+i+'" title="舍弃其后剧情，回到这一幕继续" style="'+_rb+';color:#d9a06a;border-color:rgba(217,160,106,.45)">回到此处</div>':'')
+        +'<div class="btn obtn" data-wedit="'+i+'" title="修改此幕正文" style="'+_rbFix+'">'+pen(11)+' 修</div>'
+        +'</div>';
+      var _errline=(S.imgErr&&isLast)?'<div style="display:flex;gap:6px;align-items:center;margin-top:5px"><div style="font-size:10.5px;color:#d9a06a;flex:1;min-width:0">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="font-size:10px;padding:4px 10px;flex:none;color:var(--gold3)">⚙ 设置</div></div>':'';
+      retry=_row+_errline;
+    }
+    /* AI 正文不再挂「⋯」菜单——修改功能已并入下方那一排的「修」按钮 */
     if(S.msgEdit===i){
       paras='<div><textarea id="zjMsgEditBox" style="width:100%;min-height:170px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:var(--ink);font-size:14px;line-height:1.8;padding:11px 14px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end;margin:7px 0 12px"><div class="btn obtn" data-act="mCancel" style="font-size:12px;padding:5px 14px">取消</div><div class="btn gbtn" data-act="mSave" style="font-size:12px;letter-spacing:.15em;padding:5px 16px">保存</div></div></div>';
       illu='';cotHtml='';retry='';
     }
-    return '<div class="fade" style="margin-bottom:24px;position:relative">'+wtb+chap+cotHtml+wtools+paras+illu+retry+'</div>';
+    return '<div class="fade" style="margin-bottom:24px;position:relative">'+chap+cotHtml+paras+illu+retry+'</div>';
   }).join('');
   var thinking='';
   if(genSync()){
@@ -3278,11 +3285,11 @@ function apiBody(){
     +'<button data-act="apiTest" class="obtn btn" style="font-size:14px;letter-spacing:.15em;padding:10px 24px">测试连接</button>'
     +'<button data-act="pvToggle" class="obtn btn" style="font-size:14px;letter-spacing:.15em;padding:10px 24px;color:'+(S.pvShow?'var(--gold2)':'var(--mut2)')+'">'+(S.pvShow?'收起透视':'提示词透视')+'</button>'
     +'<button data-act="apiClear" class="btn" style="cursor:pointer;background:transparent;border:1px solid rgba(166,59,38,.4);color:#b06a55;font-size:13px;letter-spacing:.1em;padding:10px 18px">清除本机密钥</button></div>'
+    +speedToggle()
     +msg
     +(S.pvShow?pvPanel():'')
     +'<div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(201,160,99,.18);font-size:12px;line-height:1.9;color:var(--mut)">'+st+'<br>提示：若在 SillyTavern（酒馆）中通过酒馆助手加载本页面，则自动走酒馆的生成通道，无需在此配置。浏览器直连若报跨域（CORS）错误，可改用支持跨域的中转地址。</div>'
     +'<div style="margin-top:14px;font-size:11.5px;line-height:1.85;color:var(--mut)">隐私与用户内容：本游戏为纯前端静态网页，无服务器端业务程序、无数据库。你的存档、聊天记录、记忆、密钥等一切游戏数据仅存于本机浏览器，不上传本站、本项目与作者亦无从收集。唯一外发的是你自行配置的 AI／绘图／语音接口请求，由你的浏览器直连你选定的服务商。你输入、生成与分享的一切内容及游玩行为均由你独立完成并自负全责，与本项目及作者无关。使用即视为同意仓库内《使用条款与免责声明》(TERMS.md)。</div>'
-    +speedToggle()
     +'</div>';
 }
 /* 极速模式开关：置于「链」标签最下面。on=亮光发光、off=全灰。默认关（满血全配置）。 */
@@ -3757,6 +3764,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-imgnext')!=null&&t.getAttribute('data-imgnext')!==''){var _ni=parseInt(t.getAttribute('data-imgnext'),10);var _nh=S.history[_ni];var _nv=_nh&&imgVers(_nh);if(_nv&&_nv.length){var _cy=(_nh.verIx==null?_nv.length-1:_nh.verIx);if(_cy<_nv.length-1){_nh.verIx=_cy+1;_nh.img=(_nv[_nh.verIx]||[])[0]||_nh.img;savePref();illuSwap(_ni,_nh);}}return;}
       if(t.getAttribute('data-imgzoom')!=null&&t.getAttribute('data-imgzoom')!==''){var _zi=parseInt(t.getAttribute('data-imgzoom'),10);var _zh=S.history[_zi];if(_zh){var _zord=['lg','md','sm','mini'];var _zcur=_zh.dispSize||IMGCFG.disp||'lg';var _zk=_zord.indexOf(_zcur);if(_zk<0)_zk=0;var _zn=_zord[(_zk+1)%_zord.length];_zh.dispSize=_zn;var _zw=t.parentElement;if(_zw&&_zw.getAttribute('data-imgwrap'))_zw.style.maxWidth=imgDispW(_zn);savePref();}return;}
       if(t.getAttribute('data-drawidx')!=null&&t.getAttribute('data-drawidx')!==''){var _di=parseInt(t.getAttribute('data-drawidx'),10);if(S.imgBusy==null&&imgReady()&&S.history[_di]&&S.history[_di].role==='world')drawWorld(_di);return;}
+      if(t.getAttribute('data-wedit')!=null&&t.getAttribute('data-wedit')!==''){var _wei=parseInt(t.getAttribute('data-wedit'),10);if(S.history[_wei]){if(TYPE.msg===S.history[_wei]){typedSet.add(S.history[_wei]);TYPE.msg=null;}S.msgTools=null;S.msgEdit=_wei;S._noFade=true;render();}return;}
       if(t.getAttribute('data-rr')!=null&&t.getAttribute('data-rr')!==''){reroll(parseInt(t.getAttribute('data-rr'),10));return;}
       if(t.getAttribute('data-rrfmt')!=null&&t.getAttribute('data-rrfmt')!==''){rerollPanel(parseInt(t.getAttribute('data-rrfmt'),10));return;}
       if(t.getAttribute('data-tts')!=null&&t.getAttribute('data-tts')!==''){var _ti=parseInt(t.getAttribute('data-tts'),10);if(S.history[_ti]&&S.history[_ti].role==='world')ttsSpeak(_ti);return;}
