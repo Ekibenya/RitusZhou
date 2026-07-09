@@ -2365,16 +2365,19 @@ function storyPane(){
   var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['free','书 · 自由'],['world','控制游戏']];
   /* 模式/开关一律做成柔光金字（与封面、正文操作栏同款），去掉方框：选中/开启＝亮色发光，未选/关闭＝暗灰无光。 */
   var _cpad=isMobile()?'3px 7px':'6px 10px',_cfs=isMobile()?'12px':'13px',_cls=isMobile()?'.05em':'.14em';
-  var gchip=function(label,on,ac,gl,attrs,dis){
+  var gchip=function(label,on,ac,gl,attrs,dis,noBall){
     var c=dis?'var(--mut)':(on?ac:'var(--mut)');
     var ts=on&&!dis?('0 0 11px '+gl+',0 1px 2px rgba(0,0,0,.8)'):'0 1px 2px rgba(0,0,0,.6)';
-    /* 与「叙事/太史简」灵动岛同款发光小球：选中/开启即亮起并轻轻呼吸，点选时嗖地爆散一下——
-       告诉用户这排（曰行书…到策）都是可点的功能选项。未选时保留占位、球隐去(不闪不占眼)。 */
+    /* 每个选项前一颗发光小球（前导光点）：开关类(聊天/骰/策)各自的球随开启亮起、点选时嗖地爆散一下；
+       模式类(曰/行/书/控制游戏)不放固定球，改由一颗共用的「飞行小球」zjModeBall 嗖地滑过去再爆散融字——
+       与「叙事/太史简」灵动岛完全同款。noBall 的选项此处只留同宽占位槽 .zjModeSlot 供飞行球停靠对齐。 */
     var live=on&&!dis;
-    var ball='<span class="zjChipBall" data-glow="'+gl+'" style="--cbg:'+gl+';display:inline-block;vertical-align:middle;width:6px;height:6px;margin-right:4px;border-radius:50%;background:radial-gradient(circle,#fff6e2,'+ac+');opacity:'+(live?'1':'0')+';box-shadow:0 0 7px 1px '+gl+(live?';animation:zjChipPulse 2.4s ease-in-out infinite':'')+'"></span>';
-    return '<div class="btn" '+attrs+' style="cursor:'+(dis?'default':'pointer')+';opacity:'+(dis?'.4':'1')+';flex:none;white-space:nowrap;line-height:1.4;padding:'+_cpad+';font-size:'+_cfs+';letter-spacing:'+_cls+';color:'+c+';text-shadow:'+ts+';transition:color .2s,text-shadow .2s">'+ball+label+'</div>';
+    var lead=noBall
+      ? '<span class="zjModeSlot" style="display:inline-block;vertical-align:middle;width:6px;height:6px;margin-right:4px"></span>'
+      : '<span class="zjChipBall" data-glow="'+gl+'" style="--cbg:'+gl+';display:inline-block;vertical-align:middle;width:6px;height:6px;margin-right:4px;border-radius:50%;background:radial-gradient(circle,#fff6e2,'+ac+');opacity:'+(live?'1':'0')+';box-shadow:0 0 7px 1px '+gl+(live?';animation:zjChipPulse 2.4s ease-in-out infinite':'')+'"></span>';
+    return '<div class="btn" '+attrs+' style="cursor:'+(dis?'default':'pointer')+';opacity:'+(dis?'.4':'1')+';flex:none;white-space:nowrap;line-height:1.4;padding:'+_cpad+';font-size:'+_cfs+';letter-spacing:'+_cls+';color:'+c+';text-shadow:'+ts+';transition:color .2s,text-shadow .2s">'+lead+label+'</div>';
   };
-  var modeChip=function(md){var on=md[0]===S.mode;var dis=S.chatOnly&&md[0]!=='world';return gchip(isMobile()?md[1].replace(/\s/g,''):md[1],on,'var(--gold2)','rgba(224,190,130,.6)','data-mode="'+md[0]+'"',dis);};
+  var modeChip=function(md){var on=md[0]===S.mode;var dis=S.chatOnly&&md[0]!=='world';return gchip(isMobile()?md[1].replace(/\s/g,''):md[1],on,'var(--gold2)','rgba(224,190,130,.6)','data-mode="'+md[0]+'"',dis,true);};
   var chips=MODES.slice(0,3).map(modeChip).join('');
   var con=!!S.chatOnly;
   chips+=gchip('聊天模式',con,'#9db8d8','rgba(157,184,216,.65)','data-act="chatTog" title="聊天模式：不写旁白剧情，与在场之人像聊天软件一样快速对谈"')+modeChip(MODES[3]);
@@ -2384,7 +2387,8 @@ function storyPane(){
   chips+=gchip(isMobile()?'策':'策 · 四策',son,'var(--gold2)','rgba(224,190,130,.6)','data-act="suggTog" title="懒人四策：每幕后由 AI 拟四条可点选的下一步"');
   var ph=(S.chatOnly&&S.mode!=='world')?'像发消息一样聊起来……':MODE_PH[S.mode];
   var _suggRow=((S.suggList&&S.suggList.length&&!S.thinking)?'<div id="zjSuggRow" style="pointer-events:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:'+(mob?'5px':'8px')+'">'+S.suggList.map(function(sg,si){return '<div class="btn zjHl" data-sugg="'+si+'" style="cursor:pointer;font-size:'+(mob?'11px':'12px')+';line-height:1.5;letter-spacing:.02em;padding:'+(mob?'6px 10px':'6px 12px')+';border-radius:12px;color:#c8b48e;border:1px solid rgba(255,238,205,.18);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.03));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);box-shadow:inset 0 1px 0 rgba(255,242,214,.18),0 2px 8px rgba(0,0,0,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sg)+'</div>';}).join('')+'</div>':'');
-  var _chipsRow='<div id="zjChipsRow" style="pointer-events:auto;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:'+(mob?'3px':'8px')+';padding:2px 2px 1px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch">'+chips+'</div>';
+  var _modeBall='<span id="zjModeBall" aria-hidden="true" style="position:absolute;top:50%;left:0;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#fff2cf,#c9a063);box-shadow:0 0 7px 1px rgba(224,190,130,.6);animation:zjIsleGlow 2.4s ease-in-out infinite;opacity:0;pointer-events:none;z-index:2"></span>';
+  var _chipsRow='<div id="zjChipsRow" style="pointer-events:auto;position:relative;display:flex;gap:'+(mob?'6px':'8px')+';margin-bottom:'+(mob?'3px':'8px')+';padding:2px 2px 1px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch">'+chips+_modeBall+'</div>';
   var _taSh=INPUTGLASS?';text-shadow:0 1px 4px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.85)':'';
   var _micBtn=(sttOK()&&(S.micOn===true||(S.micOn==null&&!mob)))?'<button id="zjMicBtn" data-act="micTog" class="btn" title="语音输入（说完自动停）" style="flex:none;background:transparent;border:none;padding:3px;cursor:pointer;color:'+(S.rec?'#e06a50':'var(--gold2)')+';filter:drop-shadow(0 0 7px '+(S.rec?'rgba(224,106,80,.7)':'rgba(224,190,130,.5)')+')">'+micIcon(mob?21:23,S.rec)+'</button>':'';
   var _sendBtn='<button data-act="send" class="btn" title="递呈（回车）" style="flex:none;background:transparent;border:none;padding:0;cursor:pointer;filter:drop-shadow(0 0 8px rgba(224,190,130,.5));opacity:'+(S.thinking?.5:1)+'">'+sendIcon(mob?32:34)+'</button>';
@@ -3673,6 +3677,7 @@ function render(){
   }catch(e){}
   ensureTyping();
   try{autoGrowInput();}catch(e){}
+  try{positionModeBall();}catch(e){}
   try{imgHydrate();}catch(e){}
   try{graphHydrate();}catch(e){}
   if(window.ZJ3D&&ZJ3D.owns()){
@@ -3756,6 +3761,41 @@ function chipBallSet(chip,on){
   if(!chip)return;var b=chip.querySelector('.zjChipBall');if(!b)return;
   b.style.opacity=on?'1':'0';b.style.animation=on?'zjChipPulse 2.4s ease-in-out infinite':'';
   if(on)chipBloom(b);
+}
+/* 模式选择器(曰/行/书/控制游戏)共用的飞行小球——与「叙事/太史简」灵动岛 tabIsleAnim 一模一样：
+   小球嗖地滑到所选项、再嗖地爆散并把该项文字点亮（融合）。 */
+function zjModeBallX(ref,row){var x=0;while(ref&&ref!==row){x+=ref.offsetLeft;ref=ref.offsetParent;}return x;}
+function zjModeBallRef(md){var row=document.getElementById('zjChipsRow');if(!row)return null;var chip=row.querySelector('[data-mode="'+md+'"]');if(!chip)return null;var slot=chip.querySelector('.zjModeSlot');return {row:row,ref:slot||chip};}
+function positionModeBall(){
+  try{
+    var ball=document.getElementById('zjModeBall');if(!ball)return;
+    var r=zjModeBallRef(S.mode);if(!r||!r.ref){ball.style.opacity='0';return;}
+    ball.style.left=(zjModeBallX(r.ref,r.row)+r.ref.offsetWidth/2)+'px';ball.style.opacity='1';
+  }catch(e){}
+}
+function modeBallFly(nmd){
+  var ball=document.getElementById('zjModeBall');var r=zjModeBallRef(nmd);
+  if(!ball||!r||!r.ref)return;
+  var newLeft=zjModeBallX(r.ref,r.row)+r.ref.offsetWidth/2;
+  var oldLeft=parseFloat(ball.style.left);if(isNaN(oldLeft))oldLeft=newLeft;
+  ball.style.opacity='1';
+  if(!ball.animate||reducedMotion()){ball.style.left=newLeft+'px';return;}
+  ball.animate([{left:oldLeft+'px'},{left:newLeft+'px'}],{duration:330,easing:'cubic-bezier(.3,1.05,.3,1)'});
+  ball.style.left=newLeft+'px';
+  setTimeout(function(){
+    var b=document.getElementById('zjModeBall');
+    if(b&&b.animate)b.animate([
+      {transform:'translate(-50%,-50%) scale(1)',boxShadow:'0 0 5px 1px rgba(255,210,120,.5)',offset:0},
+      {transform:'translate(-50%,-50%) scale(1.6)',boxShadow:'0 0 22px 9px rgba(255,224,150,.85)',offset:.34},
+      {transform:'translate(-50%,-50%) scale(1)',boxShadow:'0 0 34px 5px rgba(255,214,120,0)',offset:1}
+    ],{duration:580,easing:'cubic-bezier(.25,.7,.35,1)'});
+    var act=document.querySelector('[data-mode="'+nmd+'"]');
+    if(act&&act.animate)act.animate([
+      {textShadow:'0 1px 2px rgba(0,0,0,.8)'},
+      {textShadow:'0 0 20px rgba(255,224,150,1),0 0 8px rgba(224,190,130,.9),0 1px 2px rgba(0,0,0,.8)',offset:.4},
+      {textShadow:'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)'}
+    ],{duration:600,easing:'ease-out'});
+  },300);
 }
 function pillFlip(pillId,oldRect){
   if(reducedMotion()||!oldRect)return;
@@ -3997,7 +4037,8 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-mode')){var nmd=t.getAttribute('data-mode');if(S.chatOnly&&nmd!=='world')return;
         if(nmd===S.mode){if(S.chatOnly&&nmd==='world'){S.mode='say';S.cmdHint=null;S._noFade=true;render();}return;}S.mode=nmd;S.cmdHint=null;
         var mchips=document.querySelectorAll('[data-mode]');
-        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.textShadow=mon?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';chipBallSet(mchips[mi],mon);}
+        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.textShadow=mon?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';}
+        modeBallFly(nmd);
         var mta=document.getElementById('zjInput');if(mta)mta.placeholder=MODE_PH[nmd];
         var mh=document.getElementById('zjCmdHint');if(mh&&mh.parentNode)mh.parentNode.removeChild(mh);
         return;}
