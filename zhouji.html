@@ -2432,9 +2432,12 @@ function storyPane(){
   }
   if(S.zen&&!S.zenWorld){scene='';sceneH=0;}
   else if(!S.zen&&(hideScene||hide3d)){
-    scene='<div id="zjMiniIsle" data-act="'+(hide3d?'show3d':'svgfold')+'" class="btn zjHl" title="展开天下画面" style="position:absolute;top:'+(barH+2)+'px;left:50%;margin-left:-47px;width:94px;height:27px;z-index:4;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;gap:7px">'
-      +'<span style="width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
-      +'<span style="font-size:11px;letter-spacing:.22em;color:var(--gold2);font-family:var(--kai)">天下</span></div>';
+    /* 三维折叠后的灵动岛：不再是没意义的「天下」，改为滚动显示纪年·地点，点它展开三维 */
+    var _mp=currentPanel(),_mcw=_mp?_mp.world:{};
+    var _mera=[_mcw['纪年'],_mcw['时地']].filter(Boolean).join(' · ')||(currentOpening()?currentOpening().era:'')||'展开天下画面';
+    scene='<div id="zjMiniIsle" data-act="'+(hide3d?'show3d':'svgfold')+'" class="btn zjHl" title="展开天下画面" style="position:absolute;top:'+(barH+2)+'px;left:50%;margin-left:-140px;width:280px;height:27px;z-index:4;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px;padding:0 14px;overflow:hidden">'
+      +'<span style="flex:none;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
+      +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(_mera)+'</span><span aria-hidden="true">'+esc(_mera)+'</span></div></div></div>';
     sceneH=16;
   }
   /* 背景毛玻璃独立成非滚动层：backdrop-filter 一旦置于滚动容器(#zjStory)上，
@@ -4044,6 +4047,17 @@ root.addEventListener('change',function(e){
 });
 root.addEventListener('focusout',function(){if(softPend){softPend=false;setTimeout(function(){var ae=document.activeElement;if(!(ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='INPUT')))render();},120);}});
 root.addEventListener('keydown',function(e){if(e.target&&e.target.id==='zjInput'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();S.input=e.target.value;if(S.zen)S.zenInput=false;send();}});
+/* 进/出全屏（zen）带滑动淡出动画——顶栏/场景/灵动岛上滑离场、输入框/切换框下滑离场；进时先动画再切、出时先切再回落。
+   点正文与「退出全屏」按钮共用此函数，保证两种入口动画一致。 */
+function zenToggle(){
+  var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
+  function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
+  if(S.zen){S.zen=false;S.zenInput=false;S.zenWorld=false;S._noFade=true;render();
+    if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)'});});
+  }else if(reducedMotion()){S.zen=true;S.zenWorld=false;S._noFade=true;render();}
+  else{zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)'});});
+    setTimeout(function(){S.zen=true;S.zenWorld=false;S._noFade=true;render();},295);}
+}
 /* 点正文进出全屏（zen）：纯点击才触发——滑动、选字、点按钮/图片/操作栏/三维场景都不触发；再点一下退出 */
 (function(){
   var _tx=0,_ty=0,_tt=0,_tmv=false,_tok=false;
@@ -4059,7 +4073,7 @@ root.addEventListener('keydown',function(e){if(e.target&&e.target.id==='zjInput'
     if(_tmv||Date.now()-_tt>400)return;
     if(S.overlay||S.worldFull)return;
     var sel=window.getSelection&&window.getSelection();if(sel&&String(sel).length>0)return;
-    S.zen=!S.zen;if(!S.zen)S.zenInput=false;S._noFade=true;render();
+    zenToggle();
   },true);
 })();
 root.addEventListener('click',function(e){
@@ -4238,15 +4252,7 @@ root.addEventListener('click',function(e){
       else if(a==='imgCacheClearNo'){S.imgCacheClearArm=false;renderOverlay();return;}
       else if(a==='imgCacheClear'){if(!S.imgCacheClearArm){S.imgCacheClearArm=true;renderOverlay();return;}S.imgCacheClearArm=false;idbClearAll(function(){S.imgCacheKeys=[];if(S.overlay==='set'&&S.setTab==='imgcache')renderOverlay();});return;}
       else if(a==='openDataSet'){S.setTab='font';S.overlay='set';S.wipeArm=false;renderOverlay();return;}
-      else if(a==='zen'){
-        var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
-        function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
-        if(S.zen){S.zen=false;S.zenInput=false;S.zenWorld=false;S._noFade=true;render();
-          if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)'});});
-        }else if(reducedMotion()){S.zen=true;S.zenWorld=false;S._noFade=true;render();}
-        else{zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)'});});
-          setTimeout(function(){S.zen=true;S.zenWorld=false;S._noFade=true;render();},295);}
-        return;}
+      else if(a==='zen'){zenToggle();return;}
       else if(a==='worldFull'){
         var wfI=document.getElementById('zjSceneIsle');var wfR=wfI&&wfI.getBoundingClientRect();
         S.worldFull=!S.worldFull;S._noFade=true;render();
