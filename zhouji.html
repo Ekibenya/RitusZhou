@@ -384,7 +384,7 @@ if(UISTYLE)applyUiStyle(UISTYLE); /* 已选过：开机按风格矫正子开关�
    正好撞上三维引擎/场景资源的下载高峰，慢网手机上会「卡住出不来」。 */
 if(!UISTYLE){setTimeout(function(){try{
   var _sfx0=window.innerWidth<920?'m':'d';
-  ['glass','minimal'].forEach(function(st){var im=new Image();im.decoding='async';im.src='core/res/uidemo_'+st+'_'+_sfx0+'.jpg?v=2';});
+  ['glass','minimal'].forEach(function(st){var im=new Image();im.decoding='async';im.src='core/res/uidemo_'+st+'_'+_sfx0+'.jpg?v=3';});
 }catch(e){}},1200);}
 /* 手机版底部「叙事/太史简」切换：默认灵动岛发光小球（无内框、只文字），滑到哪就在哪爆散融字点亮；设置·显可切回旧玻璃框 */
 var TABISLE=true;try{TABISLE=localStorage.getItem('zhouji_tabisle')!=='0';}catch(e){}
@@ -2592,7 +2592,11 @@ function storyPane(){
   /* 背景毛玻璃独立成非滚动层：backdrop-filter 一旦置于滚动容器(#zjStory)上，
      安卓 Chromium 合成器会漏绘/残影，导致正文缺字。此层不随内容滚动，规避该 bug。 */
   var blurLayer='<div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none;background:rgba(23,18,12,var(--zjbga,.9));-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(118%);backdrop-filter:blur(var(--zjblur,9px)) saturate(118%)"></div>';
-  return '<div class="col grow" style="position:relative">'+blurLayer+scene+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?'calc(186px + env(safe-area-inset-bottom))':'160px'))+';background:transparent'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
+  /* 玻璃(经典)风格底部背板：曰行书排/输入框/叙事·太史简都是半透明玻璃件，正文滚到底下会透穿显字——
+     垫一层向上渐隐的近实底幕布（极简风格用渐变毛玻璃+柔光字，不需要它）。 */
+  var botScrim=(glassUI()&&!S.zen&&!S.worldFull)
+    ?'<div id="zjBotScrim" aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:calc('+(mob?'206px':'150px')+' + env(safe-area-inset-bottom,0px));z-index:4;pointer-events:none;background:linear-gradient(0deg,rgba(12,8,5,.97) 0%,rgba(12,8,5,.95) calc(100% - 60px),rgba(12,8,5,0) 100%)"></div>':'';
+  return '<div class="col grow" style="position:relative">'+blurLayer+scene+botScrim+'<div id="zjStory" class="grow bamboo" style="overflow-y:auto;position:relative;z-index:1;padding:'+((S.zen&&!S.zenWorld)?56:(barH+sceneH+18))+'px clamp(16px,5vw,70px) '+(S.zen?'46px':(mob?'calc(186px + env(safe-area-inset-bottom))':'160px'))+';background:transparent'+''+'"><div data-zjzoom style="max-width:820px;margin:0 auto;zoom:'+FS+'">'+items+thinking+'</div></div>'+input+'</div>';
 }
 function gameView(){
   var mob=isMobile();var m=mood();
@@ -2618,6 +2622,9 @@ function gameView(){
       +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:url(#zjLiqRefract);backdrop-filter:url(#zjLiqRefract);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
       +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(20,14,9,.1) 0%,rgba(18,13,8,.04) 55%,transparent 100%);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
     :'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.84) 0%,rgba(12,8,5,.5) 58%,rgba(12,8,5,0) 100%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>';
+  /* 玻璃(经典)风格顶栏背板：近实底、只在最后一段渐隐——经典头有两行/整行内容，
+     旧的 58% 即淡出的软渐变盖不住，正文一滚动就从按钮缝里透出来（显示错误）。 */
+  var _gTopBg='<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.97) 0%,rgba(12,8,5,.96) calc(100% - 24px),rgba(12,8,5,0) 100%)"></div>';
   var conn='<div class="btn zjHl" data-act="zen" title="全屏阅读，只留正文" style="cursor:pointer;display:flex;align-items:center;font-size:11px;letter-spacing:.14em;color:var(--mut2);'+_fr+'padding:4px 12px;border-radius:20px">全屏</div>';
   var topBtns='<button data-ov="set" class="obtn btn" title="设置" style="width:34px;height:34px;font-size:15px;color:'+(apiReady()?'var(--gold2)':'var(--mut)')+'"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="3.1"/><path d="M19.3 12c0-.5-.05-.99-.15-1.46l2-1.56-1.8-3.12-2.37.95a7.4 7.4 0 0 0-2.52-1.46L14.1 2.8h-4.2l-.36 2.55a7.4 7.4 0 0 0-2.52 1.46l-2.37-.95-1.8 3.12 2 1.56c-.1.47-.15.96-.15 1.46s.05.99.15 1.46l-2 1.56 1.8 3.12 2.37-.95c.75.65 1.6 1.15 2.52 1.46l.36 2.55h4.2l.36-2.55a7.4 7.4 0 0 0 2.52-1.46l2.37.95 1.8-3.12-2-1.56c.1-.47.15-.96.15-1.46z"/></svg></button>'
     +'<button data-act="mute" class="obtn btn" title="声音" style="width:34px;height:34px;font-size:15px">'+(S.muted?'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M11 5.5 6.5 9H3.5v6h3L11 18.5z"/><path d="M16.2 9.7l4.6 4.6M20.8 9.7l-4.6 4.6"/></svg>':'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M11 5.5 6.5 9H3.5v6h3L11 18.5z"/><path d="M14.8 9.2a4 4 0 0 1 0 5.6"/><path d="M17.6 6.8a7.6 7.6 0 0 1 0 10.4"/></svg>')+'</button>'
@@ -2640,7 +2647,7 @@ function gameView(){
   if(mob&&glassUI()){
     /* 玻璃风格·手机双行头（经典）：一行状态(标志+纪年胶囊+全屏)，一行功能键 */
     top='<div id="zjTopBar" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:22px">'
-      +_topBg
+      +_gTopBg
       +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;gap:7px;padding:6px 10px 0">'+logo+eraDiv+conn+'</div>'
       +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:3px;padding:7px 10px 6px">'+topBtns+'</div>'
       +'</div>';
@@ -2653,7 +2660,7 @@ function gameView(){
   }else if(glassUI()){
     /* 玻璃风格·桌面单行头（经典）：标志+标题+纪年胶囊+版式+全屏+功能键 */
     top='<div id="zjTopBar" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:20px">'
-      +_topBg
+      +_gTopBg
       +'<div style="position:relative;pointer-events:auto;height:56px;display:flex;align-items:center;gap:9px;padding:4px 12px 0">'
       +logo
       +'<div class="kai" style="font-size:16px;letter-spacing:.12em;color:var(--gold2);white-space:nowrap">周纪·千年天下</div>'
@@ -3345,6 +3352,8 @@ function fontPane(){
   return '<div class="grow" style="overflow-y:auto;padding:24px 28px"><div style="max-width:640px">'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin-bottom:14px">字号</div>'
    +'<div style="display:flex;align-items:center;gap:14px"><input id="zjFsRange" type="range" min="85" max="160" step="5" value="'+pct+'" style="flex:1;accent-color:#c9a063;border:none;background:transparent;padding:0"><div id="zjFsVal" style="width:56px;text-align:right;font-size:15px;color:var(--gold3)">'+pct+'%</div></div>'
+   /* 预览紧跟字号滑条：手机屏短，预览放页尾拖滑条时根本看不见效果 */
+   +'<div class="glass" style="margin-top:12px;padding:13px 16px"><div class="kai" style="font-size:15px;color:var(--gold3)">预览 · 洛邑的冬夜</div><div id="zjFontPrev" data-zjzoom style="margin-top:7px;font-size:15px;line-height:2;color:#cfc0a0;zoom:'+FS+'">「撑过三年。」单穆公白着头发对你叩首时这么说，「三年后，从宗室里择一子过继，老臣以死谢罪。」</div></div>'
    +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">拖动即时生效，作用于正文、太史简与典的正文。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:32px 0 14px">背景模糊</div>'
    +'<div style="display:flex;align-items:center;gap:14px"><input id="zjBlurRange" type="range" min="0" max="24" step="1" value="'+BGBLUR+'" style="flex:1;accent-color:#c9a063;border:none;background:transparent;padding:0"><div id="zjBlurVal" style="width:56px;text-align:right;font-size:15px;color:var(--gold3)">'+(BGBLUR===0?'透明':BGBLUR+'px')+'</div></div>'
@@ -3359,7 +3368,6 @@ function fontPane(){
    +'<div style="display:flex;border:1px solid rgba(201,160,99,.25);border-radius:10px;overflow:hidden;width:max-content">'
    +[['auto','自动'],['desktop','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="2.75" y="4.5" width="18.5" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 17.2v3.3"/></svg> 电脑'],['mobile','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="7.25" y="2.75" width="9.5" height="18.5" rx="2.4"/><path d="M10.7 18.2h2.6"/></svg> 手机']].map(function(dv){var on=S.device===dv[0];return '<div class="btn" data-dev="'+dv[0]+'" style="cursor:pointer;padding:8px 18px;font-size:13.5px;letter-spacing:.08em;color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'rgba(201,160,99,.12)':'transparent')+'">'+dv[1]+'</div>';}).join('')+'</div>'
    +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">自动依屏幕宽窄选择版式；也可强制使用电脑或手机布局。</div>'
-   +'<div class="glass" style="margin-top:28px;padding:16px 18px"><div class="kai" style="font-size:17px;color:var(--gold3)">预览 · 洛邑的冬夜</div><div id="zjFontPrev" data-zjzoom style="margin-top:8px;font-size:15px;line-height:2;color:#cfc0a0;zoom:'+FS+'">「撑过三年。」单穆公白着头发对你叩首时这么说，「三年后，从宗室里择一子过继，老臣以死谢罪。」</div></div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">性能</div>'
    +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptLow" type="checkbox" style="accent-color:#c9a063"'+(LOWFX?' checked':'')+'>低配模式：手机防发热防卡顿（降特效模糊与渲染分辨率、背景光斑歇屏、三维降档锁30帧）</label>'
    +'<div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-top:4px">封面右上角的「低」是同一开关。默认关闭，画质无任何妥协。</div>'
@@ -4307,9 +4315,10 @@ window.__zjTopIsleHtml=function(){
 };
 /* 开局后的界面风格选择：两张演示图（电脑给电脑版、手机给手机版）+介绍，二选一；设置·显可随时更换 */
 /* 界面风格选择：手机也两卡并排（竖屏截图正好半宽放下），整屏一眼看全、零滚动；
-   图高用 100dvh-170px 兜底封顶（正常机型远达不到，纯保险），要点一行金字点出核心差异。
+   图高用 100dvh 兜底封顶（正常机型远达不到，纯保险），要点一行金字点出核心差异。
    出场：底幕淡入、标题与两卡依次升起。浮层挂在 document.body 上、只注入一次——
-   途中任何 render() 都碰不到它，动画绝不会被重播或掐断。 */
+   途中任何 render() 都碰不到它，动画绝不会被重播或掐断。
+   两步确认：点卡＝选中（金边高亮），再点「确认进入」才应用——防手滑误选。 */
 function stylePickHtml(){
   var m=isMobile(),sfx=m?'m':'d';
   var an=!reducedMotion();
@@ -4322,17 +4331,20 @@ function stylePickHtml(){
   return '<div id="zjStylePick" style="'+anBg+'position:fixed;inset:0;z-index:90;background:rgba(8,6,4,.92);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:'+(m?'10px':'16px')+';overflow:auto">'
     +'<div style="max-width:'+(m?'560px':'880px')+';width:100%">'
     +'<div class="kai" style="'+anIn(60)+'text-align:center;font-size:'+(m?'18px':'22px')+';color:var(--gold2);letter-spacing:.22em;margin-bottom:4px;text-shadow:0 0 14px rgba(224,190,130,.4)">择 · 界面风格</div>'
-    +'<div style="'+anIn(120)+'text-align:center;font-size:'+(m?'11px':'12.5px')+';color:var(--mut);margin-bottom:'+(m?'10px':'16px')+'">点选其一即入正文；之后可在 设置 · 显 随时更换</div>'
+    +'<div style="'+anIn(120)+'text-align:center;font-size:'+(m?'11px':'12.5px')+';color:var(--mut);margin-bottom:'+(m?'10px':'16px')+'">点选一张看中的，再点下方「确认进入」；之后可在 设置 · 显 随时更换</div>'
     +'<div style="display:flex;gap:'+(m?'10px':'14px')+';align-items:stretch">'
     +opts.map(function(o){
-      return '<div class="btn zjHl" data-act="setStyle" data-style="'+o[0]+'" style="'+anIn(190+110*(ci++))+'flex:1;min-width:0;cursor:pointer;border:1px solid rgba(224,190,130,.4);border-radius:'+(m?'13px':'16px')+';overflow:hidden;background:rgba(18,13,8,.72);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,242,214,.15)">'
-        +'<img src="core/res/uidemo_'+o[0]+'_'+sfx+'.jpg?v=2" fetchpriority="high" decoding="async" '
+      return '<div class="btn zjHl zjPickCard" data-pick="'+o[0]+'" style="'+anIn(190+110*(ci++))+'flex:1;min-width:0;cursor:pointer;border:1px solid rgba(224,190,130,.4);border-radius:'+(m?'13px':'16px')+';overflow:hidden;background:rgba(18,13,8,.72);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,242,214,.15);transition:border-color .25s,box-shadow .25s,opacity .25s,transform .25s">'
+        +'<img src="core/res/uidemo_'+o[0]+'_'+sfx+'.jpg?v=3" fetchpriority="high" decoding="async" '
         +'onerror="var s=this,r=(s.getAttribute(\'data-r\')|0);if(r<4){s.setAttribute(\'data-r\',r+1);setTimeout(function(){s.src=s.src.split(\'&r=\')[0]+\'&r=\'+(r+1);},700*(r+1));}" '
-        +'style="width:100%;display:block;pointer-events:none;aspect-ratio:'+(m?'824/1720':'3/2')+';background:rgba(255,244,220,.045);max-height:calc(100vh - 170px);max-height:calc(100dvh - 170px);object-fit:cover;object-position:top" alt="">'
+        +'style="width:100%;display:block;pointer-events:none;aspect-ratio:'+(m?'824/1720':'3/2')+';background:rgba(255,244,220,.045);max-height:calc(100vh - 215px);max-height:calc(100dvh - 215px);object-fit:cover;object-position:top" alt="">'
         +'<div style="padding:'+(m?'9px 10px 11px':'12px 15px 14px')+'"><div class="kai" style="font-size:'+(m?'14.5px':'16.5px')+';color:var(--gold2);letter-spacing:.13em;white-space:nowrap">'+o[1]+'</div>'
         +'<div style="font-size:'+(m?'10px':'11.5px')+';color:#d9b988;letter-spacing:.02em;line-height:1.6;margin-top:4px">'+o[2].split('|').map(function(p){return '<span style="white-space:nowrap">'+p+'</span>';}).join(' · ')+'</div>'
         +(m?'':'<div style="font-size:12px;color:var(--mut2);line-height:1.75;margin-top:4px">'+o[3]+'</div>')
         +'</div></div>';}).join('')
+    +'</div>'
+    +'<div style="'+anIn(420)+'display:flex;justify-content:center;margin-top:'+(m?'12px':'16px')+'">'
+      +'<div id="zjPickGo" class="btn" style="cursor:default;opacity:.38;font-family:var(--kai);font-size:'+(m?'15px':'16px')+';letter-spacing:.3em;color:#241806;background:linear-gradient(180deg,#e8c88a,#b8894e);border-radius:99px;padding:'+(m?'10px 34px':'11px 44px')+';box-shadow:0 4px 18px rgba(201,140,80,.35),inset 0 1px 0 rgba(255,244,214,.6);transition:opacity .25s,box-shadow .25s">确 认 进 入</div>'
     +'</div></div></div>';
 }
 function showStylePick(){
@@ -4340,24 +4352,49 @@ function showStylePick(){
   document.body.insertAdjacentHTML('beforeend',stylePickHtml());
   var ov=document.getElementById('zjStylePick');
   ov.addEventListener('click',function(e){
-    var n=e.target;
-    while(n&&n!==ov){if(n.getAttribute&&n.getAttribute('data-act')==='setStyle'){pickStyle(n);return;}n=n.parentNode;}
+    var n=e.target,card=null,go=null;
+    while(n&&n!==ov){
+      if(n.getAttribute){
+        if(n.getAttribute('data-pick')){card=n;break;}
+        if(n.id==='zjPickGo'){go=n;break;}
+      }
+      n=n.parentNode;
+    }
+    if(card){ /* 第一步：选中高亮（可反复换），未确认不生效 */
+      ov._sel=card.getAttribute('data-pick');
+      var cs=ov.querySelectorAll('.zjPickCard');
+      [].forEach.call(cs,function(c){
+        var on=c===card;
+        c.style.borderColor=on?'rgba(240,214,160,.95)':'rgba(224,190,130,.25)';
+        c.style.boxShadow=on?'0 0 0 1.5px rgba(240,214,160,.75),0 12px 40px rgba(224,190,130,.3)':'0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,242,214,.15)';
+        c.style.opacity=on?'1':'.62';
+        c.style.transform=on?'scale(1.015)':'none';
+      });
+      var g=document.getElementById('zjPickGo');
+      if(g){g.style.opacity='1';g.style.cursor='pointer';g.style.boxShadow='0 4px 22px rgba(224,190,130,.55),inset 0 1px 0 rgba(255,244,214,.6)';}
+      return;
+    }
+    if(go&&ov._sel){ /* 第二步：确认 → 应用并丝滑退场 */
+      var selCard=ov.querySelector('.zjPickCard[data-pick="'+ov._sel+'"]');
+      pickApply(ov._sel,selCard||go,ov);
+    }
   });
 }
-/* 选定风格（开局选择浮层与设置·显的样式卡共用）。带浮层时丝滑退场：
-   选中卡先亮边微放大作确认，新界面在幕后渲染好，整层再缓缓淡出揭开它——两头都无硬切。 */
-function pickStyle(t){
+/* 应用风格＋浮层丝滑退场：新界面在幕后渲染好，整层缓缓淡出揭开它 */
+function pickApply(stv,t,ov){
   if(S._pickBusy&&Date.now()-S._pickBusy<700)return;S._pickBusy=Date.now();
-  var stv=t.getAttribute('data-style'),ov=document.getElementById('zjStylePick');
   applyUiStyle(stv);S._noFade=true;
   if(ov&&ov.animate&&!reducedMotion()){
-    try{t.style.borderColor='rgba(240,214,160,.95)';t.style.boxShadow='0 0 0 1.5px rgba(240,214,160,.75),0 12px 40px rgba(224,190,130,.3)';}catch(e0){}
-    t.animate([{transform:'scale(1)'},{transform:'scale(1.03)'}],{duration:420,easing:'cubic-bezier(.3,1,.35,1)',fill:'forwards'});
+    if(t&&t.animate)t.animate([{transform:t.style.transform||'none'},{transform:'scale(1.04)'}],{duration:420,easing:'cubic-bezier(.3,1,.35,1)',fill:'forwards'});
     render();
     var an=ov.animate([{opacity:1},{opacity:0}],{duration:420,delay:140,easing:'ease-out',fill:'forwards'});
     var rm=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
     an.onfinish=an.oncancel=rm;setTimeout(rm,900);
   }else{if(ov&&ov.parentNode)ov.parentNode.removeChild(ov);render();}
+}
+function pickStyle(t){ /* 设置·显 里的样式卡：即点即换（开局浮层走 pickApply 两步确认） */
+  if(S._pickBusy&&Date.now()-S._pickBusy<700)return;S._pickBusy=Date.now();
+  applyUiStyle(t.getAttribute('data-style'));S._noFade=true;render();
 }
 /* 正文 paddingTop 的滚动补偿式修改：正在读的行钉在原处；滚动余量不够的残余用 FLIP 平滑过渡。
    全屏切换/三维开合（全屏内外）共用。 */
@@ -4379,7 +4416,7 @@ function zenToggle(){
      兜底：若全屏期间发生过正常 render（外围元素已被重建掉），退出自动走整渲染老路径，不会坏。 */
   /* 防抖用时间戳自然过期（不靠定时器清标志——定时器被节流/冻结时会把开关卡死） */
   var _zn=Date.now();if(zenToggle._busy&&_zn-zenToggle._busy<430)return;zenToggle._busy=_zn;
-  var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
+  var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1],['zjBotScrim',1]];
   function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
   function els(){var o=[];zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&!(g[0]==='zjMiniIsle'&&el.closest&&el.closest('#zjTopBar')))o.push([el,g[1]]);});return o;}/* 岛住进顶栏时随栏一起动，不再单独滑 */
   /* 电脑端太史简侧栏：取顶层玻璃框（排除嵌套），进全屏时逐框右滑离场、退出时从右侧逐框滑回（级联） */
@@ -4405,6 +4442,41 @@ function zenToggle(){
     if(Math.abs(dy2)>2)s.animate([{transform:'translateY('+dy2+'px)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.02,.35,1)'});
   }
   var side=document.getElementById('zjSideCol');
+  /* 玻璃(经典)风格：全屏走经典整渲染路——手术快路径的几何常数按极简风格调校，玻璃走它会
+     留下错位的天下胶囊/错误 padding（双岛、透穿、挤压均源于此）。滑动动画（核心设计）原样保留：
+     进时先滑走再切树，出时切树后滑回；正文位置用锚点补偿，不跳行。 */
+  if(glassUI()){
+    if(!S.zen){
+      var gStory=document.getElementById('zjStory');if(!gStory){zenToggle._busy=0;return;}
+      var gFin=function(){
+        var s=document.getElementById('zjStory');var w=s&&s.querySelector('[data-zjzoom]');
+        var oldY=w?w.getBoundingClientRect().top:null;
+        S.zen=true;S.zenInput=false;S.zenWorld=false;S._noFade=true;S._keepScroll=true;render();
+        if(oldY!=null){var s2=document.getElementById('zjStory');var w2=s2&&s2.querySelector('[data-zjzoom]');
+          if(s2&&w2){var dy=Math.round(oldY-w2.getBoundingClientRect().top);
+            if(dy){var mx=Math.max(0,s2.scrollHeight-s2.clientHeight);s2.scrollTop=Math.max(0,Math.min(mx,s2.scrollTop-dy));}
+            if(!reducedMotion()&&s2.animate){var dy2=Math.round(oldY-w2.getBoundingClientRect().top);if(Math.abs(dy2)>2)s2.animate([{transform:'translateY('+dy2+'px)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.02,.35,1)'});}}}
+      };
+      if(reducedMotion()){gFin();return;}
+      els().forEach(function(g){var el=g[0];if(el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)',fill:'forwards'});});
+      if(side){var _gb=sideBoxes();
+        _gb.forEach(function(b,i){if(!b.animate)return;var r=b.getBoundingClientRect();var dx=Math.round(window.innerWidth-r.left+30);
+          b.animate([{transform:'none',opacity:1},{transform:'translateX('+dx+'px)',opacity:.35}],{duration:300,delay:i*26,easing:'cubic-bezier(.55,0,.75,.4)',fill:'forwards'});});
+        if(side.animate)side.animate([{opacity:1},{opacity:0}],{duration:240,delay:150,easing:'ease',fill:'forwards'});}
+      setTimeout(gFin,295);
+    }else{
+      S.zen=false;S.zenInput=false;S.zenWorld=false;S._zenSurgPad=null;S._zenSurg3D=false;
+      var gOldY=(function(){var s=document.getElementById('zjStory');var w=s&&s.querySelector('[data-zjzoom]');return w?w.getBoundingClientRect().top:null;})();
+      S._noFade=true;S._keepScroll=true;render();
+      if(gOldY!=null){var gs2=document.getElementById('zjStory');var gw2=gs2&&gs2.querySelector('[data-zjzoom]');if(gs2&&gw2){
+        var gdy=Math.round(gOldY-gw2.getBoundingClientRect().top);
+        if(gdy){var gmx=Math.max(0,gs2.scrollHeight-gs2.clientHeight);gs2.scrollTop=Math.max(0,Math.min(gmx,gs2.scrollTop-gdy));}
+        if(!reducedMotion()&&gs2.animate){var gdy2=Math.round(gOldY-gw2.getBoundingClientRect().top);if(Math.abs(gdy2)>2)gs2.animate([{transform:'translateY('+gdy2+'px)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.02,.35,1)'});}}}
+      if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate&&!(g[0]==='zjMiniIsle'&&el.closest&&el.closest('#zjTopBar')))el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)',fill:'backwards'});});
+      sideSlideIn();
+    }
+    return;
+  }
   if(!S.zen){ /* ---- 进全屏（手术式） ---- */
     var story=document.getElementById('zjStory');if(!story){zenToggle._busy=0;return;}
     var list=els();
