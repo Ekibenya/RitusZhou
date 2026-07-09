@@ -107,7 +107,6 @@ textarea,input{border-radius:10px}
 .zjPillHl::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(120% 70% at 20% -10%,rgba(255,244,220,.14),rgba(255,244,220,0) 58%)}
 .zjPillHl::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.75),rgba(255,246,224,0))}
 @keyframes zjIsleGlow{0%,100%{box-shadow:0 0 5px 1px rgba(255,210,120,.4)}50%{box-shadow:0 0 15px 5px rgba(255,210,120,.95)}}
-@keyframes zjBallBurst{0%{transform:translate(-50%,-50%) scale(.7);opacity:.95}55%{opacity:.6}100%{transform:translate(-50%,-50%) scale(7);opacity:0}}
 .zjHl{position:relative;overflow:hidden}
 .zjHl::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;pointer-events:none;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.6),rgba(255,246,224,0))}
 .gbtn{position:relative;overflow:hidden}
@@ -3707,20 +3706,26 @@ function codexPills(){
   var on=document.querySelector('#zjEntList [data-cidx]');
   zjPill('zjEntList','zjEntPill','[data-cidx="'+Math.min(S.codexIdx,1e9)+'"]',9);
 }
-/* 灵动岛小球：从旧标签滑到新标签，抵达后「嗖」地爆散融入文字，同时该标签文字点亮 */
+/* 灵动岛小球：从旧标签滑到新标签，抵达后小球自身「嗖」地绽放一圈柔光（box-shadow 扩散、无硬边贴图感），
+   随即收束融入文字、该标签点亮——纯光晕扩散，不再是放大的贴图色块。 */
 function tabIsleAnim(oldTab,newTab){
-  var ball=document.getElementById('zjTabBall'),bar=document.getElementById('zjTabBar');
-  if(!ball||!bar||!ball.animate)return;
+  var ball=document.getElementById('zjTabBall');
+  if(!ball||!ball.animate)return;
   var oldPos=oldTab==='story'?'25%':'75%',newPos=newTab==='story'?'25%':'75%';
   ball.animate([{left:oldPos},{left:newPos}],{duration:330,easing:'cubic-bezier(.3,1.05,.3,1)'});
   setTimeout(function(){
-    var b=document.getElementById('zjTabBar');if(!b)return;
-    var burst=document.createElement('span');
-    burst.style.cssText='position:absolute;top:50%;left:'+newPos+';width:9px;height:9px;border-radius:50%;background:radial-gradient(circle,rgba(255,246,220,.95),rgba(224,190,130,.5) 55%,rgba(224,190,130,0));transform:translate(-50%,-50%);pointer-events:none;z-index:2;animation:zjBallBurst .5s cubic-bezier(.3,.7,.4,1) forwards';
-    b.appendChild(burst);
-    setTimeout(function(){if(burst.parentNode)burst.parentNode.removeChild(burst);},560);
+    var b=document.getElementById('zjTabBall');
+    if(b&&b.animate)b.animate([
+      {transform:'translate(-50%,-50%) scale(1)',boxShadow:'0 0 5px 1px rgba(255,210,120,.5)',offset:0},
+      {transform:'translate(-50%,-50%) scale(1.45)',boxShadow:'0 0 22px 9px rgba(255,224,150,.85)',offset:.34},
+      {transform:'translate(-50%,-50%) scale(1)',boxShadow:'0 0 34px 5px rgba(255,214,120,0)',offset:1}
+    ],{duration:580,easing:'cubic-bezier(.25,.7,.35,1)'});
     var act=document.getElementById('zjTab_'+newTab);
-    if(act&&act.animate)act.animate([{textShadow:'0 1px 2px rgba(0,0,0,.8)'},{textShadow:'0 0 18px rgba(255,224,150,1),0 0 7px rgba(224,190,130,.85),0 1px 2px rgba(0,0,0,.8)'},{textShadow:'0 0 13px rgba(224,190,130,.85),0 0 5px rgba(224,190,130,.55),0 1px 2px rgba(0,0,0,.8)'}],{duration:540,easing:'ease-out'});
+    if(act&&act.animate)act.animate([
+      {textShadow:'0 1px 2px rgba(0,0,0,.8)'},
+      {textShadow:'0 0 20px rgba(255,224,150,1),0 0 8px rgba(224,190,130,.9),0 1px 2px rgba(0,0,0,.8)',offset:.4},
+      {textShadow:'0 0 13px rgba(224,190,130,.85),0 0 5px rgba(224,190,130,.55),0 1px 2px rgba(0,0,0,.8)'}
+    ],{duration:600,easing:'ease-out'});
   },300);
 }
 function pillFlip(pillId,oldRect){
