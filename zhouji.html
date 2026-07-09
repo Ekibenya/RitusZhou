@@ -1424,20 +1424,20 @@ function readApiForm(){
   var ga=document.getElementById('zjGenAutofix');if(ga)API.gen.autofix=ga.checked?'':'0';
 }
 function apiTestRun(){
-  readApiForm();saveApi();
-  if(!apiReady()){S.apiMsg={t:'请先填写 API 密钥与模型名。',c:'var(--red2)'};render();return;}
-  S.apiMsg={t:'正在试通接口……',c:'var(--mut2)'};render();
+  readApiForm();saveApi();var up=function(){if(S.overlay)renderOverlay();else render();};
+  if(!apiReady()){S.apiMsg={t:'请先填写 API 密钥与模型名。',c:'var(--red2)'};up();return;}
+  S.apiMsg={t:'正在试通接口……',c:'var(--mut2)'};up();
   callCustomAI('你是接口连通性测试助手，只回复一句话。',[{role:'user',content:'请回复：链已通。'}])
-    .then(function(tx){S.apiMsg={t:'✓ 接口畅通，模型回复：'+String(tx).trim().slice(0,80),c:'var(--grn2)'};render();})
-    .catch(function(e2){S.apiMsg={t:'✕ '+(e2&&e2.message||e2),c:'var(--red2)'};render();});
+    .then(function(tx){S.apiMsg={t:'✓ 接口畅通，模型回复：'+String(tx).trim().slice(0,80),c:'var(--grn2)'};up();})
+    .catch(function(e2){S.apiMsg={t:'✕ '+(e2&&e2.message||e2),c:'var(--red2)'};up();});
 }
 function apiModelsRun(){
-  readApiForm();saveApi();
-  if(!apiCur().key){S.apiMsg={t:'请先填写 API 密钥。',c:'var(--red2)'};render();return;}
-  S.apiMsg={t:'正在拉取可用模型……',c:'var(--mut2)'};render();
+  readApiForm();saveApi();var up=function(){if(S.overlay)renderOverlay();else render();};
+  if(!apiCur().key){S.apiMsg={t:'请先填写 API 密钥。',c:'var(--red2)'};up();return;}
+  S.apiMsg={t:'正在拉取可用模型……',c:'var(--mut2)'};up();
   fetchModels()
-    .then(function(list){S.apiModels=list;S.apiMsg={t:'共 '+list.length+' 个模型，点击下方任一即可选用。',c:'var(--grn2)'};render();})
-    .catch(function(e2){S.apiModels=null;S.apiMsg={t:'✕ '+(e2&&e2.message||e2),c:'var(--red2)'};render();});
+    .then(function(list){S.apiModels=list;S.apiMsg={t:'共 '+list.length+' 个模型，点击下方任一即可选用。',c:'var(--grn2)'};up();})
+    .catch(function(e2){S.apiModels=null;S.apiMsg={t:'✕ '+(e2&&e2.message||e2),c:'var(--red2)'};up();});
 }
 
 var LSK='zhouji_tavern_v1';
@@ -2403,6 +2403,17 @@ function bgmPanel(){
 }
 
 /* ---------------- OVERLAYS ---------------- */
+/* 滚动位置保全（通用）：重建前记下容器内各滚动条位置，重建后按「标签+类名+同类序号」原位恢复。
+   不能按元素序号对位：胶囊等动态节点会让新旧DOM序号错位，导致画面弹回顶部。
+   —— 这是根治「点一下就闪屏/画面弹到最上面」的公共底座，render 与 renderOverlay 共用。 */
+function _scrKey(el){return el.tagName+'|'+(el.getAttribute('class')||'');}
+function scrollCapture(root){var sv=[],cnt={},all=root.getElementsByTagName('*'),i,k;
+  for(i=0;i<all.length;i++){k=_scrKey(all[i]);cnt[k]=(cnt[k]||0)+1;
+    if(all[i].scrollTop||all[i].scrollLeft)sv.push([k,cnt[k]-1,all[i].scrollTop,all[i].scrollLeft]);}
+  return sv;}
+function scrollRestore(root,sv){if(!sv||!sv.length||!root)return;var all=root.getElementsByTagName('*'),cnt={},i,k;
+  for(i=0;i<all.length;i++){k=_scrKey(all[i]);var n=(cnt[k]=(cnt[k]||0)+1)-1;
+    for(var j=0;j<sv.length;j++){if(sv[j][0]===k&&sv[j][1]===n){all[i].scrollTop=sv[j][2];all[i].scrollLeft=sv[j][3];}}}}
 function renderOverlay(){
   var box=document.getElementById('zjOvBox');
   if(!box||!S.overlay){render();return;}
@@ -2410,16 +2421,9 @@ function renderOverlay(){
   tmp.innerHTML=overlayView();
   var fresh=tmp.querySelector('#zjOvBox');
   if(fresh){
-    /* 重建前记住各滚动容器位置，重建后按「标签+类名+同类序号」原位恢复——
-       不能按元素序号对位：胶囊等动态节点会让新旧DOM序号错位，导致画面弹回顶部 */
-    function ovk(el){return el.tagName+'|'+(el.getAttribute('class')||'');}
-    var sv=[],cnt={},all=box.getElementsByTagName('*'),i,k;
-    for(i=0;i<all.length;i++){k=ovk(all[i]);cnt[k]=(cnt[k]||0)+1;
-      if(all[i].scrollTop||all[i].scrollLeft)sv.push([k,cnt[k]-1,all[i].scrollTop,all[i].scrollLeft]);}
+    var sv=scrollCapture(box);
     box.innerHTML=fresh.innerHTML;
-    var all2=box.getElementsByTagName('*'),cnt2={};
-    for(i=0;i<all2.length;i++){k=ovk(all2[i]);var n2=(cnt2[k]=(cnt2[k]||0)+1)-1;
-      for(var j=0;j<sv.length;j++){if(sv[j][0]===k&&sv[j][1]===n2){all2[i].scrollTop=sv[j][2];all2[i].scrollLeft=sv[j][3];}}}
+    scrollRestore(box,sv);
     codexPills();setPills();try{imgHydrate();}catch(e){}
   }else render();
 }
@@ -3481,9 +3485,14 @@ function render(){
   var chipsL=chipsEl?chipsEl.scrollLeft:null;
   var pw=document.getElementById('zjWizScroll');var wizPos=pw?pw.scrollTop:null;
   var ppnl=document.getElementById('zjPanelScroll');var panelPos=ppnl?ppnl.scrollTop:null;
-  var noF=S._noFade;S._noFade=false;
+  /* 安全网·根治闪屏跳顶：只要有浮层开着，整页重渲染就①记下浮层内滚动位置、重建后原位恢复；②强制关闭淡入动画。
+     这样即便某处误调了整页 render()（而非 renderOverlay），浮层也绝不会闪一下或弹回顶部。 */
+  var ovBox=S.overlay?document.getElementById('zjOvBox'):null;
+  var ovScroll=ovBox?scrollCapture(ovBox):null;
+  var noF=S._noFade||!!S.overlay;S._noFade=false;
   if(noF)root.classList.add('zjNoFade');
   root.innerHTML=view();
+  if(ovScroll){var ovBox2=document.getElementById('zjOvBox');if(ovBox2)scrollRestore(ovBox2,ovScroll);}
   if(noF)setTimeout(function(){root.classList.remove('zjNoFade');},80);
   try{fitStoryPad();}catch(e){}
   var story=document.getElementById('zjStory');
@@ -4030,7 +4039,7 @@ root.addEventListener('click',function(e){
       else if(a==='bgmtoggle'){bgmToggle();}
       else if(a==='bgmprev'){bgmPlay(BGM.idx-1);render();}
       else if(a==='bgmnext'){bgmPlay(BGM.idx+1);render();}
-      else if(a==='apiSave'){readApiForm();saveApi();S.apiMsg={t:'已保存。密钥仅存于此浏览器，不会上传。'+(apiReady()?'现在可以开局游玩了。':'还差密钥或模型名未填。'),c:apiReady()?'var(--grn2)':'var(--red2)'};render();}
+      else if(a==='apiSave'){readApiForm();saveApi();S.apiMsg={t:'已保存。密钥仅存于此浏览器，不会上传。'+(apiReady()?'现在可以开局游玩了。':'还差密钥或模型名未填。'),c:apiReady()?'var(--grn2)':'var(--red2)'};if(S.overlay)renderOverlay();else render();}
       else if(a==='apiTest'){apiTestRun();}
       else if(a==='diceTog'){S.dice=!S.dice;savePref();
         var dch=document.querySelector('[data-act="diceTog"]');
@@ -4052,13 +4061,13 @@ root.addEventListener('click',function(e){
       else if(a==='apiProfSave'){readApiForm();saveApi();
         var pfn=prompt('给这套接口配置起个名：',apiCur().model||'档案');
         if(pfn&&pfn.trim()){PROFILES.push({name:pfn.trim().slice(0,20),data:JSON.parse(JSON.stringify(API))});profSave();S.apiMsg={t:'已存档案「'+pfn.trim().slice(0,20)+'」。',c:'var(--grn2)'};renderOverlay();}}
-      else if(a==='memToggle'){S.memOn=S.memOn===false?true:false;savePref();render();}
-      else if(a==='memClear'){if(S.mem.length&&!confirm('清空整卷长程记忆？此举不可复原。'))return;S.mem=[];savePref();render();}
-      else if(a==='memAdd'){var mi=document.getElementById('zjMemAdd');var tv=mi?mi.value.trim():'';if(tv){S.mem.push({e:'',d:'',a:tv.slice(0,120),s:'',fp:0,manual:true});savePref();render();}}
+      else if(a==='memToggle'){S.memOn=S.memOn===false?true:false;savePref();if(S.overlay)renderOverlay();else render();}
+      else if(a==='memClear'){if(S.mem.length&&!confirm('清空整卷长程记忆？此举不可复原。'))return;S.mem=[];savePref();if(S.overlay)renderOverlay();else render();}
+      else if(a==='memAdd'){var mi=document.getElementById('zjMemAdd');var tv=mi?mi.value.trim():'';if(tv){S.mem.push({e:'',d:'',a:tv.slice(0,120),s:'',fp:0,manual:true});savePref();if(S.overlay)renderOverlay();else render();}}
       else if(a==='pvToggle'){S.pvShow=!S.pvShow;renderOverlay();}
       else if(a==='toggleSpeed'){readApiForm();API.gen.speed=speedOn()?'':'1';saveApi();S.apiMsg=speedOn()?{t:'极速模式已开启：出字更快，但正文/变量/记忆/演绎质量下降。随时可在此关闭。',c:'var(--gold2)'}:{t:'极速模式已关闭：恢复满血全配置。',c:'var(--grn2)'};renderOverlay();}
       else if(a==='apiModels'){apiModelsRun();}
-      else if(a==='apiClear'){var cc=apiCur();cc.url='';cc.key='';cc.model='';S.apiModels=null;saveApi();S.apiMsg={t:'已清除本机保存的该接口配置。',c:'var(--mut2)'};render();}
+      else if(a==='apiClear'){var cc=apiCur();cc.url='';cc.key='';cc.model='';S.apiModels=null;saveApi();S.apiMsg={t:'已清除本机保存的该接口配置。',c:'var(--mut2)'};if(S.overlay)renderOverlay();else render();}
       else if(a==='loreAdd'){var ltE=document.getElementById('zjLoreTitle'),lkE=document.getElementById('zjLoreKeys'),lcE=document.getElementById('zjLoreConst'),lxE=document.getElementById('zjLoreText');
         var l2E=document.getElementById('zjLoreKeys2'),loE=document.getElementById('zjLoreOrder'),lpE=document.getElementById('zjLoreProb');
         var lc=lxE?lxE.value.trim():'';var lks=(lkE?lkE.value:'').split(/[,\uff0c\u3001]/).map(function(k){return k.trim();}).filter(function(k){return k;});
@@ -4138,8 +4147,8 @@ root.addEventListener('click',function(e){
         presetSave();S.pEdit=null;S.pMsg='已保存修改';renderOverlay();}}
       else if(a==='pCancel'){S.pEdit=null;renderOverlay();}
       else if(a==='pExport'){if(PRESET){try{var pb=new Blob([JSON.stringify(PRESET,null,2)],{type:'application/json'});var pu=URL.createObjectURL(pb);var pa=document.createElement('a');pa.href=pu;pa.download='周纪预设-'+(PRESET.name||'自定义').replace(/[\\/:*?"<>|]/g,'_')+'.json';document.body.appendChild(pa);pa.click();document.body.removeChild(pa);setTimeout(function(){URL.revokeObjectURL(pu);},4000);}catch(e){S.pMsg='导出失败：'+e.message;renderOverlay();}}}
-      else if(a==='pMaster'){if(PRESET){PRESET.on=!PRESET.on;presetSave();render();}}
-      else if(a==='pClear'){PRESET=null;presetSave();S.pMsg='预设已移除';render();}
+      else if(a==='pMaster'){if(PRESET){PRESET.on=!PRESET.on;presetSave();if(S.overlay)renderOverlay();else render();}}
+      else if(a==='pClear'){PRESET=null;presetSave();S.pMsg='预设已移除';if(S.overlay)renderOverlay();else render();}
       else if(a==='pImport'){var ptx=document.getElementById('zjPresetText');importPresetText(ptx?ptx.value:'','粘贴的预设');}
       else if(a==='moveYes'){var mp=S.movePending;S.movePending=null;if(mp)movePlayerTo(mp);}
       else if(a==='moveNo'){S.movePending=null;render();}
