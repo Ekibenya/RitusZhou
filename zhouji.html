@@ -4187,13 +4187,30 @@ function zenToggle(){
   }else{ /* ---- 退全屏 ---- */
     S.zen=false;S.zenInput=false;S.zenWorld=false;
     var pad=S._zenSurgPad;S._zenSurgPad=null;
+    var t3=!!S._zenSurg3D;S._zenSurg3D=false;
+    var hid3=false;try{hid3=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
+    if(t3&&hid3)pad=null; /* 全屏内经 × 隐藏了三维：折叠态组合多，走整渲染归位最稳 */
     var topBar=document.getElementById('zjTopBar');
     if(topBar&&pad&&pad.t!=null){ /* 手术式退出：外围界面都还藏在 DOM 里，显示回来滑入即可，正文分毫未动 */
       var ex=document.getElementById('zjZenExtras');if(ex&&ex.parentNode)ex.parentNode.removeChild(ex);
       var story2=document.getElementById('zjStory');
-      flipStory(function(){if(story2){story2.style.paddingTop=pad.t;story2.style.paddingRight=pad.r;story2.style.paddingBottom=pad.b;story2.style.paddingLeft=pad.l;}});
+      if(t3){ /* 全屏内动过三维且现在开着：把场景岛调回非全屏位、按当前岛高重算 padding，同样不整渲染 */
+        var mo3=isMobile(),bH3=mo3?50:58;
+        var isle3=document.getElementById('zjSceneIsle');
+        var sH3=isle3?Math.round(isle3.getBoundingClientRect().height):((window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mo3):(mo3?140:186));
+        flipStory(function(){
+          if(isle3){isle3.style.top=bH3+'px';isle3.style.display='';}
+          else if(window.__zjSceneIsleHtml&&story2)story2.insertAdjacentHTML('beforebegin',window.__zjSceneIsleHtml(mood(),mo3,bH3,sH3));
+          if(story2)story2.style.padding=(bH3+sH3+18)+'px clamp(16px,5vw,70px) '+(mo3?'calc(186px + env(safe-area-inset-bottom))':'160px');
+        });
+        try{if(window.ZJ3D&&ZJ3D.owns())ZJ3D.onRender(playerLoc().name,mood().night);}catch(e7){}
+      }else{
+        flipStory(function(){if(story2){story2.style.paddingTop=pad.t;story2.style.paddingRight=pad.r;story2.style.paddingBottom=pad.b;story2.style.paddingLeft=pad.l;}});
+      }
       var list2=els();
-      list2.forEach(function(g){var el=g[0];if(el.getAnimations)el.getAnimations().forEach(function(a){try{a.cancel();}catch(e){}});el.style.display='';});
+      list2.forEach(function(g){var el=g[0];
+        if(t3&&g[0]==='zjMiniIsle')return; /* 三维开着时不召回折叠小岛 */
+        if(el.getAnimations)el.getAnimations().forEach(function(a){try{a.cancel();}catch(e){}});el.style.display='';});
       if(side){ /* 逐框撤掉残留的离场动画（fill:forwards 会把框钉在屏幕外，subtree 选项不可靠故显式逐个撤），再从右侧级联滑入 */
         if(side.getAnimations)side.getAnimations().forEach(function(a){try{a.cancel();}catch(e){}});
         sideBoxes().forEach(function(b){if(b.getAnimations)b.getAnimations().forEach(function(a){try{a.cancel();}catch(e){}});});
@@ -4440,7 +4457,7 @@ root.addEventListener('click',function(e){
         if(S.zenWorld){ /* ---- 收起三维 ---- */
           var zi0=document.getElementById('zjSceneIsle');
           if(_zwSurg){
-            S.zenWorld=false;S._zenSurgPad=null;
+            S.zenWorld=false;S._zenSurg3D=true;
             var _zwDone=false;
             var zwFin=function(){if(_zwDone)return;_zwDone=true;
               [].forEach.call(document.querySelectorAll('[id="zjSceneIsle"]'),function(el){if(el.parentNode)el.parentNode.removeChild(el);});
@@ -4458,7 +4475,7 @@ root.addEventListener('click',function(e){
           try{localStorage.removeItem('zj3d_hide');}catch(e){}
           if(SVGF){SVGF=false;try{localStorage.setItem('zj_svgfold','0');}catch(e){}}
           if(_zwSurg){
-            S.zenWorld=true;S._zenSurgPad=null;
+            S.zenWorld=true;S._zenSurg3D=true;
             var stO=document.getElementById('zjStory');var m9=mood();var mo9=isMobile();
             var sH9=(window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mo9):((window.__ZJ3D_OFF__&&SVGF)?34:(mo9?140:186));
             /* 进全屏时藏起的旧场景岛还在 DOM 里——先清掉，避免重复 id 导致收起时删错 */
