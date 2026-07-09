@@ -4050,18 +4050,15 @@ root.addEventListener('keydown',function(e){if(e.target&&e.target.id==='zjInput'
 /* 进/出全屏（zen）带滑动淡出动画——顶栏/场景/灵动岛上滑离场、输入框/切换框下滑离场；进时先动画再切、出时先切再回落。
    点正文与「退出全屏」按钮共用此函数，保证两种入口动画一致。 */
 function zenToggle(){
-  /* 只做纯不透明度淡入淡出（GPU 合成、不改布局），不再平移三维画布那种大位移——之前平移重元素会让屏幕颤抖。
-     进：外围界面先淡出，再切到全屏；退：先切回，再把外围界面淡入。 */
-  var chrome=['zjTopBar','zjSceneIsle','zjMiniIsle','zjInWrap','zjTabWrap'];
-  function fade(ids,from,to,dur){ids.forEach(function(id){var el=document.getElementById(id);if(el&&el.animate)el.animate([{opacity:from},{opacity:to}],{duration:dur,easing:'ease',fill:(to===0?'forwards':'none')});});}
-  if(reducedMotion()){S.zen=!S.zen;if(!S.zen)S.zenInput=false;S.zenWorld=false;S._noFade=true;render();return;}
-  if(S.zen){
-    S.zen=false;S.zenInput=false;S.zenWorld=false;S._noFade=true;render();
-    fade(chrome,0,1,300);
-  }else{
-    fade(chrome,1,0,180);
-    setTimeout(function(){S.zen=true;S.zenWorld=false;S._noFade=true;render();fade(['zjInWrap'],0,1,240);},175);
-  }
+  /* 核心设计：顶栏/场景/灵动岛上滑离场、输入框/切换框下滑离场的滑动动画（保留，勿删）。
+     fill 锁住起止帧、_keepScroll 保住滚动位置——把「切换时整屏重渲染」造成的闪一下/颤抖压到最小。 */
+  var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
+  function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
+  if(S.zen){S.zen=false;S.zenInput=false;S.zenWorld=false;S._noFade=true;S._keepScroll=true;render();
+    if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)',fill:'backwards'});});
+  }else if(reducedMotion()){S.zen=true;S.zenWorld=false;S._noFade=true;render();}
+  else{zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)',fill:'forwards'});});
+    setTimeout(function(){S.zen=true;S.zenWorld=false;S._noFade=true;S._keepScroll=true;render();},295);}
 }
 /* 点正文进出全屏（zen）：纯点击才触发——滑动、选字、点按钮/图片/操作栏/三维场景都不触发；再点一下退出 */
 (function(){
