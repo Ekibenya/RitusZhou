@@ -2388,9 +2388,12 @@ function storyPane(){
     ? '<div style="position:relative;pointer-events:auto;padding:'+(mob?'2px 6px 0':'2px 8px 0')+'">'+_row+_cmd+'</div>'
     : '<div class="glass" style="pointer-events:auto;padding:'+(mob?'3px 13px':'4px 15px')+';border-radius:15px">'+_row+_cmd+'</div>';
   /* 底部渐变毛玻璃背板（默认样式）：与自定义开局同款——从输入区往下罩住屏幕底、向上淡出，输入内容悬浮其上、字带阴影清晰可读 */
-  var _glassBg=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-6px;bottom:calc(-'+(mob?66:14)+'px - env(safe-area-inset-bottom));pointer-events:none;background:linear-gradient(0deg,rgba(12,8,5,.94) 34%,rgba(12,8,5,.72) 64%,rgba(12,8,5,0) 100%);-webkit-backdrop-filter:blur(13px) saturate(135%);backdrop-filter:blur(13px) saturate(135%);-webkit-mask-image:linear-gradient(0deg,#000 60%,transparent);mask-image:linear-gradient(0deg,#000 60%,transparent)"></div>':'';
-  var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(66px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none"><div style="max-width:860px;margin:0 auto;position:relative">'
-    +_glassBg+_suggRow+_chipsRow+_inputBox
+  /* 液态玻璃：几乎看不见的透明质感——主要靠强背景模糊把身后内容柔化（利于阅读），只加一丝极淡暖调，绝不是黑色遮罩。整层用 mask 向上淡出。 */
+  var _glassBg=INPUTGLASS?'<div aria-hidden="true" style="position:absolute;left:'+(mob?'-8px':'-14px')+';right:'+(mob?'-8px':'-14px')+';top:-6px;bottom:calc(-'+(mob?66:14)+'px - env(safe-area-inset-bottom));pointer-events:none;background:linear-gradient(0deg,rgba(36,27,17,.16),rgba(36,27,17,.05) 55%,rgba(36,27,17,0));-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);-webkit-mask-image:linear-gradient(0deg,#000 56%,transparent);mask-image:linear-gradient(0deg,#000 56%,transparent);box-shadow:inset 0 1px 0 rgba(255,244,220,.05)"></div>':'';
+  var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(66px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none">'
+    +_glassBg
+    +'<div style="max-width:860px;margin:0 auto;position:relative">'
+    +_suggRow+_chipsRow+_inputBox
     +'</div></div>';
   if(S.worldFull){input='';}
   else if(S.zen){
