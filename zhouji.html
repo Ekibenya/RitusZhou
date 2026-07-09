@@ -220,8 +220,8 @@ function illuHtml(h,i){
       var _cols=gridCols(_cur.length),_gap=8,_basis='calc((100% - '+((_cols-1)*_gap)+'px) / '+_cols+')',_pad=(_cols>=3?'22px':'30px');
       illu='<div style="display:flex;flex-wrap:wrap;gap:'+_gap+'px;margin:0 auto '+(_multiVer?'6px':'12px')+'">'
         +_cur.map(function(iid){
-          return '<div style="flex:0 0 '+_basis+';border:1px solid rgba(255,238,205,.16);border-radius:'+(_cols>=3?'10px':'12px')+';overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.12),0 4px 12px rgba(0,0,0,.28)">'
-            +(nearEnd?'<div data-img="'+esc(iid)+'"><div style="padding:'+_pad+' 0;text-align:center;font-size:11px;letter-spacing:.15em;color:var(--mut)">载入中…</div></div>'
+          return '<div style="flex:0 0 '+_basis+';'+imgAR(iid)+'border:1px solid rgba(255,238,205,.16);border-radius:'+(_cols>=3?'10px':'12px')+';overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.12),0 4px 12px rgba(0,0,0,.28)">'
+            +(nearEnd?'<div data-img="'+esc(iid)+'" style="width:100%;height:100%">'+(imgAR(iid)?'':'<div style="padding:'+_pad+' 0;text-align:center;font-size:11px;letter-spacing:.15em;color:var(--mut)">载入中…</div>')+'</div>'
               :'<div class="btn" data-imgload="'+esc(iid)+'" style="cursor:pointer;padding:'+_pad+' 0;text-align:center;font-size:11px;letter-spacing:.12em;color:var(--mut)">点开加载</div>')
             +'</div>';
         }).join('')+'</div>';
@@ -229,8 +229,8 @@ function illuHtml(h,i){
       var _dsz=h.dispSize||imgClamp(IMGCFG.disp||'lg');
       var _one=_cur[0]||h.img;
       illu='<div data-imgwrap="1" style="position:relative;max-width:'+imgDispW(_dsz)+';margin:0 auto '+(_multiVer?'6px':'8px')+'">'
-        +'<div '+(nearEnd?'data-img="'+esc(_one)+'"':'')+' style="border:1px solid rgba(255,238,205,.18);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.15),0 6px 18px rgba(0,0,0,.3)">'
-          +(nearEnd?'<div style="padding:26px 0;text-align:center;font-size:12px;letter-spacing:.2em;color:var(--mut)">插画载入中…</div>'
+        +'<div '+(nearEnd?'data-img="'+esc(_one)+'"':'')+' style="'+imgAR(_one)+'border:1px solid rgba(255,238,205,.18);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02);box-shadow:inset 0 1px 0 rgba(255,242,214,.15),0 6px 18px rgba(0,0,0,.3)">'
+          +(nearEnd?(imgAR(_one)?'':'<div style="padding:26px 0;text-align:center;font-size:12px;letter-spacing:.2em;color:var(--mut)">插画载入中…</div>')
             :'<div class="btn" data-imgload="'+esc(_one)+'" style="cursor:pointer;padding:13px 0;text-align:center;font-size:12px;letter-spacing:.18em;color:var(--mut)">▸ 插画（点开加载）</div>')
           +'</div>'
           +'<div class="btn" data-imgzoom="'+i+'" title="缩放：迷你 / 小 / 中 / 大" style="position:absolute;top:8px;right:8px;z-index:3;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;color:#f6e8c4;background:rgba(14,9,5,.62);border:1px solid rgba(255,238,205,.34);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 2px 10px rgba(0,0,0,.5)">'+zoomIcon(19)+'</div>'
@@ -253,7 +253,7 @@ function illuHtml(h,i){
   return illu;
 }
 /* 版本切换/单条更新：只重建这一条的插画块，不整页 render（消除闪屏）；找不到容器才回退整页 */
-function illuSwap(i,h){var el=document.querySelector('.zjIllu[data-illu="'+i+'"]');if(el){el.innerHTML=illuHtml(h,i);try{imgHydrate();}catch(e){}}else{S._noFade=true;render();}}
+function illuSwap(i,h){var el=document.querySelector('.zjIllu[data-illu="'+i+'"]');if(el){var _oh=el.offsetHeight;if(_oh)el.style.minHeight=_oh+'px';/* 切换瞬间锁住原高度，防塌陷跳屏；新图（多为已缓存）解码后再解锁 */el.innerHTML=illuHtml(h,i);try{imgHydrate();}catch(e){}setTimeout(function(){if(el)el.style.minHeight='';},480);}else{S._noFade=true;render();}}
 /* 图片版本模型：每次 draw/重绘 = 一个版本；版本内 1 张=单图、≥2 张=一次性多图（网格）。
    箭头只在版本间翻，只显示当前版本，旧图仅供翻看。兼容旧扁平 imgs（每张迁移为独立版本）。 */
 function imgVers(h){
@@ -704,6 +704,11 @@ function idbClearAll(cb){idbOpen(function(db){if(!db)return cb&&cb(false);
   try{var tx=db.transaction('img','readwrite');tx.objectStore('img').clear();
   tx.oncomplete=function(){try{Object.keys(IMGC).forEach(function(k){try{URL.revokeObjectURL(IMGC[k]);}catch(e3){}});IMGC={};IMGQ=[];}catch(e2){}cb&&cb(true);};tx.onerror=function(){cb&&cb(false);};}catch(e){cb&&cb(false);}});}
 var IMGC={},IMGQ=[];
+/* 插画尺寸缓存（id → "宽/高"），持久化。用于给图容器【预留纵横比高度】——切图/整页重渲染时容器不再从占位小高度塌成 0 再弹回，
+   从根上消除「图片一换/一刷新就跳屏闪一下」。 */
+var IMGDIM={};try{IMGDIM=JSON.parse(localStorage.getItem('zhouji_imgdim')||'{}')||{};}catch(e){}
+function imgDimSave(){try{localStorage.setItem('zhouji_imgdim',JSON.stringify(IMGDIM));}catch(e){}}
+function imgAR(id){var d=id&&IMGDIM[id];return d?('aspect-ratio:'+d.replace('/',' / ')+';'):'';}
 function imgURL(id,cb){
   if(IMGC[id])return cb(IMGC[id]);
   idbGet(id,function(b){if(!b)return cb(null);
@@ -713,9 +718,13 @@ function imgURL(id,cb){
 function imgHydrate(){
   var els=document.querySelectorAll('[data-img]');
   [].forEach.call(els,function(el){var id=el.getAttribute('data-img');el.removeAttribute('data-img');
+    if(IMGDIM[id])el.style.aspectRatio=IMGDIM[id].replace('/',' / '); /* 载入前先按已知比例占好位，杜绝塌陷跳屏 */
     imgURL(id,function(u){if(!el.isConnected)return;
       if(!u){el.innerHTML='<div style="padding:14px 0;text-align:center;font-size:12px;letter-spacing:.15em;color:var(--mut)">插画已散佚（本机图库无此图）</div>';return;}
-      el.innerHTML='<img src="'+u+'" data-imgfull="1" loading="lazy" style="width:100%;display:block;cursor:zoom-in">';});});}
+      el.innerHTML='<img src="'+u+'" data-imgfull="1" style="width:100%;display:block;cursor:zoom-in'+(IMGDIM[id]?';aspect-ratio:'+IMGDIM[id].replace('/',' / '):'')+'">';
+      var _im=el.firstChild;
+      if(_im&&_im.tagName==='IMG')_im.addEventListener('load',function(){if(_im.naturalWidth&&_im.naturalHeight){var a=_im.naturalWidth+'/'+_im.naturalHeight;if(IMGDIM[id]!==a){IMGDIM[id]=a;imgDimSave();try{el.style.aspectRatio=a.replace('/',' / ');}catch(e){}}}},{once:true});
+    });});}
 /* ---------------- 酒馆助手脚本兼容层（沙箱 iframe，脚本摸不到密钥与页面本体） ---------------- */
 var JSKEY='zhouji_scripts_v1';
 var USCRIPTS=[];try{USCRIPTS=JSON.parse(localStorage.getItem(JSKEY)||'[]')||[];}catch(e){}if(!Array.isArray(USCRIPTS))USCRIPTS=[];
