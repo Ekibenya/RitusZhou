@@ -2216,7 +2216,7 @@ function storyPane(){
         ubody='<div style="max-width:82%;flex:1"><textarea id="zjMsgEditBox" style="width:100%;min-height:90px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:#e3b6a0;font-size:14px;line-height:1.8;padding:10px 13px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
           +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:7px"><div class="btn obtn" data-act="mCancel" style="font-size:12px;padding:5px 14px">取消</div><div class="btn gbtn" data-act="mSave" style="font-size:12px;letter-spacing:.15em;padding:5px 16px">保存</div></div></div>';
       }else{
-        ubody='<div class="glass" style="max-width:82%;border:1px solid rgba(166,59,38,.34);border-right:3px solid var(--red);border-radius:17px;background:linear-gradient(135deg,rgba(180,66,42,.20),rgba(120,42,28,.07) 44%,rgba(18,13,8,.03));padding:12px 16px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e9c0aa;white-space:pre-wrap">'+esc(h.text)+'</div></div>';
+        ubody='<div class="glass" style="max-width:82%;border:1px solid rgba(166,59,38,.34);border-radius:17px;background:linear-gradient(135deg,rgba(180,66,42,.20),rgba(120,42,28,.07) 44%,rgba(18,13,8,.03));padding:12px 16px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e9c0aa;white-space:pre-wrap">'+esc(h.text)+'</div></div>';
       }
       var utools='<div class="zjMT" data-mt="'+i+'" style="display:'+((S.msgTools===i&&S.msgEdit!==i)?'flex':'none')+';gap:8px;justify-content:flex-end;margin-top:7px">'
         +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此言</div>'
@@ -2269,7 +2269,7 @@ function storyPane(){
       var _row='<div style="display:flex;flex-wrap:nowrap;gap:4px;align-items:stretch;margin-top:5px">'
         +(isLast&&h.alts&&h.alts.length>1?sw:'')
         +'<div class="btn obtn" data-rr="'+i+'" title="重新演绎这一幕" style="'+_rb+'">'+_ti('⟲')+'重演</div>'
-        +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div class="btn obtn" style="'+_rb+';color:var(--gold);border-color:rgba(224,190,130,.5)">补录中…</div>':'<div class="btn obtn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式时用）" style="'+_rb+';'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">'+_ti('⟲')+(panelComplete(h.text)?'重出状态栏':'补状态栏')+'</div>'))
+        +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div class="btn obtn" style="'+_rb+';color:var(--gold);border-color:rgba(224,190,130,.5)">补录中…</div>':'<div class="btn obtn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式/漏字段时用）" style="'+_rb+';'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">'+_ti('⟲')+'重出状态栏</div>'))
         +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="'+_rb+';color:var(--gold2);border-color:rgba(224,190,130,.6)">'+_ti('■')+'停诵</div>':'<div class="btn obtn" data-tts="'+i+'" title="朗读这一幕" style="'+_rb+'">'+_ti('♪')+'诵读</div>'):'')
         +(!isLast?'<div class="btn obtn" data-backto="'+i+'" title="舍弃其后剧情，回到这一幕继续" style="'+_rb+';color:#d9a06a;border-color:rgba(217,160,106,.45)">'+_ti(chev(-1,9))+'回到此处</div>':'')
         +'<div class="btn obtn" data-wedit="'+i+'" title="修改此幕正文" style="'+_rbFix+'">'+pen(11)+' 修</div>'
@@ -3629,19 +3629,22 @@ function morphClose(boxId,srcSel,done){
   if(!src){done();return;}
   morphBusy=true;morphLock++;
   var bs=box.style;
-  bs.transition='none';bs.transformOrigin='0 0';bs.willChange='transform,opacity';
+  bs.transition='none';bs.transformOrigin='0 0';bs.willChange='transform,opacity';bs.pointerEvents='none';
   bs.transform='';
   box.offsetWidth;
-  bs.transition='transform '+MORPH_D+'ms '+MORPH_E+',opacity 150ms '+(MORPH_D-170)+'ms';
+  /* 关键·根治关闭残留：整块自身的透明度【立即、快速】淡出（无延迟，约 0.6× 时长），
+     比收缩更早归零——盒子在缩到按钮之前就已透明，绝不会留下一个实心暗方块。 */
+  bs.transition='transform '+MORPH_D+'ms '+MORPH_E+',opacity '+Math.round(MORPH_D*0.58)+'ms cubic-bezier(.4,0,1,1)';
   box.classList.add('zjMorphHide');
   bs.transform=morphFlip(box,src);
   bs.opacity='0';
   var fin2=false;
   function finClose(){if(fin2)return;fin2=true;box.removeEventListener('transitionend',teClose);
+    box.style.opacity='0';box.style.visibility='hidden'; /* 收尾兜底：无论如何最终不可见，杜绝任何残留 */
     morphBusy=false;morphLock--;done();morphFlush();}
   function teClose(e){if(e.target===box&&e.propertyName==='transform')finClose();}
   box.addEventListener('transitionend',teClose);
-  setTimeout(finClose,MORPH_D+1200);
+  setTimeout(finClose,MORPH_D+120);
 }
 root.addEventListener('input',function(e){
   if(!e.target)return;
