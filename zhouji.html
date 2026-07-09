@@ -869,6 +869,8 @@ function extractCoT(t){var outs=[];COT_RE.lastIndex=0;
 /* ---------------- 玩家自定义世界书 ---------------- */
 var LKEY='zhouji_lore_v1';
 var ULORE=[]; try{ULORE=JSON.parse(localStorage.getItem(LKEY)||'[]')||[];}catch(e){} if(!Array.isArray(ULORE))ULORE=[];
+/* 世界书每轮注入预算（字数）：默认 9000；存 0＝不限（大窗口模型用，代价是每轮更贵更慢） */
+var LOREBUD=9000;try{var _lb=parseInt(localStorage.getItem('zhouji_lorebud'),10);if(isFinite(_lb))LOREBUD=_lb===0?Infinity:Math.max(3000,Math.min(63000,_lb));}catch(e){}
 function uloreSave(){try{localStorage.setItem(LKEY,JSON.stringify(ULORE));}catch(e){}}
 function uloreParse(txt){
   var obj=null;try{obj=JSON.parse(txt);}catch(e){}
@@ -1015,7 +1017,7 @@ function presetParts(pos){
 function buildSystem(history,userInput){
   var SPD=speedOn(); /* 极速模式：精简提示词、缩短上下文与记忆、去示例与自查、压缩状态栏铁则 */
   var recent = history.slice(SPD?-2:-4).map(function(h){return h.text;}).join('\n')+'\n'+userInput;
-  var lore = scanLore(recent,SPD?1800:9000,history,userInput);
+  var lore = scanLore(recent,SPD?Math.max(1800,Math.floor(LOREBUD/5)):LOREBUD,history,userInput);
   var pre=presetParts('pre'), post=presetParts('post');
   var arr=[];
   if(pre.length)arr.push('【玩家预设】\n'+pre.join('\n\n'));
@@ -3283,6 +3285,8 @@ function lorePane(){
     :'<div style="text-align:center;padding:26px 0 4px;font-size:13px;letter-spacing:.25em;color:#6f6148">尚无自定义条目</div>';
   return '<div class="grow bambooV" style="overflow-y:auto;padding:22px 28px"><div style="max-width:680px">'
    +'<div style="font-size:12.5px;line-height:1.85;color:#8a7a5e;border:1px solid rgba(201,160,99,.18);border-radius:10px;padding:10px 14px">你写的世界书条目与本卡自带世界书一同生效：正文近几轮提到<b style="color:var(--gold2)">关键词</b>时自动注入该条设定；勾选常驻则每轮必注入（占用篇幅，慎用）。已支持 ST 高级字段：<b style="color:var(--gold2)">次级关键词</b>（须与主关键词同时命中）、注入<b style="color:var(--gold2)">顺序</b>、触发<b style="color:var(--gold2)">概率</b>，导入的扫描深度与递归设置也自动生效。条目只存于你这台设备的浏览器。</div>'
+   +'<div style="display:flex;align-items:center;gap:14px;margin-top:14px"><span style="flex:none;font-size:13px;color:var(--mut)">注入预算</span><input id="zjLoreBud" type="range" min="3000" max="63000" step="3000" value="'+(LOREBUD===Infinity?63000:LOREBUD)+'" style="flex:1;accent-color:#c9a063;border:none;background:transparent;padding:0"><div id="zjLoreBudV" style="width:64px;text-align:right;font-size:14px;color:var(--gold3)">'+(LOREBUD===Infinity?'不限':(Math.round(LOREBUD/1000)+'k字'))+'</div></div>'
+   +'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:6px">每轮注入世界书的总字数上限，默认 9k。世界书每轮全量重发：拉高＝更多设定同时生效、但每轮更贵更慢；拉满＝不限（配大上下文模型用）。你的自定义条目永远最先装桶不被内置挤掉。极速模式下按此值的 1/5 执行。</div>'
    +'<div class="kai" style="font-size:19px;color:'+(led?'#a9cbb8':'var(--gold2)')+';letter-spacing:.15em;margin:22px 0 12px">'+(led?'编辑条目「'+esc(led.title)+'」':'新写一条')+'</div>'
    +'<div><input id="zjLoreTitle" '+inp+' value="'+esc(led?led.title:'')+'" placeholder="条目名（如：我的家将·赵铁衣）"></div>'
    +'<div style="margin-top:10px"><input id="zjLoreKeys" '+inp+' value="'+esc(led?(led.keys||[]).join(', '):'')+'" placeholder="触发关键词，逗号分隔（如：赵铁衣, 家将, 铁衣）"></div>'
@@ -3765,7 +3769,26 @@ function render(){
     ZJ3D.onStory(_lm&&_lm.text?_lm.text:'');
   }
 }
-window.ZJ3D_onExpand=function(){render();};
+window.ZJ3D_onExpand=function(){
+  /* 引擎三种时机都会走到这里：①资源就绪 ②横条上点 ×（引擎在回调前刚写 zj3d_hide=1）③展开/收起横条。
+     全屏+三维展开中：②等价「收起三维」→ 走灵动岛同一条手术路径；③手术式改岛高与正文 padding（带滚动补偿）；
+     其余情形照旧整渲染。目的：全屏内这些操作不再整屏重建、正文不闪。 */
+  if(S.zen&&S.zenWorld){
+    var hid=false;try{hid=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
+    if(hid){var zb=document.querySelector('[data-act="zenWorld"]');if(zb){zb.click();return;}}
+    var isle=document.getElementById('zjSceneIsle');var story=document.getElementById('zjStory');
+    if(isle&&story&&document.getElementById('zjScene3D')){
+      var mo=isMobile();var h=(window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mo):(mo?140:186);
+      isle.style.height=h+'px';
+      var w=story.querySelector('[data-zjzoom]');var oldY=w?w.getBoundingClientRect().top:null;
+      story.style.paddingTop=(46+h+18)+'px';
+      if(w&&oldY!=null){var dy=Math.round(oldY-w.getBoundingClientRect().top);if(dy){var mx=Math.max(0,story.scrollHeight-story.clientHeight);story.scrollTop=Math.max(0,Math.min(mx,story.scrollTop-dy));}}
+      try{if(window.ZJ3D&&ZJ3D.owns())ZJ3D.onRender(playerLoc().name,mood().night);}catch(e2){}
+      return;
+    }
+  }
+  render();
+};
 /* ---------------- 液态转场引擎 ---------------- */
 function reducedMotion(){try{return matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}}
 var morphLock=0,morphPending=false;
@@ -3960,6 +3983,7 @@ root.addEventListener('input',function(e){
     var zzs=document.querySelectorAll('[data-zjzoom]');for(var zzi=0;zzi<zzs.length;zzi++)zzs[zzi].style.zoom=FS;
     return;}
   if(e.target.id==='zjBlurRange'){var bv=Math.max(0,Math.min(24,parseInt(e.target.value,10)||0));BGBLUR=bv;try{localStorage.setItem('zhouji_bgblur',String(bv));}catch(er){}applyBgBlur();var bl=document.getElementById('zjBlurVal');if(bl)bl.textContent=bv===0?'透明':bv+'px';return;}
+  if(e.target.id==='zjLoreBud'){var lbv=Math.max(3000,Math.min(63000,parseInt(e.target.value,10)||9000));LOREBUD=lbv>=63000?Infinity:lbv;try{localStorage.setItem('zhouji_lorebud',LOREBUD===Infinity?'0':String(lbv));}catch(er){}var lbl=document.getElementById('zjLoreBudV');if(lbl)lbl.textContent=LOREBUD===Infinity?'不限':(Math.round(lbv/1000)+'k字');return;}
   if(e.target.id==='zjWzPlace'){if(S.wiz){S.wiz.place=e.target.value.trim()||'__custom';}return;}
   if(e.target.id==='zjWzIdent'){if(S.wiz&&S.wiz.role)S.wiz.role.c.id=e.target.value;return;}
   if(e.target.id==='zjWzAge'){if(S.wiz&&S.wiz.role)S.wiz.role.c.age=e.target.value;return;}
