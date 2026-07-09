@@ -130,6 +130,9 @@ textarea,input{border-radius:10px}
 @keyframes zjInL{from{transform:translateX(-30px);opacity:0}}
 @keyframes zjInU{from{transform:translateY(22px);opacity:0}}
 @keyframes zjInD{from{transform:translateY(-22px);opacity:0}}
+@keyframes zjPickBg{from{opacity:0}}
+@keyframes zjPickIn{from{opacity:0;transform:translateY(20px) scale(.965)}}
+@media (prefers-reduced-motion:reduce){#zjStylePick,#zjStylePick *{animation:none!important}}
 
 @keyframes zjTabF{from{opacity:0;transform:translateX(72px) scale(.98)}}
 @keyframes zjTabB{from{opacity:0;transform:translateX(-72px) scale(.98)}}
@@ -2632,7 +2635,7 @@ function gameView(){
     top='<button data-act="worldFull" class="obtn btn" title="退出三维全屏" style="position:absolute;left:50%;margin-left:-48px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:8;font-size:12px;letter-spacing:.14em;padding:7px 18px">退出全屏</button>';
     body=mob?'<div class="grow zjPane" style="position:relative;min-height:0">'+storyPane()+'</div>':'<div class="row grow">'+storyPane()+'</div>';
   }
-  return '<div class="col" style="position:relative">'+top+body+'</div>'+(S.bgmOpen?bgmPanel():'')+(S.overlay?overlayView():'')+(!UISTYLE?stylePickHtml():'');
+  return '<div class="col" style="position:relative">'+top+body+'</div>'+(S.bgmOpen?bgmPanel():'')+(S.overlay?overlayView():'');
 }
 
 /* ---------------- BGM PANEL ---------------- */
@@ -3836,6 +3839,7 @@ function render(){
     for(var _i=S.history.length-1;_i>=0;_i--){if(S.history[_i].role!=='user'){_lm=S.history[_i];break;}}
     ZJ3D.onStory(_lm&&_lm.text?_lm.text:'');
   }
+  if(S.screen==='game'&&!UISTYLE)try{showStylePick();}catch(e){}
 }
 window.ZJ3D_onExpand=function(){
   /* 引擎三种时机都会走到这里：①资源就绪 ②横条上点 ×（引擎在回调前刚写 zj3d_hide=1）③展开/收起横条。
@@ -4212,25 +4216,55 @@ window.__zjTopIsleHtml=function(){
 };
 /* 开局后的界面风格选择：两张演示图（电脑给电脑版、手机给手机版）+介绍，二选一；设置·显可随时更换 */
 /* 界面风格选择：手机也两卡并排（竖屏截图正好半宽放下），整屏一眼看全、零滚动；
-   图高用 100dvh-170px 兜底封顶（正常机型远达不到，纯保险），要点一行金字点出核心差异。 */
+   图高用 100dvh-170px 兜底封顶（正常机型远达不到，纯保险），要点一行金字点出核心差异。
+   出场：底幕淡入、标题与两卡依次升起。浮层挂在 document.body 上、只注入一次——
+   途中任何 render() 都碰不到它，动画绝不会被重播或掐断。 */
 function stylePickHtml(){
   var m=isMobile(),sfx=m?'m':'d';
+  var an=!reducedMotion();
+  var anBg=an?'animation:zjPickBg .5s ease-out both;':'';
+  var anIn=function(d){return an?'animation:zjPickIn .62s cubic-bezier(.22,1,.32,1) '+d+'ms both;':'';};
   var opts=[
     ['glass','液态玻璃','框架分明|纪年胶囊|全屏按钮','经典全框界面：选项与输入皆有玻璃框，结构一目了然'],
     ['minimal','极简主义','无框柔光|正文区更大|点正文即全屏','顶栏液态玻璃渐变，界面隐入正文；适合小屏幕设备']];
-  return '<div id="zjStylePick" style="position:fixed;inset:0;z-index:90;background:rgba(8,6,4,.92);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:'+(m?'10px':'16px')+';overflow:auto">'
+  var ci=0;
+  return '<div id="zjStylePick" style="'+anBg+'position:fixed;inset:0;z-index:90;background:rgba(8,6,4,.92);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:'+(m?'10px':'16px')+';overflow:auto">'
     +'<div style="max-width:'+(m?'560px':'880px')+';width:100%">'
-    +'<div class="kai" style="text-align:center;font-size:'+(m?'18px':'22px')+';color:var(--gold2);letter-spacing:.22em;margin-bottom:4px;text-shadow:0 0 14px rgba(224,190,130,.4)">择 · 界面风格</div>'
-    +'<div style="text-align:center;font-size:'+(m?'11px':'12.5px')+';color:var(--mut);margin-bottom:'+(m?'10px':'16px')+'">点选其一即入正文；之后可在 设置 · 显 随时更换</div>'
+    +'<div class="kai" style="'+anIn(60)+'text-align:center;font-size:'+(m?'18px':'22px')+';color:var(--gold2);letter-spacing:.22em;margin-bottom:4px;text-shadow:0 0 14px rgba(224,190,130,.4)">择 · 界面风格</div>'
+    +'<div style="'+anIn(120)+'text-align:center;font-size:'+(m?'11px':'12.5px')+';color:var(--mut);margin-bottom:'+(m?'10px':'16px')+'">点选其一即入正文；之后可在 设置 · 显 随时更换</div>'
     +'<div style="display:flex;gap:'+(m?'10px':'14px')+';align-items:stretch">'
     +opts.map(function(o){
-      return '<div class="btn zjHl" data-act="setStyle" data-style="'+o[0]+'" style="flex:1;min-width:0;cursor:pointer;border:1px solid rgba(224,190,130,.4);border-radius:'+(m?'13px':'16px')+';overflow:hidden;background:rgba(18,13,8,.72);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,242,214,.15)">'
+      return '<div class="btn zjHl" data-act="setStyle" data-style="'+o[0]+'" style="'+anIn(190+110*(ci++))+'flex:1;min-width:0;cursor:pointer;border:1px solid rgba(224,190,130,.4);border-radius:'+(m?'13px':'16px')+';overflow:hidden;background:rgba(18,13,8,.72);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,242,214,.15)">'
         +'<img src="core/res/uidemo_'+o[0]+'_'+sfx+'.jpg?v=2" style="width:100%;display:block;pointer-events:none;max-height:calc(100vh - 170px);max-height:calc(100dvh - 170px);object-fit:cover;object-position:top" alt="">'
         +'<div style="padding:'+(m?'9px 10px 11px':'12px 15px 14px')+'"><div class="kai" style="font-size:'+(m?'14.5px':'16.5px')+';color:var(--gold2);letter-spacing:.13em;white-space:nowrap">'+o[1]+'</div>'
         +'<div style="font-size:'+(m?'10px':'11.5px')+';color:#d9b988;letter-spacing:.02em;line-height:1.6;margin-top:4px">'+o[2].split('|').map(function(p){return '<span style="white-space:nowrap">'+p+'</span>';}).join(' · ')+'</div>'
         +(m?'':'<div style="font-size:12px;color:var(--mut2);line-height:1.75;margin-top:4px">'+o[3]+'</div>')
         +'</div></div>';}).join('')
     +'</div></div></div>';
+}
+function showStylePick(){
+  if(UISTYLE||document.getElementById('zjStylePick'))return;
+  document.body.insertAdjacentHTML('beforeend',stylePickHtml());
+  var ov=document.getElementById('zjStylePick');
+  ov.addEventListener('click',function(e){
+    var n=e.target;
+    while(n&&n!==ov){if(n.getAttribute&&n.getAttribute('data-act')==='setStyle'){pickStyle(n);return;}n=n.parentNode;}
+  });
+}
+/* 选定风格（开局选择浮层与设置·显的样式卡共用）。带浮层时丝滑退场：
+   选中卡先亮边微放大作确认，新界面在幕后渲染好，整层再缓缓淡出揭开它——两头都无硬切。 */
+function pickStyle(t){
+  if(S._pickBusy&&Date.now()-S._pickBusy<700)return;S._pickBusy=Date.now();
+  var stv=t.getAttribute('data-style'),ov=document.getElementById('zjStylePick');
+  applyUiStyle(stv);S._noFade=true;
+  if(ov&&ov.animate&&!reducedMotion()){
+    try{t.style.borderColor='rgba(240,214,160,.95)';t.style.boxShadow='0 0 0 1.5px rgba(240,214,160,.75),0 12px 40px rgba(224,190,130,.3)';}catch(e0){}
+    t.animate([{transform:'scale(1)'},{transform:'scale(1.03)'}],{duration:420,easing:'cubic-bezier(.3,1,.35,1)',fill:'forwards'});
+    render();
+    var an=ov.animate([{opacity:1},{opacity:0}],{duration:420,delay:140,easing:'ease-out',fill:'forwards'});
+    var rm=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
+    an.onfinish=an.oncancel=rm;setTimeout(rm,900);
+  }else{if(ov&&ov.parentNode)ov.parentNode.removeChild(ov);render();}
 }
 /* 正文 paddingTop 的滚动补偿式修改：正在读的行钉在原处；滚动余量不够的残余用 FLIP 平滑过渡。
    全屏切换/三维开合（全屏内外）共用。 */
@@ -4558,7 +4592,7 @@ root.addEventListener('click',function(e){
       else if(a==='imgCacheClear'){if(!S.imgCacheClearArm){S.imgCacheClearArm=true;renderOverlay();return;}S.imgCacheClearArm=false;idbClearAll(function(){S.imgCacheKeys=[];if(S.overlay==='set'&&S.setTab==='imgcache')renderOverlay();});return;}
       else if(a==='openDataSet'){S.setTab='font';S.overlay='set';S.wipeArm=false;renderOverlay();return;}
       else if(a==='zen'){zenToggle();return;}
-      else if(a==='setStyle'){applyUiStyle(t.getAttribute('data-style'));S._noFade=true;render();return;}
+      else if(a==='setStyle'){pickStyle(t);return;}
       else if(a==='worldFull'){
         var wfI=document.getElementById('zjSceneIsle');var wfR=wfI&&wfI.getBoundingClientRect();
         S.worldFull=!S.worldFull;S._noFade=true;render();
