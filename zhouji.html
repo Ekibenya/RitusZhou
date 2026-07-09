@@ -181,6 +181,8 @@ function dlgApply(prev){
 function worldParas(text,upto){var t=(upto==null)?text:text.slice(0,upto);return t.split(/\n+/).filter(Boolean).map(function(p){return '<p style="margin:0 0 14px;font-size:16px;line-height:2.05;color:var(--ink);text-align:justify">'+dlgSpan(esc(p))+'</p>';}).join('');}
 /* iOS 风描边 chevron 图标（替代会被移动端渲染成彩色 emoji 的实心三角字符），d<0 左 / d>0 右 */
 function chev(d,sz){var s=sz||11;return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px">'+(d<0?'<path d="M15 4 7 12 15 20"/>':'<path d="M9 4 17 12 9 20"/>')+'</svg>';}
+/* 闪电描边图标（极速模式用；矢量图非 emoji），on 时亮金发光、off 时全灰 */
+function bolt(on){var c=on?'#ffdca0':'#8a7f68';return '<svg viewBox="0 0 24 24" width="22" height="22" fill="'+c+'" style="display:block'+(on?';filter:drop-shadow(0 0 5px rgba(255,200,110,.7))':'')+'"><path d="M13 2 4.6 13.1c-.34.45-.02 1.1.53 1.1H11l-1.2 7.1c-.11.66.72 1.02 1.12.48L19.4 10c.34-.45.02-1.1-.53-1.1H13l1.2-6.5c.12-.63-.68-1-1.2-.4z"/></svg>';}
 /* 单图显示尺寸 迷你/小/中/大 → 容器最大宽度（大=满栏，即原样）。多图并排列数由 gridCols 自动决定，不受此项影响。 */
 function imgDispW(sz){return sz==='mini'?'32%':sz==='sm'?'46%':sz==='md'?'70%':'100%';}
 /* 多图并排列数：auto=2–4张两列、5–6张三列（迷你）；c2 恒两列；c3 恒三列（迷你） */
@@ -944,8 +946,9 @@ function presetParts(pos){
 }
 
 function buildSystem(history,userInput){
-  var recent = history.slice(-4).map(function(h){return h.text;}).join('\n')+'\n'+userInput;
-  var lore = scanLore(recent,9000,history,userInput);
+  var SPD=speedOn(); /* 极速模式：精简提示词、缩短上下文与记忆、去示例与自查、压缩状态栏铁则 */
+  var recent = history.slice(SPD?-2:-4).map(function(h){return h.text;}).join('\n')+'\n'+userInput;
+  var lore = scanLore(recent,SPD?1800:9000,history,userInput);
   var pre=presetParts('pre'), post=presetParts('post');
   var arr=[];
   if(pre.length)arr.push('【玩家预设】\n'+pre.join('\n\n'));
@@ -957,21 +960,24 @@ function buildSystem(history,userInput){
     '【'+(cr?'世界核心NPC':'玩家角色')+'·姬瑶档案】'+fill(G.description),
     '【叙事者定位】'+fill(G.personality),
     '【场景】'+fill(G.scenario),
-    (S.memOn!==false&&S.mem&&S.mem.length>1)?('【长程记忆·太史长卷】以下为本局开局至今全部既定事实的编年纪要（越靠后越接近当下）。正文历史若有缺失，以此卷为准；任何叙事不得与之矛盾：\n'+memChronicle()):'',
+    (S.memOn!==false&&S.mem&&S.mem.length>1)?('【长程记忆·太史长卷】以下为本局开局至今全部既定事实的编年纪要（越靠后越接近当下）。正文历史若有缺失，以此卷为准；任何叙事不得与之矛盾：\n'+memChronicle(SPD?1600:7000)):'',
     '【世界书·激活条目】\n'+lore.map(function(e){return '『'+e.title+'』'+e.content;}).join('\n'),
-    '【对话示例】\n'+fill(G.mes_example),
-    '【输出格式·铁则】正文用现代白话轻小说笔法(2-6段)，停在需要天子表态处。末尾必须输出<mvu_panel>状态栏：<sec_char>含◆衣冠/持物/御体/观瞻/神格(0-100)/史笔；<sec_npc>每在场NPC一行◈名字|状态|好感(0-100)|心声|身份|所在|年龄|性别（身份=其人职业或身份，如「铁匠」「太宰」「侍女」；所在=当前所在地；年龄可填数字或「约四十」；性别男/女；此四项据剧情如实填写、暂不可知可留空但须保留竖线占位，人物一经确立即固定不再随意变动）；<sec_world>含◇纪年/时地/天气/安稳(0-100)/大势/将临。本作状态栏是全量快照而非增量：每回合都必须完整重写全部字段——凡本轮有变动者据实更新，无变动者原样沿用上一幕数值；严禁省略状态栏、严禁只写变化项。禁止<UpdateVariable>及任何「变量更新块」，禁止输出「未更新变量」「变量未更新」之类元提示。若且仅若本轮叙事中天下有实际变动——天子下令兴建并落成、屋舍焚毁坍塌、人物来到或离去——则在<sec_world>之后增写<sec_deed>，每类一行：▣兴作|名目×数、▣毁损|名目×数、▣来者|人物、▣去者|人物；多项以、分隔。兴作与毁损名目仅限：马厩、酒楼、客栈、茶棚、书肆、药铺、布庄、铁匠铺、兵器铺、金铺、珠玉行、陶坊、铸坊、肉铺、杂货铺、粮行、货栈、官仓、官署、神祠、民居、宫室、凉亭、草棚、戏台、宝塔、石桥、牌楼、石雕、常青树、樱树、金枫、红枫、苍松、竹丛、花圃、灯柱、芦苇、露岩、假山、池塘、石板道、御道、夯土官道；人物仅限：士人、农人、匠人、商贾、官吏、将军、方士、乐师、史官、巫祝、游侠、儒生、墨者、说客、医者、卜者、渔父、樵夫。每轮兴作至多3件、毁损至多2件；只记实际发生者，无变动则不得输出<sec_deed>。',
+    SPD?'':('【对话示例】\n'+fill(G.mes_example)),
+    SPD
+      ?'【输出格式·铁则】正文用现代白话轻小说笔法(2-3段，简洁明快)，停在需要天子表态处。末尾必须输出<mvu_panel>状态栏：<sec_char>含◆衣冠/持物/御体/观瞻/神格(0-100)/史笔；<sec_npc>每在场NPC一行◈名字|状态|好感(0-100)|心声|身份|所在|年龄|性别（不明可留空但须保留竖线占位）；<sec_world>含◇纪年/时地/天气/安稳(0-100)/大势/将临。状态栏为全量快照：每回合完整重写全部字段，无变动者沿用上一幕数值；严禁省略状态栏。禁止<UpdateVariable>及任何「变量更新块」与「未更新变量」之类元提示。（本轮无须输出<sec_deed>营造清单。）'
+      :'【输出格式·铁则】正文用现代白话轻小说笔法(2-6段)，停在需要天子表态处。末尾必须输出<mvu_panel>状态栏：<sec_char>含◆衣冠/持物/御体/观瞻/神格(0-100)/史笔；<sec_npc>每在场NPC一行◈名字|状态|好感(0-100)|心声|身份|所在|年龄|性别（身份=其人职业或身份，如「铁匠」「太宰」「侍女」；所在=当前所在地；年龄可填数字或「约四十」；性别男/女；此四项据剧情如实填写、暂不可知可留空但须保留竖线占位，人物一经确立即固定不再随意变动）；<sec_world>含◇纪年/时地/天气/安稳(0-100)/大势/将临。本作状态栏是全量快照而非增量：每回合都必须完整重写全部字段——凡本轮有变动者据实更新，无变动者原样沿用上一幕数值；严禁省略状态栏、严禁只写变化项。禁止<UpdateVariable>及任何「变量更新块」，禁止输出「未更新变量」「变量未更新」之类元提示。若且仅若本轮叙事中天下有实际变动——天子下令兴建并落成、屋舍焚毁坍塌、人物来到或离去——则在<sec_world>之后增写<sec_deed>，每类一行：▣兴作|名目×数、▣毁损|名目×数、▣来者|人物、▣去者|人物；多项以、分隔。兴作与毁损名目仅限：马厩、酒楼、客栈、茶棚、书肆、药铺、布庄、铁匠铺、兵器铺、金铺、珠玉行、陶坊、铸坊、肉铺、杂货铺、粮行、货栈、官仓、官署、神祠、民居、宫室、凉亭、草棚、戏台、宝塔、石桥、牌楼、石雕、常青树、樱树、金枫、红枫、苍松、竹丛、花圃、灯柱、芦苇、露岩、假山、池塘、石板道、御道、夯土官道；人物仅限：士人、农人、匠人、商贾、官吏、将军、方士、乐师、史官、巫祝、游侠、儒生、墨者、说客、医者、卜者、渔父、樵夫。每轮兴作至多3件、毁损至多2件；只记实际发生者，无变动则不得输出<sec_deed>。',
     S.chatOnly?'【聊天模式·最高优先级·覆盖一切输出格式要求】玩家要的是即时通讯般的快聊：只输出对话本身，格式严格为「名字：「台词」」，每句独立一行。台词须口语、简短，每句不超过30字，一回合至多3行，严禁长篇大论，严禁旁白、场景、动作、心理描写。本回合不要输出<mvu_panel>状态栏，不要<sec_deed>，不要思维链。玩家的输入就是其原话，像回消息一样直接回应。':'',
     S.dice?'【天命明骰】玩家言行末尾若附〔天命明骰 X／100 · 等级〕，此为本回合行动成效的既定天数，严格按等级裁定叙事，不得逆天改命：大凶(≤5)灾难性失败且有恶果；不利(≤35)事与愿违；平平(≤65)成败参半进展有限；顺遂(≤94)如愿达成；大吉(≥95)超乎所求另有意外之喜。骰记本身不是玩家说出的话，不要复述。':'',
-    '【自查】'+fill(G.post_history_instructions)
+    SPD?'':('【自查】'+fill(G.post_history_instructions))
   );
   if(post.length)arr.push('【玩家预设·末位指令】\n'+post.join('\n\n'));
   return arr.filter(function(x){return x;}).join('\n\n');
 }
 function buildMessages(history,userInput){
   var msgs=[];
-  /* 长上下文瘦身：原文只带最近30条，更早剧情已由太史长卷以编年纪要形式注入系统提示 */
-  if(history.length>30)history=history.slice(-30);
+  /* 长上下文瘦身：原文只带最近30条（极速模式仅8条），更早剧情已由太史长卷以编年纪要形式注入系统提示 */
+  var _hcap=speedOn()?8:30;
+  if(history.length>_hcap)history=history.slice(-_hcap);
   history.forEach(function(h,i){
     var lastWorld = h.role==='world' && i===history.length-1;
     var mc=h.text;
@@ -1042,7 +1048,7 @@ var API_DEF={
   gemini:{name:'Gemini 官方',url:'https://generativelanguage.googleapis.com',hint:'Google AI Studio 官方直连，一般无需修改地址'}
 };
 function loadApi(){
-  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}},img:{url:'',key:'',model:''},aux:{url:'',key:'',model:''},gen:{temp:'',topp:'',maxtok:'',autofix:''}};
+  var d={provider:'openai',cfg:{openai:{url:'',key:'',model:''},claude:{url:'',key:'',model:''},gemini:{url:'',key:'',model:''}},img:{url:'',key:'',model:''},aux:{url:'',key:'',model:''},gen:{temp:'',topp:'',maxtok:'',autofix:'',speed:''}};
   try{
     var s=JSON.parse(localStorage.getItem(APIK)||'{}');
     if(s.provider&&d.cfg[s.provider])d.provider=s.provider;
@@ -1305,7 +1311,7 @@ function imgRefLoad(file){
 function auxReady(){return !!(API.aux&&API.aux.key&&API.aux.model);}
 function auxBase(){return String(API.aux.url||'https://api.openai.com/v1').trim().replace(/\/+$/,'');}
 function genNum(v){var n=parseFloat(v);return isFinite(n)?n:null;}
-function genMax(){var n=parseInt(API.gen&&API.gen.maxtok,10);return (isFinite(n)&&n>0)?Math.min(n,32000):4000;}
+function genMax(){var n=parseInt(API.gen&&API.gen.maxtok,10);var m=(isFinite(n)&&n>0)?Math.min(n,32000):4000;if(speedOn())m=Math.min(m,1400);/* 极速模式压低单轮上限，短正文更快收笔 */return m;}
 /* 副模型：绘图提示词等杂务走便宜快模型，正文仍由主模型执笔；未配则回落主模型 */
 /* 生成中断：本轮生成的请求都带上 GENAC.signal，用户点「取消发送」即 abort */
 var GENAC=null;
@@ -1473,16 +1479,18 @@ function memSync(){
   if(worlds.length!==n){S.memN=worlds.length;changed=true;}
   if(changed)savePref();
 }
-function memChronicle(){
+function memChronicle(cap){
+  cap=cap||7000;
   var lines=S.mem.map(function(m,i){
     var head=(m.e||'')+(m.d?('·'+m.d):'');
     return (i+1)+'. '+(head?('『'+head+'』'):'')+(m.a?('天子'+(m.manual?'手记':'之举')+'：'+m.a+'。'):'')+(m.s?('史载：'+m.s):'');
   });
   var total=lines.join('\n');
-  if(total.length<=7000)return total;
-  var head=lines.slice(0,8),tail=[],used=head.join('\n').length+20;
-  for(var i=lines.length-1;i>=8;i--){if(used+lines[i].length>7000)break;tail.unshift(lines[i]);used+=lines[i].length+1;}
-  return head.join('\n')+'\n……（中略 '+(lines.length-8-tail.length)+' 条，已录于长卷）……\n'+tail.join('\n');
+  if(total.length<=cap)return total;
+  var keepHead=Math.min(8,lines.length);
+  var head=lines.slice(0,keepHead),tail=[],used=head.join('\n').length+20;
+  for(var i=lines.length-1;i>=keepHead;i--){if(used+lines[i].length>cap)break;tail.unshift(lines[i]);used+=lines[i].length+1;}
+  return head.join('\n')+'\n……（中略 '+(lines.length-keepHead-tail.length)+' 条，已录于长卷）……\n'+tail.join('\n');
 }
 
 var pref = loadPref();
@@ -1697,7 +1705,8 @@ function driveTavern(text){
 /* 断续自动补全：状态栏恒在正文末尾，故「缺失或不完整的 mvu_panel」即「被截断或漏写」的可靠信号。
    命中时自动续写一次，接着把话说完并补齐状态栏，从根上避免「变量不更新 / AI截断」两类问题。 */
 function panelComplete(t){var p=parseMvu(t);return !!(p&&p.world&&Object.keys(p.world).length&&p.char&&Object.keys(p.char).length);}
-function autofixOn(){return !(API.gen&&API.gen.autofix==='0');} /* 断续自动补全开关，默认开 */
+function speedOn(){return !!(API.gen&&API.gen.speed==='1');} /* 极速模式：牺牲正文/变量/记忆/演绎质量，换更快出字。默认关——满血全配置 */
+function autofixOn(){return !(API.gen&&API.gen.autofix==='0')&&!speedOn();} /* 断续自动补全开关，默认开；极速模式下不补 */
 function ensureComplete(sys,msgs,t){
   if(S.chatOnly||!t||!apiReady()||!autofixOn()||panelComplete(t))return Promise.resolve(t); /* 关闭 / 聊天模式 / 已完整 → 不补 */
   S.fixing=true;renderSoft(); /* 亮出「太史令补录状态栏中…」 */
@@ -3273,7 +3282,27 @@ function apiBody(){
     +(S.pvShow?pvPanel():'')
     +'<div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(201,160,99,.18);font-size:12px;line-height:1.9;color:var(--mut)">'+st+'<br>提示：若在 SillyTavern（酒馆）中通过酒馆助手加载本页面，则自动走酒馆的生成通道，无需在此配置。浏览器直连若报跨域（CORS）错误，可改用支持跨域的中转地址。</div>'
     +'<div style="margin-top:14px;font-size:11.5px;line-height:1.85;color:var(--mut)">隐私与用户内容：本游戏为纯前端静态网页，无服务器端业务程序、无数据库。你的存档、聊天记录、记忆、密钥等一切游戏数据仅存于本机浏览器，不上传本站、本项目与作者亦无从收集。唯一外发的是你自行配置的 AI／绘图／语音接口请求，由你的浏览器直连你选定的服务商。你输入、生成与分享的一切内容及游玩行为均由你独立完成并自负全责，与本项目及作者无关。使用即视为同意仓库内《使用条款与免责声明》(TERMS.md)。</div>'
+    +speedToggle()
     +'</div>';
+}
+/* 极速模式开关：置于「链」标签最下面。on=亮光发光、off=全灰。默认关（满血全配置）。 */
+function speedToggle(){
+  var on=speedOn();
+  return '<div style="margin-top:26px;padding-top:20px;border-top:1px solid rgba(201,160,99,.18)">'
+    +'<div data-act="toggleSpeed" role="switch" aria-checked="'+on+'" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:15px 17px;border-radius:15px;border:1px solid '+(on?'rgba(224,190,130,.7)':'rgba(201,160,99,.2)')+';background:'+(on?'linear-gradient(135deg,rgba(255,214,140,.14),rgba(201,140,70,.07))':'rgba(255,255,255,.02)')+';'+(on?'box-shadow:0 0 24px rgba(224,170,90,.26),inset 0 1px 0 rgba(255,240,210,.14);':'')+'transition:all .25s">'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:9px">'
+          +'<span style="display:inline-flex;width:22px;height:22px;flex:none">'+bolt(on)+'</span>'
+          +'<span style="font-family:var(--kai);font-size:16px;letter-spacing:.16em;color:'+(on?'var(--gold2)':'var(--mut)')+'">极速模式</span>'
+          +'<span style="font-size:11px;letter-spacing:.24em;font-weight:700;color:'+(on?'#ffdca0':'var(--mut)')+';'+(on?'text-shadow:0 0 10px rgba(255,200,110,.6)':'opacity:.55')+'">'+(on?'ON':'OFF')+'</span>'
+        +'</div>'
+        +'<div style="font-size:11.5px;line-height:1.78;color:var(--mut);margin-top:7px">觉得出字太慢？开启后大幅精简提示词、缩短上下文与长程记忆、去掉示例与自查、不再自动补全状态栏——出字更快；代价是<b style="color:#d9a06a">正文、变量、记忆与角色扮演质量都会下降</b>。默认关闭，满血全配置、绝不缩水；此项只为等不及的玩家留一个选择。</div>'
+      +'</div>'
+      +'<div style="flex:none;width:52px;height:30px;border-radius:15px;position:relative;background:'+(on?'linear-gradient(135deg,#e0be82,#c8944a)':'rgba(120,110,92,.32)')+';border:1px solid '+(on?'rgba(255,230,180,.7)':'rgba(255,255,255,.13)')+';'+(on?'box-shadow:0 0 14px rgba(224,170,90,.5);':'')+'transition:all .25s">'
+        +'<div style="position:absolute;top:2px;left:'+(on?'24px':'2px')+';width:24px;height:24px;border-radius:50%;background:'+(on?'#fff8ec':'#d8d2c4')+';box-shadow:0 1px 3px rgba(0,0,0,.4);transition:left .25s"></div>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
 }
 
 function syncImgForm(){
@@ -4019,6 +4048,7 @@ root.addEventListener('click',function(e){
       else if(a==='memClear'){if(S.mem.length&&!confirm('清空整卷长程记忆？此举不可复原。'))return;S.mem=[];savePref();render();}
       else if(a==='memAdd'){var mi=document.getElementById('zjMemAdd');var tv=mi?mi.value.trim():'';if(tv){S.mem.push({e:'',d:'',a:tv.slice(0,120),s:'',fp:0,manual:true});savePref();render();}}
       else if(a==='pvToggle'){S.pvShow=!S.pvShow;renderOverlay();}
+      else if(a==='toggleSpeed'){readApiForm();API.gen.speed=speedOn()?'':'1';saveApi();S.apiMsg=speedOn()?{t:'极速模式已开启：出字更快，但正文/变量/记忆/演绎质量下降。随时可在此关闭。',c:'var(--gold2)'}:{t:'极速模式已关闭：恢复满血全配置。',c:'var(--grn2)'};renderOverlay();}
       else if(a==='apiModels'){apiModelsRun();}
       else if(a==='apiClear'){var cc=apiCur();cc.url='';cc.key='';cc.model='';S.apiModels=null;saveApi();S.apiMsg={t:'已清除本机保存的该接口配置。',c:'var(--mut2)'};render();}
       else if(a==='loreAdd'){var ltE=document.getElementById('zjLoreTitle'),lkE=document.getElementById('zjLoreKeys'),lcE=document.getElementById('zjLoreConst'),lxE=document.getElementById('zjLoreText');
