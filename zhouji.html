@@ -107,6 +107,7 @@ textarea,input{border-radius:10px}
 .zjPillHl::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(120% 70% at 20% -10%,rgba(255,244,220,.14),rgba(255,244,220,0) 58%)}
 .zjPillHl::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.75),rgba(255,246,224,0))}
 @keyframes zjIsleGlow{0%,100%{box-shadow:0 0 5px 1px rgba(255,210,120,.4)}50%{box-shadow:0 0 15px 5px rgba(255,210,120,.95)}}
+@keyframes zjBallBurst{0%{transform:translate(-50%,-50%) scale(.7);opacity:.95}55%{opacity:.6}100%{transform:translate(-50%,-50%) scale(7);opacity:0}}
 .zjHl{position:relative;overflow:hidden}
 .zjHl::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;pointer-events:none;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.6),rgba(255,246,224,0))}
 .gbtn{position:relative;overflow:hidden}
@@ -315,6 +316,8 @@ var LOWFX=false;try{LOWFX=localStorage.getItem('zhouji_lowfx')==='1';}catch(e){}
 var INPUTGLASS=true;try{INPUTGLASS=localStorage.getItem('zhouji_inputglass')!=='0';}catch(e){}
 /* 王之言行气泡边框：默认无框；用户可在设置·显切回带框 */
 var WANGFRAME=false;try{WANGFRAME=localStorage.getItem('zhouji_wangframe')==='1';}catch(e){}
+/* 手机版底部「叙事/太史简」切换：默认灵动岛发光小球（无内框、只文字），滑到哪就在哪爆散融字点亮；设置·显可切回旧玻璃框 */
+var TABISLE=true;try{TABISLE=localStorage.getItem('zhouji_tabisle')!=='0';}catch(e){}
 if(LOWFX)document.documentElement.classList.add('zjLow');
 function lowApply(on){
   LOWFX=!!on;
@@ -2456,9 +2459,15 @@ function gameView(){
   var body;
   if(mob){
     body='<div class="grow zjPane" style="position:relative;min-height:0">'+(S.tab==='story'?storyPane():'<div style="height:100%;overflow:hidden;position:relative;background:rgba(23,18,12,.9);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(118%);backdrop-filter:blur(var(--zjblur,9px)) saturate(118%)">'+sidebar()+'</div>')
-      +'<div id="zjTabWrap" style="position:absolute;left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:6;pointer-events:none"><div class="glass" style="pointer-events:auto;position:relative;max-width:420px;margin:0 auto;height:50px;display:flex;padding:6px;border-radius:99px">'
-      +'<div id="zjTabPill" class="zjPillHl" style="top:6px;bottom:6px;width:calc(50% - 9px);left:'+(S.tab==='story'?'6px':'calc(50% + 3px)')+';border-radius:99px"></div>'
-      +[['story','叙 事'],['panel','太史简']].map(function(t){var on=S.tab===t[0];return '<div class="btn" data-tab="'+t[0]+'" style="flex:1;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:var(--kai);font-size:16px;letter-spacing:.28em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('')+'</div></div></div>';
+      +(TABISLE
+        ? '<div id="zjTabWrap" style="position:absolute;left:0;right:0;bottom:calc(13px + env(safe-area-inset-bottom));z-index:6;pointer-events:none"><div id="zjTabBar" style="pointer-events:auto;position:relative;margin:0 auto;width:206px;height:34px;display:flex;align-items:center;border-radius:99px;background:linear-gradient(0deg,rgba(20,15,9,.3),rgba(20,15,9,.1));-webkit-backdrop-filter:blur(13px) saturate(150%);backdrop-filter:blur(13px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,242,214,.13),0 4px 16px rgba(0,0,0,.4)">'
+          +[['story','叙 事'],['panel','太史简']].map(function(t){var on=S.tab===t[0];return '<div class="btn" data-tab="'+t[0]+'" id="zjTab_'+t[0]+'" style="flex:1;position:relative;z-index:1;text-align:center;cursor:pointer;font-family:var(--kai);font-size:15px;letter-spacing:.2em;color:'+(on?'var(--gold2)':'var(--mut)')+';text-shadow:'+(on?'0 0 13px rgba(224,190,130,.85),0 0 5px rgba(224,190,130,.55),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.55)')+';transition:color .25s,text-shadow .25s">'+t[1]+'</div>';}).join('')
+          +'<span id="zjTabBall" style="position:absolute;top:50%;left:'+(S.tab==='story'?'25%':'75%')+';width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#fff2cf,#c9a063);transform:translate(-50%,-50%);animation:zjIsleGlow 2.4s ease-in-out infinite;pointer-events:none;z-index:0"></span>'
+          +'</div></div>'
+        : '<div id="zjTabWrap" style="position:absolute;left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:6;pointer-events:none"><div class="glass" style="pointer-events:auto;position:relative;max-width:420px;margin:0 auto;height:50px;display:flex;padding:6px;border-radius:99px">'
+          +'<div id="zjTabPill" class="zjPillHl" style="top:6px;bottom:6px;width:calc(50% - 9px);left:'+(S.tab==='story'?'6px':'calc(50% + 3px)')+';border-radius:99px"></div>'
+          +[['story','叙 事'],['panel','太史简']].map(function(t){var on=S.tab===t[0];return '<div class="btn" data-tab="'+t[0]+'" style="flex:1;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:var(--kai);font-size:16px;letter-spacing:.28em;color:'+(on?'var(--gold2)':'var(--mut)')+'">'+t[1]+'</div>';}).join('')+'</div></div>')
+      +'</div>';
   }else{
     body='<div class="row grow">'+storyPane()+'<div style="flex:none;width:348px;position:relative;background:rgba(23,18,12,.9);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(118%);backdrop-filter:blur(var(--zjblur,9px)) saturate(118%)">'+sidebar()+'</div></div>';
   }
@@ -3141,6 +3150,7 @@ function fontPane(){
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">外观样式</div>'
    +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptInputBox" type="checkbox" style="accent-color:#c9a063"'+(INPUTGLASS?'':' checked')+'>传统输入框（默认关：底部用渐变毛玻璃、无框、发送/语音用图标）</label>'
    +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptWangFrame" type="checkbox" style="accent-color:#c9a063"'+(WANGFRAME?' checked':'')+'>「王之言行」加气泡边框（默认关：只留右对齐柔光文字）</label>'
+   +'<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);cursor:pointer;margin:6px 0"><input id="zjOptTabIsle" type="checkbox" style="accent-color:#c9a063"'+(TABISLE?'':' checked')+'>手机版「叙事/太史简」用旧玻璃框（默认关：改用灵动岛发光小球，无内框、切换时滑动爆散融字点亮）</label>'
    +'<div style="font-size:11.5px;color:var(--mut);line-height:1.7;margin-top:4px">两项即时生效，仅存于本机。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">对话字色</div>'
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.8">正文里引号内的台词以此色区分。示例：灯花哔剥响了一声。<span id="zjDlgPrev" style="color:'+(DLGC==='off'?'inherit':DLGC)+'">「王、王上……灯。」</span></div>'
@@ -3697,6 +3707,22 @@ function codexPills(){
   var on=document.querySelector('#zjEntList [data-cidx]');
   zjPill('zjEntList','zjEntPill','[data-cidx="'+Math.min(S.codexIdx,1e9)+'"]',9);
 }
+/* 灵动岛小球：从旧标签滑到新标签，抵达后「嗖」地爆散融入文字，同时该标签文字点亮 */
+function tabIsleAnim(oldTab,newTab){
+  var ball=document.getElementById('zjTabBall'),bar=document.getElementById('zjTabBar');
+  if(!ball||!bar||!ball.animate)return;
+  var oldPos=oldTab==='story'?'25%':'75%',newPos=newTab==='story'?'25%':'75%';
+  ball.animate([{left:oldPos},{left:newPos}],{duration:330,easing:'cubic-bezier(.3,1.05,.3,1)'});
+  setTimeout(function(){
+    var b=document.getElementById('zjTabBar');if(!b)return;
+    var burst=document.createElement('span');
+    burst.style.cssText='position:absolute;top:50%;left:'+newPos+';width:9px;height:9px;border-radius:50%;background:radial-gradient(circle,rgba(255,246,220,.95),rgba(224,190,130,.5) 55%,rgba(224,190,130,0));transform:translate(-50%,-50%);pointer-events:none;z-index:2;animation:zjBallBurst .5s cubic-bezier(.3,.7,.4,1) forwards';
+    b.appendChild(burst);
+    setTimeout(function(){if(burst.parentNode)burst.parentNode.removeChild(burst);},560);
+    var act=document.getElementById('zjTab_'+newTab);
+    if(act&&act.animate)act.animate([{textShadow:'0 1px 2px rgba(0,0,0,.8)'},{textShadow:'0 0 18px rgba(255,224,150,1),0 0 7px rgba(224,190,130,.85),0 1px 2px rgba(0,0,0,.8)'},{textShadow:'0 0 13px rgba(224,190,130,.85),0 0 5px rgba(224,190,130,.55),0 1px 2px rgba(0,0,0,.8)'}],{duration:540,easing:'ease-out'});
+  },300);
+}
 function pillFlip(pillId,oldRect){
   if(reducedMotion()||!oldRect)return;
   var p=document.getElementById(pillId);if(!p||!p.animate)return;
@@ -3853,6 +3879,7 @@ root.addEventListener('change',function(e){
   if(e.target&&e.target.id==='zjOptSugg'){S.sugg=!!e.target.checked;if(S.sugg===false)S.suggList=null;savePref();render();return;}
   if(e.target&&e.target.id==='zjOptInputBox'){INPUTGLASS=!e.target.checked;try{localStorage.setItem('zhouji_inputglass',INPUTGLASS?'1':'0');}catch(er){}render();return;}
   if(e.target&&e.target.id==='zjOptWangFrame'){WANGFRAME=!!e.target.checked;try{localStorage.setItem('zhouji_wangframe',WANGFRAME?'1':'0');}catch(er){}render();return;}
+  if(e.target&&e.target.id==='zjOptTabIsle'){TABISLE=!e.target.checked;try{localStorage.setItem('zhouji_tabisle',TABISLE?'1':'0');}catch(er){}render();return;}
   if(e.target&&e.target.id==='zjJsFile'&&e.target.files&&e.target.files.length){
     [].forEach.call(e.target.files,function(jf){var jr=new FileReader();jr.onload=function(){USCRIPTS.push({name:jf.name.replace(/\.[^.]+$/,'').slice(0,40),code:String(jr.result||''),on:true});uscriptsSave();sbxStartAll();S.jsMsg='已导入「'+jf.name+'」';if(S.overlay)renderOverlay();};jr.readAsText(jf);});
     return;
@@ -3942,8 +3969,11 @@ root.addEventListener('click',function(e){
         return;}
       if(t.getAttribute('data-dlgc')){var pD=DLGC;DLGC=t.getAttribute('data-dlgc');dlgApply(pD);return;}
       if(t.getAttribute('data-dev')){S.device=t.getAttribute('data-dev');savePref();render();codexPills();setPills();return;}
-      if(t.getAttribute('data-tab')){var ntb=t.getAttribute('data-tab');if(ntb===S.tab)return;var tdir=ntb==='panel'?1:-1;vtRender(ntb==='panel'?'zjTab-f':'zjTab-b',function(){S.tab=ntb;render();});
-        if(!reducedMotion()){var pill=document.getElementById('zjTabPill');if(pill&&pill.animate)pill.animate([{transform:'translateX('+(-tdir*103)+'%)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.1,.3,1)'});}
+      if(t.getAttribute('data-tab')){var ntb=t.getAttribute('data-tab');if(ntb===S.tab)return;var _oldTab=S.tab;var tdir=ntb==='panel'?1:-1;vtRender(ntb==='panel'?'zjTab-f':'zjTab-b',function(){S.tab=ntb;render();});
+        if(!reducedMotion()){
+          if(TABISLE){tabIsleAnim(_oldTab,ntb);}
+          else{var pill=document.getElementById('zjTabPill');if(pill&&pill.animate)pill.animate([{transform:'translateX('+(-tdir*103)+'%)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.1,.3,1)'});}
+        }
         return;}
       if(t.getAttribute('data-ov')){if(morphBusy)return;var ovK=t.getAttribute('data-ov');var ovWas=S.overlay;S.overlay=ovK;S.movePending=null;S.apiMsg=null;S.wipeArm=false;
         if(ovWas){renderOverlay();codexPills();setPills();return;}
