@@ -34,7 +34,7 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
     s.onerror=function(){window.__THREE_OK__=false;};
     document.head.appendChild(s);
   }
-  var ZJ3D_VER='1.4.4';
+  var ZJ3D_VER='1.4.5';
   var b=document.createElement('script');
   b.src='core/three-bundle.min.js?v=1';
   b.onload=function(){
@@ -115,6 +115,9 @@ textarea,input{border-radius:10px}
 .zjPillHl::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.75),rgba(255,246,224,0))}
 @keyframes zjIsleGlow{0%,100%{box-shadow:0 0 5px 1px rgba(255,210,120,.4)}50%{box-shadow:0 0 15px 5px rgba(255,210,120,.95)}}
 @keyframes zjChipPulse{0%,100%{box-shadow:0 0 4px 0 var(--cbg,rgba(224,190,130,.5))}50%{box-shadow:0 0 11px 3px var(--cbg,rgba(224,190,130,.5))}}
+/* 三维左上角地名框：内容放不下时的无缝跑马灯（两段首尾相接，平移一段即循环） */
+@keyframes zj3dMarq{to{transform:translateX(-50%)}}
+.zj3dMarq{animation:zj3dMarq linear infinite}
 .zjHl{position:relative;overflow:hidden}
 .zjHl::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;pointer-events:none;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.6),rgba(255,246,224,0))}
 .gbtn{position:relative;overflow:hidden}
@@ -2443,6 +2446,8 @@ function gameView(){
   var mob=isMobile();var m=mood();
   var op=currentOpening();var p=currentPanel();var cw=p?p.world:{};
   var era=[cw['纪年'],cw['时地']].filter(Boolean).join(' · ')||(op?op.era:'');
+  /* 把纪年（周王廿一年·前499年·春…）喂给三维引擎，让它接在左上角地名框后面，放不下自动跑马灯 */
+  try{if(window.ZJ3D&&ZJ3D.setEra)ZJ3D.setEra(cw['纪年']||(op?op.era:'')||'');}catch(e){}
   /* 液态玻璃开时：顶栏各元素去掉自身方框（_fr 置空），只让文字/图标浮在那层液态玻璃上；关时用原来的暖色小方框。 */
   var _lg=LIQGLASS;
   var _fr=_lg?'':'border:1px solid rgba(255,238,205,.2);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02));-webkit-backdrop-filter:blur(2px) saturate(150%);backdrop-filter:blur(2px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,242,214,.25);';

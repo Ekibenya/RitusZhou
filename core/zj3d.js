@@ -48,6 +48,7 @@
     player: null, colliders: [], doors: [], exitDoor: null,
     interiorFrom: null, keys: {}, joy: { on: false, x: 0, y: 0 },
     camYaw: 0, camPitch: 0.32, camDist: 12, lastLoc: null, night: false,
+    chipText: '', eraText: '',
     owns: function () { return this.ready && !this.failed; }
   };
   try { Z.expanded = localStorage.getItem('zj3d_expand') === '1'; } catch (e) { }
@@ -1756,6 +1757,7 @@
       });
       var hr = hud.getBoundingClientRect();
       locChip.style.maxWidth = isFinite(lm) ? Math.max(46, lm - hr.left - 18) + 'px' : '';
+      if (locChip._full) fitChip();
     }
     joyEl.style.display = (Z.expanded && isTouch() && !inBuild()) ? 'block' : 'none';
     tipEl.innerHTML = !Z.expanded ? '' : (inBuild()
@@ -1765,9 +1767,41 @@
   }
   function applyChip() {
     if (!locChip) return;
-    locChip.textContent = Z.chipText || '';
-    locChip.style.display = Z.chipText ? 'block' : 'none';
+    var base = Z.chipText || '';
+    var era = Z.eraText || '';
+    var full = base + (base && era ? '  ·  ' : '') + era;
+    if (!full) { locChip.style.display = 'none'; locChip.textContent = ''; locChip._full = ''; return; }
+    locChip.style.display = 'block';
+    locChip._full = full;
+    fitChip();
   }
+  /* 地名框放不下就无缝跑马灯：静态量一下宽度，溢出则用首尾相接的两段文字匀速平移；
+     幂等——反复调用只在「该不该滚 / 文字变了」时才重建，不会频繁重启动画。 */
+  function fitChip() {
+    if (!locChip || !locChip._full) return;
+    var full = locChip._full;
+    var probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;left:-9999px;top:0;white-space:nowrap;letter-spacing:inherit;font:inherit';
+    probe.textContent = full;
+    locChip.appendChild(probe);
+    var need = probe.scrollWidth;
+    locChip.removeChild(probe);
+    var avail = locChip.clientWidth;
+    var wantMarq = need > avail + 2;
+    var hasMarq = !!locChip.querySelector('.zj3dMarq');
+    if (wantMarq === hasMarq && (hasMarq || locChip.textContent === full)) return;
+    locChip.textContent = '';
+    if (!wantMarq) { locChip.textContent = full; return; }
+    var track = document.createElement('div');
+    track.className = 'zj3dMarq';
+    track.style.cssText = 'display:inline-flex;white-space:nowrap;will-change:transform';
+    var s1 = document.createElement('span'); s1.textContent = full;
+    var s2 = document.createElement('span'); s2.textContent = full; s2.style.paddingLeft = '32px'; s2.setAttribute('aria-hidden', 'true');
+    track.appendChild(s1); track.appendChild(s2);
+    locChip.appendChild(track);
+    track.style.animationDuration = Math.max(6, (need + 32) / 30) + 's';
+  }
+  Z.setEra = function (s) { s = (s == null ? '' : String(s)); if (Z.eraText === s) return; Z.eraText = s; applyChip(); };
   function hudCity(st, locName) {
     Z.chipText = locName + ' · ' + st.name + (LOC2[locName] && LOC2[locName].flavor === 'luoyi' ? '王城' : '');
     applyChip();
