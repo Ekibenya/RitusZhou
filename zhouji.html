@@ -2525,7 +2525,8 @@ function gameView(){
   if(mob){
     body='<div class="grow zjPane" style="position:relative;min-height:0">'+(S.tab==='story'?storyPane():'<div style="height:100%;overflow:hidden;position:relative;background:rgba(23,18,12,.9);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(118%);backdrop-filter:blur(var(--zjblur,9px)) saturate(118%)">'+sidebar()+'</div>')
       +(TABISLE
-        ? '<div id="zjTabWrap" style="position:absolute;left:0;right:0;bottom:calc(11px + env(safe-area-inset-bottom));z-index:6;pointer-events:none"><div id="zjTabBar" style="pointer-events:auto;position:relative;margin:0 auto;width:206px;height:34px;display:flex;align-items:center;border-radius:99px;background:linear-gradient(0deg,rgba(20,15,9,.3),rgba(20,15,9,.1));-webkit-backdrop-filter:blur(13px) saturate(150%);backdrop-filter:blur(13px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,242,214,.13),0 4px 16px rgba(0,0,0,.4)">'
+        ? '<div id="zjTabWrap" style="position:absolute;left:0;right:0;bottom:calc(11px + env(safe-area-inset-bottom));z-index:6;pointer-events:none"><div id="zjTabBar" style="pointer-events:auto;position:relative;margin:0 auto;width:206px;height:34px;display:flex;align-items:center;border-radius:99px;background:linear-gradient(0deg,rgba(20,15,9,.13),rgba(20,15,9,.04));-webkit-backdrop-filter:blur(5px) saturate(150%);backdrop-filter:blur(5px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,242,214,.13),0 4px 16px rgba(0,0,0,.3)">'
+          +'<div aria-hidden="true" style="position:absolute;inset:0;border-radius:99px;pointer-events:none;-webkit-backdrop-filter:url(#zjLiqRefract);backdrop-filter:url(#zjLiqRefract)"></div>'
           +[['story','叙 事'],['panel','太史简']].map(function(t){var on=S.tab===t[0];return '<div class="btn" data-tab="'+t[0]+'" id="zjTab_'+t[0]+'" style="flex:1;position:relative;z-index:1;text-align:center;cursor:pointer;font-family:var(--kai);font-size:15px;letter-spacing:.2em;color:'+(on?'var(--gold2)':'var(--mut)')+';text-shadow:'+(on?'0 0 13px rgba(224,190,130,.85),0 0 5px rgba(224,190,130,.55),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.55)')+';transition:color .25s,text-shadow .25s">'+t[1]+'</div>';}).join('')
           +'<span id="zjTabBall" style="position:absolute;top:50%;left:'+(S.tab==='story'?'25%':'75%')+';width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#fff2cf,#c9a063);transform:translate(-50%,-50%);animation:zjIsleGlow 2.4s ease-in-out infinite;pointer-events:none;z-index:0"></span>'
           +'</div></div>'
@@ -2537,9 +2538,11 @@ function gameView(){
     body='<div class="row grow">'+storyPane()+'<div id="zjSideCol" style="flex:none;width:348px;position:relative;background:rgba(23,18,12,.9);-webkit-backdrop-filter:blur(var(--zjblur,9px)) saturate(118%);backdrop-filter:blur(var(--zjblur,9px)) saturate(118%)">'+sidebar()+'</div></div>';
   }
   if(S.zen){
-    /* 全屏内只留「天下」开合三维；退出全屏点正文即可，不再单列退出键 */
+    /* 全屏内的灵动岛：滚动显示纪年·地点（不再是「天下」两个字），点它开合三维；退出全屏点正文即可 */
     top='<div style="position:absolute;top:'+(mob?'10px':'12px')+';right:12px;z-index:8;display:flex;gap:8px;align-items:stretch">'
-      +'<div data-act="zenWorld" class="btn zjHl" title="'+(S.zenWorld?'收起天下画面':'展开天下画面')+'" style="cursor:pointer;padding:0 13px;border-radius:99px;background:'+(S.zenWorld?'rgba(201,160,99,.22)':'rgba(10,8,6,.9)')+';border:1px solid rgba(224,190,130,'+(S.zenWorld?'.8':'.4')+');box-shadow:inset 0 1px 0 rgba(255,242,214,.25);display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span><span style="font-size:11px;letter-spacing:.18em;color:var(--gold2);font-family:var(--kai)">天下</span></div>'
+      +'<div data-act="zenWorld" class="btn zjHl" title="'+(S.zenWorld?'收起天下画面':'展开天下画面')+'" style="cursor:pointer;padding:0 13px;border-radius:99px;background:'+(S.zenWorld?'rgba(201,160,99,.22)':'rgba(10,8,6,.62)')+';border:1px solid rgba(224,190,130,'+(S.zenWorld?'.8':'.4')+');box-shadow:inset 0 1px 0 rgba(255,242,214,.25);display:flex;align-items:center;gap:8px;width:min(300px,56vw);height:27px;overflow:hidden">'
+      +'<span style="flex:none;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
+      +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(era||'展开天下画面')+'</span><span aria-hidden="true">'+esc(era||'展开天下画面')+'</span></div></div></div>'
       +'</div>';
     body=mob?'<div class="grow zjPane" style="position:relative;min-height:0">'+storyPane()+'</div>':'<div class="row grow">'+storyPane()+'</div>';
   }
@@ -4083,8 +4086,8 @@ function zenToggle(){
   /* 电脑端太史简侧栏：取顶层玻璃框（排除嵌套），进全屏时逐框右滑离场、退出时从右侧逐框滑回（级联） */
   function sideBoxes(){var sc=document.getElementById('zjSideCol');if(!sc)return [];return [].filter.call(sc.querySelectorAll('.glass'),function(b){return !(b.parentElement&&b.parentElement.closest('.glass'));});}
   function sideSlideIn(){
+    /* 栏底背景立即以全不透明出现（否则正文旁边会闪一瞬空洞 gap），只让框从右侧级联滑回 */
     if(reducedMotion())return;var sc=document.getElementById('zjSideCol');if(!sc)return;
-    if(sc.animate)sc.animate([{opacity:0},{opacity:1}],{duration:200,easing:'ease'});
     sideBoxes().forEach(function(b,i){if(!b.animate)return;var r=b.getBoundingClientRect();if(!r.width)return;var dx=Math.round(window.innerWidth-r.left+30);
       b.animate([{transform:'translateX('+dx+'px)',opacity:.35},{transform:'none',opacity:1}],{duration:380,delay:i*26,easing:'cubic-bezier(.3,1.05,.35,1)',fill:'backwards'});});
   }
@@ -4107,15 +4110,19 @@ function zenToggle(){
     S.zen=true;S.zenInput=false;S.zenWorld=false;
     S._zenSurgPad={t:_pcs.paddingTop,r:_pcs.paddingRight,b:_pcs.paddingBottom,l:_pcs.paddingLeft};
     var fin=function(){
-      /* 若滑出期间发生过标准 render（如 BGM 事件的 renderSoft），树已重建成标准全屏样，收尾全部跳过以免叠加重复小件 */
-      if(!story.isConnected){S._zenSurgPad=null;return;}
+      /* 两道守卫：①期间发生过标准 render（树已重建）→跳过；②定时器被节流推迟到用户已退出全屏之后才跑→跳过 */
+      if(!S.zen||!story.isConnected){if(!story.isConnected)S._zenSurgPad=null;return;}
       list.forEach(function(g){g[0].style.display='none';});
       flipStory(function(){story.style.padding='56px clamp(16px,5vw,70px) 46px';});
       /* 全屏内两个小件（与 view() 的全屏树同款标记，事件走全局委托）：右上「天下」开合三维、底部书写小球 */
       var host=root.firstElementChild;
       if(host&&!document.getElementById('zjZenExtras')){
+        var _zp=currentPanel(),_zw=_zp?_zp.world:{};
+        var _zer=[_zw['纪年'],_zw['时地']].filter(Boolean).join(' · ')||'展开天下画面';
         var ex=document.createElement('div');ex.id='zjZenExtras';
-        ex.innerHTML='<div style="position:absolute;top:'+(isMobile()?'10px':'12px')+';right:12px;z-index:8;display:flex;gap:8px;align-items:stretch"><div data-act="zenWorld" class="btn zjHl" title="展开天下画面" style="cursor:pointer;padding:6px 13px;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.25);display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span><span style="font-size:11px;letter-spacing:.18em;color:var(--gold2);font-family:var(--kai)">天下</span></div></div>'
+        ex.innerHTML='<div style="position:absolute;top:'+(isMobile()?'10px':'12px')+';right:12px;z-index:8;display:flex;gap:8px;align-items:stretch"><div data-act="zenWorld" class="btn zjHl" title="展开天下画面" style="cursor:pointer;padding:0 13px;border-radius:99px;background:rgba(10,8,6,.62);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.25);display:flex;align-items:center;gap:8px;width:min(300px,56vw);height:27px;overflow:hidden">'
+          +'<span style="flex:none;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
+          +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(_zer)+'</span><span aria-hidden="true">'+esc(_zer)+'</span></div></div></div></div>'
           +'<div data-act="zenInput" class="btn" title="书写" style="position:absolute;left:50%;margin-left:-24px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:5;width:48px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="width:9px;height:9px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span></div>';
         host.appendChild(ex);
       }
