@@ -4050,15 +4050,25 @@ root.addEventListener('keydown',function(e){if(e.target&&e.target.id==='zjInput'
 /* 进/出全屏（zen）带滑动淡出动画——顶栏/场景/灵动岛上滑离场、输入框/切换框下滑离场；进时先动画再切、出时先切再回落。
    点正文与「退出全屏」按钮共用此函数，保证两种入口动画一致。 */
 function zenToggle(){
-  /* 核心设计：顶栏/场景/灵动岛上滑离场、输入框/切换框下滑离场的滑动动画（保留，勿删）。
-     fill 锁住起止帧、_keepScroll 保住滚动位置——把「切换时整屏重渲染」造成的闪一下/颤抖压到最小。 */
+  /* 核心设计（原样保留，勿删）：顶栏/场景/灵动岛上滑离场、输入框/切换框下滑离场的滑动动画。
+     颤抖根因：切换时正文 padding-top 随重渲染由 218px 瞬间变 56px，正文文字一帧跳 162px。
+     修法：只【额外】给正文做一次 FLIP 位移——让它跟着平滑滑到新位置，而不是跳。不动上面的滑动动画分毫。 */
   var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
   function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
-  if(S.zen){S.zen=false;S.zenInput=false;S.zenWorld=false;S._noFade=true;S._keepScroll=true;render();
+  function ctop(){var s=document.getElementById('zjStory');var w=s&&s.querySelector('[data-zjzoom]');return w?w.getBoundingClientRect().top:null;}
+  var oldY=ctop();
+  function slideStory(){
+    if(oldY==null||reducedMotion())return;
+    var s=document.getElementById('zjStory');var w=s&&s.querySelector('[data-zjzoom]');
+    if(!s||!w||!s.animate)return;
+    var dy=Math.round(oldY-w.getBoundingClientRect().top);
+    if(Math.abs(dy)>2)s.animate([{transform:'translateY('+dy+'px)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.02,.35,1)'});
+  }
+  if(S.zen){S.zen=false;S.zenInput=false;S.zenWorld=false;S._noFade=true;S._keepScroll=true;render();slideStory();
     if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)',fill:'backwards'});});
   }else if(reducedMotion()){S.zen=true;S.zenWorld=false;S._noFade=true;render();}
   else{zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)',fill:'forwards'});});
-    setTimeout(function(){S.zen=true;S.zenWorld=false;S._noFade=true;S._keepScroll=true;render();},295);}
+    setTimeout(function(){S.zen=true;S.zenWorld=false;S._noFade=true;S._keepScroll=true;render();slideStory();},295);}
 }
 /* 点正文进出全屏（zen）：纯点击才触发——滑动、选字、点按钮/图片/操作栏/三维场景都不触发；再点一下退出 */
 (function(){
