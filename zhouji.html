@@ -94,7 +94,7 @@ html.zjLow .fade{animation-duration:.22s}
 .obtn::after{content:'';position:absolute;left:8%;right:50%;top:0;height:1px;border-radius:1px;pointer-events:none;background:linear-gradient(90deg,rgba(255,246,224,0),rgba(255,246,224,.6),rgba(255,246,224,0))}
 .obtn:hover{background:linear-gradient(135deg,rgba(255,236,200,.1),rgba(201,160,99,.06) 38%,rgba(18,13,8,.05))}
 /* 液态玻璃顶栏：栏内所有按钮去掉各自方框/底纹/内阴影，只留发光图标文字，融进那层液态玻璃（!important 压过按钮的行内 border-color） */
-.zjTopLiq .obtn{background:transparent!important;border-color:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.zjTopLiq .obtn{background:transparent!important;border-color:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important}
 .zjTopLiq .obtn::before,.zjTopLiq .obtn::after{display:none!important}
 .zjTopLiq .obtn:hover{background:rgba(255,242,214,.1)!important;border-color:transparent!important}
 /* 液态玻璃顶栏：一整排文字与图标/标志都罩一层柔光——文字用 text-shadow 暖金光晕，图标/logo 用 drop-shadow 光晕 */
@@ -2448,7 +2448,8 @@ function gameView(){
   var _fr=_lg?'':'border:1px solid rgba(255,238,205,.2);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02));-webkit-backdrop-filter:blur(2px) saturate(150%);backdrop-filter:blur(2px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,242,214,.25);';
   /* 顶栏背板：液态玻璃＝强饱和提亮的通透玻璃 + 斜向高光条纹 + 左上光斑 + 亮上边缘（镜面感），向下渐隐融入正文；
      关闭时＝原来的深色渐变遮罩。液态玻璃与毛玻璃的区别就在这层高光镜面与提亮通透，而非单纯模糊。 */
-  var _mk='linear-gradient(180deg,#000 58%,rgba(0,0,0,.5) 80%,transparent 100%)';
+  /* 玻璃遮罩收窄：只罩住上面那排内容、快速淡出，绝不把模糊拖进下方三维天下画面 */
+  var _mk='linear-gradient(180deg,#000 48%,rgba(0,0,0,.38) 68%,transparent 84%)';
   var _topBg=_lg
     /* ① SVG 折射滤镜：分形噪声驱动位移图，把玻璃背后的内容像真镜片一样揉出液态扭曲。
        ② 基础玻璃层（无 url，Safari/全平台兜底）＋ 折射玻璃层（带 url，Chrome/安卓生效；Safari 不支持则该层失效、自动露出下面的基础玻璃，绝不塌）。
@@ -2456,8 +2457,8 @@ function gameView(){
     ?'<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true"><filter id="zjLiqRefract" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.008 0.018" numOctaves="2" seed="11" result="n"/><feGaussianBlur in="n" stdDeviation="1.3" result="nb"/><feDisplacementMap in="SourceGraphic" in2="nb" scale="16" xChannelSelector="R" yChannelSelector="G"/></filter></svg>'
       +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(14px) saturate(200%) brightness(1.12);backdrop-filter:blur(14px) saturate(200%) brightness(1.12);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
       +'<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(10px) saturate(205%) brightness(1.12) url(#zjLiqRefract);backdrop-filter:blur(10px) saturate(205%) brightness(1.12) url(#zjLiqRefract);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
-      +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(30,21,12,.26) 0%,rgba(28,20,12,.15) 46%,rgba(18,12,7,.05) 74%,transparent 100%);box-shadow:inset 0 1.5px 0 rgba(255,252,244,.6),inset 0 -14px 26px -18px rgba(255,238,208,.5);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
-      +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 16%,rgba(255,253,247,.06) 32%,rgba(255,254,250,.34) 46%,rgba(255,253,247,.07) 53%,transparent 70%),radial-gradient(135% 95% at 12% -28%,rgba(255,247,230,.3),transparent 60%);-webkit-mask-image:linear-gradient(180deg,#000 55%,transparent 100%);mask-image:linear-gradient(180deg,#000 55%,transparent 100%)"></div>'
+      +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(30,21,12,.26) 0%,rgba(28,20,12,.15) 46%,rgba(18,12,7,.05) 74%,transparent 100%);box-shadow:inset 0 -14px 26px -18px rgba(255,238,208,.45);-webkit-mask-image:'+_mk+';mask-image:'+_mk+'"></div>'
+      +'<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 16%,rgba(255,253,247,.06) 32%,rgba(255,254,250,.34) 46%,rgba(255,253,247,.07) 53%,transparent 70%),radial-gradient(135% 95% at 12% -28%,rgba(255,247,230,.3),transparent 60%);-webkit-mask-image:linear-gradient(180deg,#000 46%,transparent 82%);mask-image:linear-gradient(180deg,#000 46%,transparent 82%)"></div>'
     :'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.84) 0%,rgba(12,8,5,.5) 58%,rgba(12,8,5,0) 100%);-webkit-mask-image:linear-gradient(180deg,#000 52%,transparent);mask-image:linear-gradient(180deg,#000 52%,transparent)"></div>';
   var conn='<div class="btn zjHl" data-act="zen" title="全屏阅读，只留正文" style="cursor:pointer;display:flex;align-items:center;font-size:11px;letter-spacing:.14em;color:var(--mut2);'+_fr+'padding:4px 12px;border-radius:20px">全屏</div>';
   var topBtns='<button data-ov="set" class="obtn btn" title="设置" style="width:34px;height:34px;font-size:15px;color:'+(apiReady()?'var(--gold2)':'var(--mut)')+'"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="3.1"/><path d="M19.3 12c0-.5-.05-.99-.15-1.46l2-1.56-1.8-3.12-2.37.95a7.4 7.4 0 0 0-2.52-1.46L14.1 2.8h-4.2l-.36 2.55a7.4 7.4 0 0 0-2.52 1.46l-2.37-.95-1.8 3.12 2 1.56c-.1.47-.15.96-.15 1.46s.05.99.15 1.46l-2 1.56 1.8 3.12 2.37-.95c.75.65 1.6 1.15 2.52 1.46l.36 2.55h4.2l.36-2.55a7.4 7.4 0 0 0 2.52-1.46l2.37.95 1.8-3.12-2-1.56c.1-.47.15-.96.15-1.46z"/></svg></button>'
@@ -2480,13 +2481,13 @@ function gameView(){
   var top;
   if(mob){
     // 手机端双行头：一行状态，一行功能键，九键尽显不再溢出
-    top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:22px">'
+    top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:'+(_lg?'8px':'22px')+'">'
       +_topBg
       +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;gap:7px;padding:6px 10px 0">'+logo+eraDiv+conn+'</div>'
       +'<div style="position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:3px;padding:7px 10px 6px">'+topBtns+'</div>'
       +'</div>';
   }else{
-    top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:20px">'
+    top='<div id="zjTopBar" class="'+(_lg?'zjTopLiq':'')+'" style="position:absolute;top:0;left:0;right:0;z-index:7;pointer-events:none;padding-bottom:'+(_lg?'6px':'20px')+'">'
       +_topBg
       +'<div style="position:relative;pointer-events:auto;height:56px;display:flex;align-items:center;gap:9px;padding:4px 12px 0">'
       +logo
