@@ -187,6 +187,16 @@ function bolt(on){var c=on?'#ffdca0':'#8a7f68';return '<svg viewBox="0 0 24 24" 
 function pen(s){s=s||11;return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l3 3"/></svg>';}
 /* 警告三角描边图标（矢量图非 emoji，避免移动端渲染成彩色 ⚠️ 且颜色不可控） */
 function warn(s,c){s=s||11;c=c||'#e6795f';return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="'+c+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px"><path d="M12 3.4 22 20.2H2z"/><path d="M12 9.5v4.2"/><path d="M12 17.2v.01"/></svg>';}
+/* 小眼睛图标：revealed=true 显示「已睁眼·可再点隐藏」的划线眼，false 显示普通眼（点开可见） */
+function eyeSvg(revealed){return revealed
+  ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M2 12s3.6-7 10-7c2.1 0 3.9.6 5.4 1.5M22 12s-3.6 7-10 7c-2.1 0-3.9-.6-5.4-1.5"/><path d="M9.6 9.6a3.4 3.4 0 0 0 4.8 4.8"/><path d="M3 3l18 18"/></svg>'
+  : '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3.1"/></svg>';}
+/* 带小眼睛的密钥输入框：点眼睛在「密文小圆点 ↔ 明文」间切换（纯 DOM，不重渲染、不闪屏）。所有 API 密钥统一用它。 */
+var PW_INP='style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.03);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:10px 46px 10px 12px;font-size:14px" autocomplete="off" spellcheck="false"';
+function pwField(id,val,ph){return '<div style="position:relative">'
+  +'<input id="'+id+'" type="password" '+PW_INP+' value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'">'
+  +'<span class="btn" data-eye="'+id+'" title="显示 / 隐藏密钥" style="position:absolute;top:50%;right:5px;transform:translateY(-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--mut)">'+eyeSvg(false)+'</span>'
+  +'</div>';}
 /* 单图显示尺寸 迷你/小/中/大 → 容器最大宽度（大=满栏，即原样）。多图并排列数由 gridCols 自动决定，不受此项影响。 */
 function imgDispW(sz){return sz==='mini'?'32%':sz==='sm'?'46%':sz==='md'?'70%':'100%';}
 /* 多图并排列数：auto=2–4张两列、5–6张三列（迷你）；c2 恒两列；c3 恒三列（迷你） */
@@ -2305,14 +2315,21 @@ function storyPane(){
     +((window.ZJ3D&&ZJ3D.owns&&ZJ3D.owns()&&ZJ3D.expanded&&!S.worldFull)?'<div data-act="worldFull" class="btn zjHl" title="三维画面全屏" style="position:absolute;top:40px;left:10px;z-index:7;cursor:pointer;padding:3px 13px;border-radius:99px;background:rgba(12,9,6,.62);border:1px solid rgba(201,160,99,.45);color:#e8cf9e;font-size:11px;letter-spacing:.15em">全屏</div>':'')
     +'</div>';
   var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['free','书 · 自由'],['world','控制游戏']];
-  var modeChip=function(md){var on=md[0]===S.mode;var dis=S.chatOnly&&md[0]!=='world';return '<div class="btn zjHl" data-mode="'+md[0]+'" style="cursor:'+(dis?'default':'pointer')+';opacity:'+(dis?'.35':'1')+';flex:none;white-space:nowrap;line-height:1.45;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(on?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)')+';color:'+(on?'var(--gold2)':'var(--mut)')+';background:'+(on?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?md[1].replace(/\s/g,''):md[1])+'</div>';};
+  /* 模式/开关一律做成柔光金字（与封面、正文操作栏同款），去掉方框：选中/开启＝亮色发光，未选/关闭＝暗灰无光。 */
+  var _cpad=isMobile()?'5px 6px':'6px 10px',_cfs=isMobile()?'12px':'13px',_cls=isMobile()?'.05em':'.14em';
+  var gchip=function(label,on,ac,gl,attrs,dis){
+    var c=dis?'var(--mut)':(on?ac:'var(--mut)');
+    var ts=on&&!dis?('0 0 11px '+gl+',0 1px 2px rgba(0,0,0,.8)'):'0 1px 2px rgba(0,0,0,.6)';
+    return '<div class="btn" '+attrs+' style="cursor:'+(dis?'default':'pointer')+';opacity:'+(dis?'.4':'1')+';flex:none;white-space:nowrap;line-height:1.4;padding:'+_cpad+';font-size:'+_cfs+';letter-spacing:'+_cls+';color:'+c+';text-shadow:'+ts+';transition:color .2s,text-shadow .2s">'+label+'</div>';
+  };
+  var modeChip=function(md){var on=md[0]===S.mode;var dis=S.chatOnly&&md[0]!=='world';return gchip(isMobile()?md[1].replace(/\s/g,''):md[1],on,'var(--gold2)','rgba(224,190,130,.6)','data-mode="'+md[0]+'"',dis);};
   var chips=MODES.slice(0,3).map(modeChip).join('');
   var con=!!S.chatOnly;
-  chips+='<div class="btn zjHl" data-act="chatTog" title="聊天模式：不写旁白剧情，与在场之人像聊天软件一样快速对谈" style="cursor:pointer;flex:none;white-space:nowrap;line-height:1.45;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(con?'rgba(157,184,216,.75)':'rgba(255,238,205,.22)')+';color:'+(con?'#9db8d8':'var(--mut)')+';background:'+(con?'linear-gradient(135deg,rgba(157,184,216,.16),rgba(90,110,140,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">聊天模式</div>'+modeChip(MODES[3]);
+  chips+=gchip('聊天模式',con,'#9db8d8','rgba(157,184,216,.65)','data-act="chatTog" title="聊天模式：不写旁白剧情，与在场之人像聊天软件一样快速对谈"')+modeChip(MODES[3]);
   var don=!!S.dice;
-  chips+='<div class="btn zjHl" data-act="diceTog" title="天命明骰：曰／行／书递呈时掷骰定成败" style="cursor:pointer;flex:none;white-space:nowrap;line-height:1.45;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(don?'rgba(217,160,106,.8)':'rgba(255,238,205,.22)')+';color:'+(don?'#e8b77d':'var(--mut)')+';background:'+(don?'linear-gradient(135deg,rgba(233,180,110,.18),rgba(201,140,80,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?'骰':'骰 · 天命')+'</div>';
+  chips+=gchip(isMobile()?'骰':'骰 · 天命',don,'#e8b77d','rgba(233,180,110,.65)','data-act="diceTog" title="天命明骰：曰／行／书递呈时掷骰定成败"');
   var son=S.sugg!==false;
-  chips+='<div class="btn zjHl" data-act="suggTog" title="懒人四策：每幕后由 AI 拟四条可点选的下一步" style="cursor:pointer;flex:none;white-space:nowrap;line-height:1.45;padding:'+(isMobile()?'5px 11px':'5px 15px')+';font-size:'+(isMobile()?'11px':'12.5px')+';letter-spacing:'+(isMobile()?'.04em':'.2em')+';border-radius:99px;-webkit-backdrop-filter:blur(3px) saturate(140%);backdrop-filter:blur(3px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,242,214,.3),0 2px 8px rgba(0,0,0,.3);border:1px solid '+(son?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)')+';color:'+(son?'var(--gold2)':'var(--mut)')+';background:'+(son?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))')+'">'+(isMobile()?'策':'策 · 四策')+'</div>';
+  chips+=gchip(isMobile()?'策':'策 · 四策',son,'var(--gold2)','rgba(224,190,130,.6)','data-act="suggTog" title="懒人四策：每幕后由 AI 拟四条可点选的下一步"');
   var ph=(S.chatOnly&&S.mode!=='world')?'像发消息一样聊起来……':MODE_PH[S.mode];
   var input='<div id="zjInWrap" style="position:absolute;left:'+(mob?'8px':'14px')+';right:'+(mob?'8px':'14px')+';bottom:'+(mob?'calc(66px + env(safe-area-inset-bottom))':'12px')+';z-index:5;pointer-events:none"><div style="max-width:860px;margin:0 auto">'
     +((S.suggList&&S.suggList.length&&!S.thinking)?'<div id="zjSuggRow" style="pointer-events:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'+S.suggList.map(function(sg,si){return '<div class="btn zjHl" data-sugg="'+si+'" style="cursor:pointer;font-size:'+(mob?'11px':'12px')+';line-height:1.5;letter-spacing:.02em;padding:'+(mob?'6px 10px':'6px 12px')+';border-radius:12px;color:#c8b48e;border:1px solid rgba(255,238,205,.18);background:linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.03));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);box-shadow:inset 0 1px 0 rgba(255,242,214,.18),0 2px 8px rgba(0,0,0,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sg)+'</div>';}).join('')+'</div>':'')
@@ -3184,7 +3201,7 @@ function voicePane(){
    +seg([['web','浏览器内置'],['api','自带 TTS 接口']],'data-ttssrc',TTS.src)
    +(TTS.src==='api'
      ?'<div style="margin-top:12px"><input id="zjTtsUrl" '+inp+' value="'+esc(TTS.url)+'" placeholder="接口地址：https://api.openai.com/v1（或中转）"></div>'
-      +'<div style="margin-top:9px"><input id="zjTtsKey" type="password" '+inp+' value="'+esc(TTS.key)+'" placeholder="TTS 密钥 sk-…"></div>'
+      +'<div style="margin-top:9px">'+pwField('zjTtsKey',TTS.key,'TTS 密钥 sk-…')+'</div>'
       +'<div style="margin-top:9px"><input id="zjTtsModel" '+inp+' value="'+esc(TTS.model)+'" placeholder="模型：如 tts-1 / gpt-4o-mini-tts"></div>'
       +'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:9px;border:1px solid rgba(201,160,99,.18);border-radius:9px;padding:8px 12px">须是 <b style="color:#e8b77d">OpenAI 兼容</b>的 <b style="color:#e8b77d">/audio/speech</b> 语音接口（直接返回音频文件）。三点常见坑：① 地址须 <b style="color:#e8b77d">https</b>（本页是 https，填 http 会被浏览器按混合内容拦掉）；② 该服务须<b style="color:#e8b77d">允许网页跨域(CORS)</b>，很多厂商的语音接口只给服务器调、不给网页直连；③ 若接口返回的是 JSON/文本而非音频文件，则不兼容。不确定就用上面的「设备内置语音」，零配置。</div>'
      :'')
@@ -3290,12 +3307,12 @@ function apiBody(){
     +'</div>'
     +lbl('接口类型')+'<div style="display:flex;gap:10px;flex-wrap:wrap">'+provs+'</div>'
     +lbl('接口地址（Base URL）')+'<input id="zjApiUrl" '+inp+' value="'+esc(c.url)+'" placeholder="'+esc(def.url)+'"><div style="font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1.7">'+esc(def.hint)+'；留空即使用默认地址。</div>'
-    +lbl('API 密钥（API Key）')+'<input id="zjApiKey" type="password" '+inp+' value="'+esc(c.key)+'" placeholder="sk-…">'
+    +lbl('API 密钥（API Key）')+pwField('zjApiKey',c.key,'sk-…')
     +lbl('模型名')+'<div style="display:flex;gap:10px"><input id="zjApiModel" '+inp+' value="'+esc(c.model)+'" placeholder="如 deepseek-chat / claude-sonnet-4-5 / gemini-2.5-pro"><button data-act="apiModels" class="obtn btn" style="flex:none;font-size:13px;letter-spacing:.1em;padding:0 18px;white-space:nowrap">拉取模型</button></div>'+models
     +lbl('绘图（生图）')+'<div style="font-size:12.5px;color:var(--mut);line-height:1.8">生图接口与全部参数已独立到『<b style="color:var(--gold2)">图 · 生图</b>』标签页：支持接口风格、采样器、噪点表、引导/重缩放、步数、尺寸、种子、固定正负提示词、角色参考与生图世界书。</div>'
     +'<div style="margin-top:10px"><button data-act="openImgSet" class="gbtn btn" style="font-size:13px;letter-spacing:.14em;padding:9px 20px;border-radius:10px">→ 打开生图设置</button></div>'
     +lbl('副模型 · 杂务分工（可选 · OpenAI 兼容）')+'<input id="zjAuxUrl" '+inp+' value="'+esc(API.aux.url)+'" placeholder="接口地址：https://api.openai.com/v1（或中转）">'
-    +'<div style="margin-top:9px"><input id="zjAuxKey" type="password" '+inp+' value="'+esc(API.aux.key)+'" placeholder="密钥 sk-…（可与主接口相同）"></div>'
+    +'<div style="margin-top:9px">'+pwField('zjAuxKey',API.aux.key,'密钥 sk-…（可与主接口相同）')+'</div>'
     +'<div style="margin-top:9px"><input id="zjAuxModel" '+inp+' value="'+esc(API.aux.model)+'" placeholder="便宜快模型：如 deepseek-chat / gpt-4o-mini"></div>'
     +'<div style="font-size:11.5px;color:var(--mut);margin-top:5px;line-height:1.7">配好后，绘图提示词等杂务自动改走副模型，省钱提速；正文仍由上方主模型执笔。留空则全部走主模型。</div>'
     +lbl('高级采样（可选，留空用接口默认）')
@@ -3411,7 +3428,7 @@ function imgPane(){
     +'<div style="font-size:11px;color:var(--mut);line-height:1.7;margin-top:5px">管单图在正文里显示多大。张数越多越不让选大图以免刷屏：<b style="color:var(--gold3)">电脑</b>每轮 1–2 张可选到大、3–4 张到中、5–6 张到小；<b style="color:var(--gold3)">手机</b>多图一律只到小。一次性多图那轮自动小图并排，不受此项影响。</div>'
     +lbl('接口风格')+seg([['novelai','NovelAI 官方'],['comfyui','本地 ComfyUI'],['openai','OpenAI 兼容'],['sd','SD · A1111'],['custom','自定义 JSON']],'imgstyle',C.style)+(C.style==='novelai'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.75;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">NovelAI 官网禁止网页跨域，需经一个免费中转。仓库 <b style="color:var(--gold3)">proxy/</b> 目录有一份 Cloudflare Worker 脚本（流量不计费）：2 分钟部署后 →「接口地址」填你的 Worker 网址、「密钥」填 NAI <b style="color:var(--gold3)">持久 token</b>、模型如 nai-diffusion-3。返回的 zip 由本游戏内置解压，自动变 PNG 显示。</div>':'')+(C.style==='comfyui'?'<div style="font-size:11.5px;color:var(--mut);line-height:1.8;margin-top:8px;border:1px solid rgba(201,160,99,.2);border-radius:9px;padding:9px 12px">本地 ComfyUI：启动时加 <b style="color:#e8b77d">--enable-cors-header "*"</b> 允许网页调用（127.0.0.1 不受 https 混合内容限制）。「接口地址」填 <b style="color:#e8b77d">http://127.0.0.1:8188</b>，「模型」填 checkpoint 文件名（如 sd_xl_base_1.0.safetensors），采样器/步数/CFG/尺寸/种子照常填。<br>进阶：下方可粘贴你自己的 <b style="color:#e8b77d">API 格式</b>工作流（ComfyUI 里 Save (API Format) 导出），用 %prompt% %negative% %seed% %steps% %cfg% %width% %height% %sampler% %scheduler% %ckpt% 作占位符；留空则用内置默认 txt2img。若最新 Chrome 因 Private Network Access 拦截，可改用本地打开游戏。</div><textarea id="zjImgComfyWf" rows="4" placeholder="（可选）粘贴 ComfyUI API 格式工作流 JSON，含 %prompt% 等占位符" style="width:100%;margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(201,160,99,.3);color:var(--ink2);font-size:11px;font-family:monospace;line-height:1.5;padding:8px;resize:vertical">'+esc(C.comfyWorkflow||'')+'</textarea>':'')
     +(C.style==='novelai'?'<div style="border:1px solid rgba(201,160,99,.32);border-radius:12px;padding:12px 13px;margin-top:14px;background:rgba(255,255,255,.015)">'+'<div style="font-size:12px;letter-spacing:.22em;color:var(--gold);margin-bottom:7px">接口地址</div>'+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="粘贴你的 Worker 网址（找不到 Cloudflare 链接？用下面的懒人拼网址）">'+'<div style="border-top:1px dashed rgba(201,160,99,.28);margin:13px 0 11px"></div>'+'<div style="font-size:12.5px;color:var(--grn2);letter-spacing:.03em;margin-bottom:8px">\u270e 懒人拼网址（懒得找那条长链接，就填下面的子域名/GitHub 用户名框就好）</div>'+'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--mut2)">https://<input id="zjNaiName" placeholder="nai-proxy（默认留空）" autocomplete="off" spellcheck="false" style="width:150px;background:rgba(255,255,255,.04);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:6px 8px;font-size:13px">.<input id="zjNaiSub" placeholder="子域名/GitHub用户名" autocomplete="off" spellcheck="false" style="width:150px;background:rgba(255,255,255,.04);border:1px solid rgba(201,160,99,.3);color:var(--ink);padding:6px 8px;font-size:13px">.workers.dev</div>'+'<div style="font-size:11px;color:var(--mut);margin-top:8px;line-height:1.75">左框＝Worker 名，部署没改名就留空（默认 <b style="color:var(--gold3)">nai-proxy</b>）；右框＝你的 <b style="color:var(--gold3)">workers.dev 子域名</b>（就是 <b>xxx</b>.workers.dev 里的 xxx，部署成功页 / Cloudflare 面板右上角可见；很多人与 GitHub 用户名一致，可先按用户名试）。填好自动写进上面「接口地址」。</div>'+'</div>':lbl('接口地址')+'<input id="zjImgUrl" '+inp+' value="'+esc(C.url)+'" placeholder="如 https://api.openai.com/v1 或 http://127.0.0.1:7860">')
-    +lbl('密钥（本地 SD 可留空）')+'<input id="zjImgKey" type="password" '+inp+' value="'+esc(C.key)+'" placeholder="sk-…">'
+    +lbl('密钥（本地 SD 可留空）')+pwField('zjImgKey',C.key,'sk-…')
     +lbl('模型')
     +(C.style==='novelai'
       ? seg([['nai-diffusion-4-5-full','V4.5 Full'],['nai-diffusion-4-5-curated','V4.5 Curated'],['nai-diffusion-4-full','V4 Full'],['nai-diffusion-3','V3（旧版）']],'imgmodel',C.model)
@@ -3599,53 +3616,45 @@ function morphFlip(box,src){ /* 以 transform 表达源矩形（GPU合成，3D�
   var fin=box.getBoundingClientRect(),fr=src.getBoundingClientRect();
   return 'translate('+(fr.left-fin.left)+'px,'+(fr.top-fin.top)+'px) scale('+(fr.width/fin.width)+','+(fr.height/fin.height)+')';
 }
+/* 弹窗开合动画 —— 彻底重做为【原地淡入+微缩放】：整块透明度与内容一体升降，绝不会出现
+   「内容在动画里露馅（密码小球球先冒出来）」或「关闭时残留一个暗方块」。这是根治所有弹窗动画露馅/不自然的做法：
+   不再把一个装满内容的盒子从按钮缩放放大（那必然露馅），而是整体一起淡入淡出，物理上不可能漏。 */
+var MORPH_OD=260,MORPH_CD=200;
 function morphOpen(boxId,srcSel){
   if(reducedMotion())return;
   var box=document.getElementById(boxId);if(!box)return;
-  var src=morphSrc(srcSel,box);if(!src)return;
-  var bs=box.style,origCss=bs.cssText;
-  box.classList.add('zjMorphHide');
-  bs.transition='none';bs.transformOrigin='0 0';bs.willChange='transform';
-  bs.transform=morphFlip(box,src);
+  var bs=box.style,origTransition=bs.transition,origTransform=bs.transform,origOpacity=bs.opacity,origWill=bs.willChange,origOrigin=bs.transformOrigin;
+  bs.transition='none';bs.transformOrigin='50% 44%';bs.willChange='transform,opacity';
+  bs.opacity='0';bs.transform='scale(.94)';
   box.offsetWidth;
-  bs.transition='transform '+MORPH_D+'ms '+MORPH_E;
-  bs.transform='';
-  var sh=document.createElement('div');sh.className='zjSheen';sh.style.animation='zjSweep '+Math.round(MORPH_D*1.4)+'ms 60ms cubic-bezier(.4,.2,.3,1) both';box.appendChild(sh);
+  bs.transition='transform '+MORPH_OD+'ms '+MORPH_E+',opacity '+Math.round(MORPH_OD*0.72)+'ms ease-out';
+  bs.opacity='1';bs.transform='scale(1)';
   morphLock++;
-  setTimeout(function(){box.classList.remove('zjMorphHide');box.classList.add('zjMorphShow');},MORPH_D*0.35);
   var fin1=false;
   function finOpen(){if(fin1)return;fin1=true;box.removeEventListener('transitionend',teOpen);
-    if(sh.parentNode)sh.parentNode.removeChild(sh);
-    box.classList.remove('zjMorphShow');box.classList.remove('zjMorphHide');
-    bs.cssText=origCss;
+    bs.transition=origTransition;bs.transform=origTransform;bs.opacity=origOpacity;bs.willChange=origWill;bs.transformOrigin=origOrigin;
     morphLock--;morphFlush();}
-  function teOpen(e){if(e.target===box&&e.propertyName==='transform')setTimeout(finOpen,200);}
+  function teOpen(e){if(e.target===box&&e.propertyName==='transform')finOpen();}
   box.addEventListener('transitionend',teOpen);
-  setTimeout(finOpen,MORPH_D+1200);
+  setTimeout(finOpen,MORPH_OD+140);
 }
 function morphClose(boxId,srcSel,done){
   var box=document.getElementById(boxId);
   if(reducedMotion()||!box||morphBusy){done();return;}
-  var src=morphSrc(srcSel,box);
-  if(!src){done();return;}
   morphBusy=true;morphLock++;
   var bs=box.style;
-  bs.transition='none';bs.transformOrigin='0 0';bs.willChange='transform,opacity';bs.pointerEvents='none';
-  bs.transform='';
+  bs.transition='none';bs.transformOrigin='50% 44%';bs.willChange='transform,opacity';bs.pointerEvents='none';
+  bs.transform='scale(1)';bs.opacity='1';
   box.offsetWidth;
-  /* 关键·根治关闭残留：整块自身的透明度【立即、快速】淡出（无延迟，约 0.6× 时长），
-     比收缩更早归零——盒子在缩到按钮之前就已透明，绝不会留下一个实心暗方块。 */
-  bs.transition='transform '+MORPH_D+'ms '+MORPH_E+',opacity '+Math.round(MORPH_D*0.58)+'ms cubic-bezier(.4,0,1,1)';
-  box.classList.add('zjMorphHide');
-  bs.transform=morphFlip(box,src);
-  bs.opacity='0';
+  bs.transition='transform '+MORPH_CD+'ms cubic-bezier(.4,0,.9,1),opacity '+MORPH_CD+'ms ease-in';
+  bs.opacity='0';bs.transform='scale(.95)';
   var fin2=false;
   function finClose(){if(fin2)return;fin2=true;box.removeEventListener('transitionend',teClose);
-    box.style.opacity='0';box.style.visibility='hidden'; /* 收尾兜底：无论如何最终不可见，杜绝任何残留 */
+    box.style.opacity='0';box.style.visibility='hidden'; /* 收尾兜底：最终必不可见 */
     morphBusy=false;morphLock--;done();morphFlush();}
-  function teClose(e){if(e.target===box&&e.propertyName==='transform')finClose();}
+  function teClose(e){if(e.target===box&&(e.propertyName==='opacity'||e.propertyName==='transform'))finClose();}
   box.addEventListener('transitionend',teClose);
-  setTimeout(finClose,MORPH_D+120);
+  setTimeout(finClose,MORPH_CD+120);
 }
 root.addEventListener('input',function(e){
   if(!e.target)return;
@@ -3801,6 +3810,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-imgnext')!=null&&t.getAttribute('data-imgnext')!==''){var _ni=parseInt(t.getAttribute('data-imgnext'),10);var _nh=S.history[_ni];var _nv=_nh&&imgVers(_nh);if(_nv&&_nv.length){var _cy=(_nh.verIx==null?_nv.length-1:_nh.verIx);if(_cy<_nv.length-1){_nh.verIx=_cy+1;_nh.img=(_nv[_nh.verIx]||[])[0]||_nh.img;savePref();illuSwap(_ni,_nh);}}return;}
       if(t.getAttribute('data-imgzoom')!=null&&t.getAttribute('data-imgzoom')!==''){var _zi=parseInt(t.getAttribute('data-imgzoom'),10);var _zh=S.history[_zi];if(_zh){var _zord=['lg','md','sm','mini'];var _zcur=_zh.dispSize||IMGCFG.disp||'lg';var _zk=_zord.indexOf(_zcur);if(_zk<0)_zk=0;var _zn=_zord[(_zk+1)%_zord.length];_zh.dispSize=_zn;var _zw=t.parentElement;if(_zw&&_zw.getAttribute('data-imgwrap'))_zw.style.maxWidth=imgDispW(_zn);savePref();}return;}
       if(t.getAttribute('data-drawidx')!=null&&t.getAttribute('data-drawidx')!==''){var _di=parseInt(t.getAttribute('data-drawidx'),10);if(S.imgBusy==null&&imgReady()&&S.history[_di]&&S.history[_di].role==='world')drawWorld(_di);return;}
+      if(t.getAttribute('data-eye')){var _eid=t.getAttribute('data-eye');var _ein=document.getElementById(_eid);if(_ein){var _rev=(_ein.type==='password');_ein.type=_rev?'text':'password';t.innerHTML=eyeSvg(_rev);}return;}
       if(t.getAttribute('data-wedit')!=null&&t.getAttribute('data-wedit')!==''){var _wei=parseInt(t.getAttribute('data-wedit'),10);if(S.history[_wei]){if(TYPE.msg===S.history[_wei]){typedSet.add(S.history[_wei]);TYPE.msg=null;}S.msgTools=null;S.msgEdit=_wei;S._noFade=true;S._keepScroll=true;render();}return;}
       if(t.getAttribute('data-rr')!=null&&t.getAttribute('data-rr')!==''){reroll(parseInt(t.getAttribute('data-rr'),10));return;}
       if(t.getAttribute('data-rrfmt')!=null&&t.getAttribute('data-rrfmt')!==''){rerollPanel(parseInt(t.getAttribute('data-rrfmt'),10));return;}
@@ -3824,7 +3834,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-mode')){var nmd=t.getAttribute('data-mode');if(S.chatOnly&&nmd!=='world')return;
         if(nmd===S.mode){if(S.chatOnly&&nmd==='world'){S.mode='say';S.cmdHint=null;S._noFade=true;render();}return;}S.mode=nmd;S.cmdHint=null;
         var mchips=document.querySelectorAll('[data-mode]');
-        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;mcs.border='1px solid '+(mon?'rgba(224,190,130,.75)':'rgba(255,238,205,.22)');mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.background=mon?'linear-gradient(135deg,rgba(255,236,200,.16),rgba(201,160,99,.08))':'linear-gradient(135deg,rgba(255,236,200,.05),rgba(18,13,8,.02))';}
+        for(var mi=0;mi<mchips.length;mi++){var mon=mchips[mi].getAttribute('data-mode')===nmd;var mcs=mchips[mi].style;mcs.color=mon?'var(--gold2)':'var(--mut)';mcs.textShadow=mon?'0 0 11px rgba(224,190,130,.6),0 1px 2px rgba(0,0,0,.8)':'0 1px 2px rgba(0,0,0,.6)';}
         var mta=document.getElementById('zjInput');if(mta)mta.placeholder=MODE_PH[nmd];
         var mh=document.getElementById('zjCmdHint');if(mh&&mh.parentNode)mh.parentNode.removeChild(mh);
         return;}
