@@ -4080,8 +4080,12 @@ function zenToggle(){
   if(!S.zen){ /* ---- 进全屏（手术式） ---- */
     var story=document.getElementById('zjStory');if(!story){zenToggle._busy=0;return;}
     var list=els();
-    /* 存完整 style 串而非 padding 简写——padding-bottom 里的 env() 会让简写序列化成空串 */
-    S.zen=true;S.zenInput=false;S.zenWorld=false;S._zenSurgPad=story.getAttribute('style')||null;
+    /* 存【计算后】的四个 padding 值（具体 px）——不能存 style 字符串：fitStoryPad 动过 padding-bottom 后，
+       Chromium 会把含 clamp()/env() 的其余 padding 长属性序列化成空串（padding-top: ;），
+       setAttribute 回去时空声明被丢弃、padding 归 0，正文就撑满全宽“变大”。计算值不受此缺陷影响。 */
+    var _pcs=getComputedStyle(story);
+    S.zen=true;S.zenInput=false;S.zenWorld=false;
+    S._zenSurgPad={t:_pcs.paddingTop,r:_pcs.paddingRight,b:_pcs.paddingBottom,l:_pcs.paddingLeft};
     var fin=function(){
       /* 若滑出期间发生过标准 render（如 BGM 事件的 renderSoft），树已重建成标准全屏样，收尾全部跳过以免叠加重复小件 */
       if(!story.isConnected){S._zenSurgPad=null;return;}
@@ -4110,10 +4114,10 @@ function zenToggle(){
     S.zen=false;S.zenInput=false;S.zenWorld=false;
     var pad=S._zenSurgPad;S._zenSurgPad=null;
     var topBar=document.getElementById('zjTopBar');
-    if(topBar&&pad){ /* 手术式退出：外围界面都还藏在 DOM 里，显示回来滑入即可，正文分毫未动 */
+    if(topBar&&pad&&pad.t!=null){ /* 手术式退出：外围界面都还藏在 DOM 里，显示回来滑入即可，正文分毫未动 */
       var ex=document.getElementById('zjZenExtras');if(ex&&ex.parentNode)ex.parentNode.removeChild(ex);
       var story2=document.getElementById('zjStory');
-      flipStory(function(){if(story2)story2.setAttribute('style',pad);});
+      flipStory(function(){if(story2){story2.style.paddingTop=pad.t;story2.style.paddingRight=pad.r;story2.style.paddingBottom=pad.b;story2.style.paddingLeft=pad.l;}});
       var list2=els();
       list2.forEach(function(g){var el=g[0];if(el.getAnimations)el.getAnimations().forEach(function(a){try{a.cancel();}catch(e){}});el.style.display='';});
       if(side){ /* 逐框撤掉残留的离场动画（fill:forwards 会把框钉在屏幕外，subtree 选项不可靠故显式逐个撤），再从右侧级联滑入 */
