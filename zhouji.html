@@ -4055,10 +4055,19 @@ function zenToggle(){
      外围界面滑走后只 display:none 藏起、退出时显示回来再滑入；正文 padding 变化用 FLIP 平滑过渡。
      没有整屏重建，就没有「文字刷新/颤一下」（插画异步解码、模糊重光栅化、文字重排的闪全被绕开）。
      兜底：若全屏期间发生过正常 render（外围元素已被重建掉），退出自动走整渲染老路径，不会坏。 */
-  if(zenToggle._busy)return;zenToggle._busy=true;setTimeout(function(){zenToggle._busy=false;},430);
+  /* 防抖用时间戳自然过期（不靠定时器清标志——定时器被节流/冻结时会把开关卡死） */
+  var _zn=Date.now();if(zenToggle._busy&&_zn-zenToggle._busy<430)return;zenToggle._busy=_zn;
   var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
   function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
   function els(){var o=[];zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el)o.push([el,g[1]]);});return o;}
+  /* 电脑端太史简侧栏：取顶层玻璃框（排除嵌套），进全屏时逐框右滑离场、退出时从右侧逐框滑回（级联） */
+  function sideBoxes(){var sc=document.getElementById('zjSideCol');if(!sc)return [];return [].filter.call(sc.querySelectorAll('.glass'),function(b){return !(b.parentElement&&b.parentElement.closest('.glass'));});}
+  function sideSlideIn(){
+    if(reducedMotion())return;var sc=document.getElementById('zjSideCol');if(!sc)return;
+    if(sc.animate)sc.animate([{opacity:0},{opacity:1}],{duration:200,easing:'ease'});
+    sideBoxes().forEach(function(b,i){if(!b.animate)return;var r=b.getBoundingClientRect();if(!r.width)return;var dx=Math.round(window.innerWidth-r.left+30);
+      b.animate([{transform:'translateX('+dx+'px)',opacity:.35},{transform:'none',opacity:1}],{duration:380,delay:i*26,easing:'cubic-bezier(.3,1.05,.35,1)',fill:'backwards'});});
+  }
   function flipStory(fn){ /* 正文位置变化的 FLIP：先量旧位、改完平滑滑到新位 */
     var s=document.getElementById('zjStory');var w=s&&s.querySelector('[data-zjzoom]');
     var oldY=w?w.getBoundingClientRect().top:null;
@@ -4069,7 +4078,7 @@ function zenToggle(){
   }
   var side=document.getElementById('zjSideCol');
   if(!S.zen){ /* ---- 进全屏（手术式） ---- */
-    var story=document.getElementById('zjStory');if(!story){zenToggle._busy=false;return;}
+    var story=document.getElementById('zjStory');if(!story){zenToggle._busy=0;return;}
     var list=els();
     /* 存完整 style 串而非 padding 简写——padding-bottom 里的 env() 会让简写序列化成空串 */
     S.zen=true;S.zenInput=false;S.zenWorld=false;S._zenSurgPad=story.getAttribute('style')||null;
@@ -4077,7 +4086,6 @@ function zenToggle(){
       /* 若滑出期间发生过标准 render（如 BGM 事件的 renderSoft），树已重建成标准全屏样，收尾全部跳过以免叠加重复小件 */
       if(!story.isConnected){S._zenSurgPad=null;return;}
       list.forEach(function(g){g[0].style.display='none';});
-      if(side)side.style.display='none';
       flipStory(function(){story.style.padding='56px clamp(16px,5vw,70px) 46px';});
       /* 全屏内两个小件（与 view() 的全屏树同款标记，事件走全局委托）：右上「天下」开合三维、底部书写小球 */
       var host=root.firstElementChild;
@@ -4088,9 +4096,15 @@ function zenToggle(){
         host.appendChild(ex);
       }
     };
-    if(reducedMotion()){fin();return;}
+    if(reducedMotion()){fin();if(side)side.style.display='none';return;}
     list.forEach(function(g){var el=g[0];if(el.animate)el.animate([{transform:'none',opacity:1},{transform:'translateY('+zOff(el,g[1])+'px)',opacity:0}],{duration:300,easing:'cubic-bezier(.55,0,.75,.4)',fill:'forwards'});});
-    if(side&&side.animate)side.animate([{opacity:1},{opacity:0}],{duration:260,easing:'ease',fill:'forwards'});
+    if(side){ /* 太史简所有框逐个右滑离场（级联），栏底随后淡出，全部走完才隐藏 */
+      var _sb=sideBoxes();
+      _sb.forEach(function(b,i){if(!b.animate)return;var r=b.getBoundingClientRect();var dx=Math.round(window.innerWidth-r.left+30);
+        b.animate([{transform:'none',opacity:1},{transform:'translateX('+dx+'px)',opacity:.35}],{duration:300,delay:i*26,easing:'cubic-bezier(.55,0,.75,.4)',fill:'forwards'});});
+      if(side.animate)side.animate([{opacity:1},{opacity:0}],{duration:240,delay:150,easing:'ease',fill:'forwards'});
+      setTimeout(function(){if(S.zen&&side.isConnected)side.style.display='none';},Math.max(300+_sb.length*26,390)+20);
+    }
     setTimeout(fin,295);
   }else{ /* ---- 退全屏 ---- */
     S.zen=false;S.zenInput=false;S.zenWorld=false;
@@ -4102,13 +4116,19 @@ function zenToggle(){
       flipStory(function(){if(story2)story2.setAttribute('style',pad);});
       var list2=els();
       list2.forEach(function(g){var el=g[0];if(el.getAnimations)el.getAnimations().forEach(function(a){try{a.cancel();}catch(e){}});el.style.display='';});
-      if(side){if(side.getAnimations)side.getAnimations().forEach(function(a){try{a.cancel();}catch(e){}});side.style.display='';}
+      if(side){ /* 逐框撤掉残留的离场动画（fill:forwards 会把框钉在屏幕外，subtree 选项不可靠故显式逐个撤），再从右侧级联滑入 */
+        if(side.getAnimations)side.getAnimations().forEach(function(a){try{a.cancel();}catch(e){}});
+        sideBoxes().forEach(function(b){if(b.getAnimations)b.getAnimations().forEach(function(a){try{a.cancel();}catch(e){}});});
+        side.style.display='';
+        sideSlideIn();
+      }
       if(!reducedMotion())list2.forEach(function(g){var el=g[0];if(el.animate)el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)'});});
     }else{ /* 兜底：全屏期间发生过标准 render，走整渲染老路径退出 */
       var oldY=(function(){var s=document.getElementById('zjStory');var w=s&&s.querySelector('[data-zjzoom]');return w?w.getBoundingClientRect().top:null;})();
       S._noFade=true;S._keepScroll=true;render();
       if(oldY!=null&&!reducedMotion()){var s2=document.getElementById('zjStory');var w2=s2&&s2.querySelector('[data-zjzoom]');if(s2&&w2&&s2.animate){var dy2=Math.round(oldY-w2.getBoundingClientRect().top);if(Math.abs(dy2)>2)s2.animate([{transform:'translateY('+dy2+'px)'},{transform:'none'}],{duration:340,easing:'cubic-bezier(.3,1.02,.35,1)'});}}
       if(!reducedMotion())zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&el.animate)el.animate([{transform:'translateY('+zOff(el,g[1])+'px)',opacity:.2},{transform:'none',opacity:1}],{duration:380,easing:'cubic-bezier(.3,1.05,.35,1)',fill:'backwards'});});
+      sideSlideIn(); /* 兜底路径同样给太史简来一次右侧级联滑入 */
     }
   }
 }
