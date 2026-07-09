@@ -1301,6 +1301,16 @@ function auxBase(){return String(API.aux.url||'https://api.openai.com/v1').trim(
 function genNum(v){var n=parseFloat(v);return isFinite(n)?n:null;}
 function genMax(){var n=parseInt(API.gen&&API.gen.maxtok,10);return (isFinite(n)&&n>0)?Math.min(n,32000):4000;}
 /* 副模型：绘图提示词等杂务走便宜快模型，正文仍由主模型执笔；未配则回落主模型 */
+/* 生成中断：本轮生成的请求都带上 GENAC.signal，用户点「取消发送」即 abort */
+var GENAC=null;
+function genSignal(){try{return GENAC?GENAC.signal:undefined;}catch(e){return undefined;}}
+function cancelGen(){
+  S._genCancel=true;
+  if(GENAC){try{GENAC.abort();}catch(e){}GENAC=null;}
+  try{GEN.done=true;}catch(e){} /* 取消不计入首字耗时样本 */
+  S.thinking=false;S.fixing=false;
+  render();
+}
 function callAuxAI(system,messages){
   if(!auxReady())return callCustomAI(system,messages);
   return apiHttp(auxBase()+'/chat/completions',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+API.aux.key},body:JSON.stringify({model:API.aux.model,max_tokens:2000,messages:[{role:'system',content:system}].concat(messages)})})
@@ -1308,6 +1318,7 @@ function callAuxAI(system,messages){
 }
 function apiBase(){var c=apiCur();return (c.url||API_DEF[API.provider].url).trim().replace(/\/+$/,'');}
 function apiHttp(url,opt){
+  try{if(opt&&!opt.signal)opt.signal=genSignal();}catch(e){}
   return fetch(url,opt).then(function(r){
     if(!r.ok){return r.text().then(function(t){var m=t;try{var j=JSON.parse(t);m=(j.error&&(j.error.message||j.error.type))||(j.message)||t;}catch(e2){}throw new Error('HTTP '+r.status+'：'+String(m).slice(0,220));});}
     return r.json();
@@ -1340,6 +1351,7 @@ function callCustomAIStream(system,messages,onDelta){
   function gtune(b){if(gT!=null)b.temperature=gT;if(gP!=null)b.top_p=gP;return b;}
   PV={at:new Date().toLocaleTimeString(),provider:API.provider,model:c.model,system:system,messages:messages};
   function sse(url,opt,extract){
+    try{if(opt&&!opt.signal)opt.signal=genSignal();}catch(e){}
     return fetch(url,opt).then(function(r){
       if(!r.ok)return r.text().then(function(t){var m=t;try{var j=JSON.parse(t);m=(j.error&&(j.error.message||j.error.type))||j.message||t;}catch(e2){}throw new Error('HTTP '+r.status+'：'+String(m).slice(0,220));});
       if(!r.body||!r.body.getReader)throw new Error('流式不可用');
@@ -1651,7 +1663,7 @@ function worldCommand(raw){
 function sendText(text){
   if(S.thinking||!S.history.length)return;
   S.suggList=null;S._sugSeq=(S._sugSeq||0)+1;S._swipeFrom=null;
-  S.thinking=true;
+  S.thinking=true;S._genCancel=false;try{GENAC=new AbortController();}catch(e){GENAC=null;}
   var base=S.history.slice();
   S.history=base.concat([{role:'user',text:text}]);render();
   if(TH.available){ driveTavern(text); }
@@ -1719,6 +1731,7 @@ function rerollPanel(idx){
 }
 function advanceLocal(base,text){
   var done=function(reply,live){
+    GENAC=null;
     reply=deLoop(reply);
     var msg={role:'world',text:reply,panel:parseMvu(reply)};
     if(S._swipeFrom){msg.alts=S._swipeFrom.concat([reply]).slice(-8);msg.altIx=msg.alts.length-1;S._swipeFrom=null;}
@@ -1728,8 +1741,9 @@ function advanceLocal(base,text){
   };
   var claudeOK = window.claude && typeof window.claude.complete==='function';
   if(apiReady()){
+    S._genCancel=false;try{GENAC=new AbortController();}catch(e){GENAC=null;}
     var sys=buildSystem(base,text),msgs=buildMessages(base,text);
-    var fail=function(err){done('【API 调用失败】'+(err&&err.message?err.message:String(err))+'\n\n请点击右上角「链」核对接口地址、密钥与模型名，然后点「重演此幕」重试本回合。',false);};
+    var fail=function(err){if(S._genCancel){S._genCancel=false;GENAC=null;S.thinking=false;render();return;}done('【API 调用失败】'+(err&&err.message?err.message:String(err))+'\n\n请点击右上角「链」核对接口地址、密钥与模型名，然后点「重演此幕」重试本回合。',false);};
     var plain=function(){callCustomAI(sys,msgs).then(function(t){if(!t||!String(t).trim())throw new Error('接口返回了空回复（可能被内容过滤或模型名不对）');return ensureComplete(sys,msgs,t);}).then(function(t){done(t,true);}).catch(fail);};
     if(API.gen&&API.gen.stream!=='0'&&window.ReadableStream){
       var live={role:'world',text:'',panel:null};var started=false,lastR=0;
@@ -1748,9 +1762,11 @@ function advanceLocal(base,text){
           t3=deLoop(t3);live.text=t3;live.panel=parseMvu(t3);S.thinking=false;S.aiLive=true;
           if(S._swipeFrom){live.alts=S._swipeFrom.concat([t3]).slice(-8);live.altIx=live.alts.length-1;S._swipeFrom=null;}
           if(!started)S.history=base.concat([{role:'user',text:text},live]);
-          render();savePref();genSuggestions();maybeAutoDraw();
+          GENAC=null;render();savePref();genSuggestions();maybeAutoDraw();
         });
       }).catch(function(){
+        /* 用户取消：撤下半截、静默收场，不重试不报错 */
+        if(S._genCancel){S._genCancel=false;GENAC=null;if(started){var lxc=S.history.indexOf(live);if(lxc>=0)S.history.splice(lxc,1);}S.thinking=false;S.aiLive=false;render();savePref();return;}
         /* 流式中断：撤下半截，回退整段生成重试一次 */
         if(started){var lx=S.history.indexOf(live);if(lx>=0)S.history.splice(lx,1);}
         S.thinking=true;render();
@@ -2149,7 +2165,7 @@ function storyPane(){
   var older=hStart>0?'<div style="text-align:center;margin:0 0 24px"><div class="btn obtn" data-act="histmore" style="display:inline-block;font-size:12px;letter-spacing:.18em;padding:7px 18px;border-radius:9px">▲ 展开更早 '+Math.min(30,hStart)+' 幕</div><div style="font-size:11px;color:var(--mut);margin-top:7px;letter-spacing:.1em">其前 '+hStart+' 幕未载入以保流畅，剧情已尽录于太史长卷（忆）</div></div>':'';
   var items=older+S.history.slice(hStart).map(function(h,ri){var i=hStart+ri;
     if(h.role==='user'){
-      var utb='<div class="btn" data-mtool="'+(i+1)+'" title="修改或删去此言" style="flex:none;align-self:flex-end;color:var(--mut);opacity:.4;padding:2px 7px;font-size:15px;letter-spacing:1px">⋯</div>';
+      var utb='<div class="btn" data-mtool="'+(i+1)+'" title="修改或删去此言" style="flex:none;align-self:flex-end;color:#cdbf9e;opacity:.75;padding:2px 10px;font-size:15px;letter-spacing:1px;background:rgba(30,22,14,.5);border:1px solid rgba(201,160,99,.3);border-radius:8px;line-height:1.5">⋯</div>';
       var ubody;
       if(S.msgEdit===i){
         ubody='<div style="max-width:82%;flex:1"><textarea id="zjMsgEditBox" style="width:100%;min-height:90px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:#e3b6a0;font-size:14px;line-height:1.8;padding:10px 13px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
@@ -2157,10 +2173,10 @@ function storyPane(){
       }else{
         ubody='<div style="max-width:82%;border:1px solid rgba(166,59,38,.28);border-right:3px solid var(--red);border-radius:12px;background:linear-gradient(135deg,rgba(166,59,38,.11),rgba(166,59,38,.04));box-shadow:inset 0 1px 0 rgba(255,220,200,.1);padding:11px 15px"><div style="font-size:10px;letter-spacing:.35em;color:var(--red2);text-align:right;margin-bottom:5px">王 之 言 行</div><div style="font-size:15px;line-height:1.9;color:#e3b6a0;white-space:pre-wrap">'+esc(h.text)+'</div></div>';
       }
-      var utools=(S.msgTools===i&&S.msgEdit!==i)?'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:7px">'
+      var utools='<div class="zjMT" data-mt="'+i+'" style="display:'+((S.msgTools===i&&S.msgEdit!==i)?'flex':'none')+';gap:8px;justify-content:flex-end;margin-top:7px">'
         +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此言</div>'
         +(i>0&&!S.thinking?'<div class="btn" data-act="mDel" style="cursor:pointer;font-size:12px;padding:5px 14px;background:transparent;border:1px solid rgba(166,59,38,.4);border-radius:9px;color:#b06a55">删</div>':'')
-        +'</div>':'';
+        +'</div>';
       return '<div class="fade" style="margin-bottom:22px"><div style="display:flex;justify-content:flex-end;gap:6px">'+utb+ubody+'</div>'+utools+'</div>';
     }
     var text=stripMvu(h.text);var chap='';
@@ -2203,13 +2219,13 @@ function storyPane(){
       +(imgReady()?(S.imgBusy===i?'<div style="font-size:11px;letter-spacing:.04em;color:var(--gold);white-space:nowrap;flex:none">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="'+_rb+'">'+(h.img?'⟲ 重绘':'✦ 绘此幕')+'</div>'):'<div class="btn obtn" data-act="openImgSet" title="配置生图接口后即可为此幕绘制插画" style="'+_rb+';color:var(--gold3)">✦ 生图设置</div>')
       +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="'+_rb+';color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停诵</div>':'<div class="btn obtn" data-act="ttsScene" style="'+_rb+'">♪ 诵此幕</div>'):'')
       +(S.imgErr?'<div style="font-size:11px;color:#d9a06a;white-space:nowrap;flex:none">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="'+_rb+';color:var(--gold3)">⚙ 设置</div>':'')+'</div>':'';
-    var wtb='<div class="btn" data-mtool="'+(i+1)+'" title="修改、删去或由此幕重来" style="position:absolute;top:-2px;right:-4px;color:var(--mut);opacity:.4;padding:2px 8px;font-size:15px;letter-spacing:1px;z-index:2">⋯</div>';
-    var wtools=(S.msgTools===i&&S.msgEdit!==i)?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px">'
+    var wtb='<div class="btn" data-mtool="'+(i+1)+'" title="修改、删去或由此幕重来" style="position:absolute;top:2px;right:2px;color:#cdbf9e;opacity:.75;padding:2px 10px;font-size:15px;letter-spacing:1px;z-index:2;background:rgba(30,22,14,.5);border:1px solid rgba(201,160,99,.3);border-radius:8px;line-height:1.5">⋯</div>';
+    var wtools='<div class="zjMT" data-mt="'+i+'" style="display:'+((S.msgTools===i&&S.msgEdit!==i)?'flex':'none')+';gap:8px;flex-wrap:wrap;margin:2px 0 12px">'
       +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此幕</div>'
       +(i>0&&!S.thinking?'<div class="btn" data-act="mDel" style="cursor:pointer;font-size:12px;padding:5px 14px;background:transparent;border:1px solid rgba(166,59,38,.4);border-radius:9px;color:#b06a55">删此幕</div>':'')
       +(i<S.history.length-1&&!S.thinking?'<div class="btn obtn" data-act="mRedo" style="font-size:12px;padding:5px 14px;color:#d9a06a;border-color:rgba(217,160,106,.4)">⟲ 由此幕重来</div>':'')
       +(S.imgBusy===i?'<div style="font-size:12px;color:var(--gold);padding:5px 10px">✦ 绘制中…</div>':((imgReady()&&S.imgBusy==null)?'<div class="btn obtn" data-drawidx="'+i+'" style="font-size:12px;padding:5px 14px;color:var(--gold3)">'+(h.img?'⟲ 重绘插画':'✦ 绘此幕')+'</div>':''))
-      +'</div>':'';
+      +'</div>';
     if(S.msgEdit===i){
       paras='<div><textarea id="zjMsgEditBox" style="width:100%;min-height:170px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:var(--ink);font-size:14px;line-height:1.8;padding:11px 14px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end;margin:7px 0 12px"><div class="btn obtn" data-act="mCancel" style="font-size:12px;padding:5px 14px">取消</div><div class="btn gbtn" data-act="mSave" style="font-size:12px;letter-spacing:.15em;padding:5px 16px">保存</div></div></div>';
@@ -2219,10 +2235,12 @@ function storyPane(){
   }).join('');
   var thinking='';
   if(genSync()){
-    thinking='<div style="padding:6px 0 14px"><div style="position:relative;height:27px;border-radius:9px;overflow:hidden;background:rgba(255,255,255,.05);border:1px solid rgba(201,160,99,.32);box-shadow:inset 0 1px 0 rgba(255,242,214,.1)">'
+    thinking='<div style="display:flex;align-items:center;gap:8px;padding:6px 0 14px"><div style="position:relative;flex:1;height:27px;border-radius:9px;overflow:hidden;background:rgba(255,255,255,.05);border:1px solid rgba(201,160,99,.32);box-shadow:inset 0 1px 0 rgba(255,242,214,.1)">'
       +'<div id="zjGenFill" style="position:absolute;top:0;bottom:0;left:0;width:'+genPct().toFixed(1)+'%;background:linear-gradient(90deg,rgba(201,140,80,.55),rgba(224,190,130,.8));transition:width .3s linear"></div>'
       +'<div id="zjGenTxt" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;letter-spacing:.1em;color:#f2e4c4;text-shadow:0 1px 2px rgba(0,0,0,.55)">'+genLabel()+'</div>'
-      +'</div></div>';
+      +'</div>'
+      +(S.thinking?'<div class="btn" data-act="cancelGen" title="停止本次生成" style="flex:none;font-size:12px;letter-spacing:.06em;padding:6px 13px;border-radius:9px;background:rgba(166,59,38,.2);border:1px solid rgba(166,59,38,.55);color:#e6a892;white-space:nowrap">取消发送</div>':'')
+      +'</div>';
   }
   var HIDE3D=false;try{HIDE3D=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
   var hideScene=window.__ZJ3D_OFF__&&SVGF&&mob;
@@ -3737,7 +3755,12 @@ root.addEventListener('click',function(e){
         renderOverlay();return;}
       if(t.getAttribute('data-prov')){readApiForm();API.provider=t.getAttribute('data-prov');S.apiModels=null;S.apiMsg=null;saveApi();renderOverlay();return;}
       if(t.getAttribute('data-setmodel')){apiCur().model=t.getAttribute('data-setmodel');saveApi();renderOverlay();return;}
-      if(t.getAttribute('data-mtool')){var mtix=parseInt(t.getAttribute('data-mtool'),10)-1;S.msgTools=(S.msgTools===mtix?null:mtix);S.msgEdit=null;S._noFade=true;render();return;}
+      if(t.getAttribute('data-mtool')){var mtix=parseInt(t.getAttribute('data-mtool'),10)-1;var _opening=(S.msgTools!==mtix);var _wasEdit=(S.msgEdit!=null);S.msgTools=_opening?mtix:null;S.msgEdit=null;
+        /* 原地显隐工具行，不整页刷新——彻底杜绝点⋯闪屏 */
+        if(_wasEdit){S._noFade=true;render();return;}
+        [].forEach.call(document.querySelectorAll('.zjMT'),function(el){el.style.display='none';});
+        if(_opening){var _tg=document.querySelector('.zjMT[data-mt="'+mtix+'"]');if(_tg)_tg.style.display='flex';}
+        return;}
       if(t.getAttribute('data-medit')){S.memEdit=parseInt(t.getAttribute('data-medit'),10)-1;renderOverlay();return;}
       if(t.getAttribute('data-mdel')){S.mem.splice(parseInt(t.getAttribute('data-mdel'),10),1);savePref();renderOverlay();return;}
       if(t.getAttribute('data-npc')!=null&&t.getAttribute('data-npc')!==''){if(GPH.squelch){GPH.squelch=false;return;}graphSelect(t.getAttribute('data-npc'));return;}
@@ -3817,6 +3840,7 @@ root.addEventListener('click',function(e){
       else if(a==='totitle'){S.screen='title';S.overlay=null;render();}
       else if(a==='continue'){if(TH.available)pullHistory();S.screen='game';render();}
       else if(a==='send'){var ta=document.getElementById('zjInput');if(ta)S.input=ta.value;send();}
+      else if(a==='cancelGen'){cancelGen();return;}
       else if(a==='reroll'){reroll();}
       else if(a==='rerollFmt'){var _rfi=-1;for(var _rk=S.history.length-1;_rk>=0;_rk--){if(S.history[_rk].role==='world'){_rfi=_rk;break;}}if(_rfi>=0)rerollPanel(_rfi);return;}
       else if(a==='swPrev'){var hsw=S.history[S.history.length-1];
