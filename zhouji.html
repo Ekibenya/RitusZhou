@@ -1004,6 +1004,7 @@ function buildSystem(history,userInput){
     '【叙事者定位】'+fill(G.personality),
     '【场景】'+fill(G.scenario),
     (S.memOn!==false&&S.mem&&S.mem.length>1)?('【长程记忆·太史长卷】以下为本局开局至今全部既定事实的编年纪要（越靠后越接近当下）。正文历史若有缺失，以此卷为准；任何叙事不得与之矛盾：\n'+memChronicle(SPD?1600:7000)):'',
+    (function(){var _fd=npcFavorDigest();return _fd?('【人物好感·续记（不得健忘）】以下为曾登场人物最近一次的好感度与近况。他们即便暂时离场，好感与关系也须【延续记忆】：再次出场时自此数值起继续自然演变，严禁凭空重置、归零或大幅跳变；确有剧情推动方可增减：\n'+_fd):'';})(),
     '【世界书·激活条目】\n'+lore.map(function(e){return '『'+e.title+'』'+e.content;}).join('\n'),
     SPD?'':('【对话示例】\n'+fill(G.mes_example)),
     SPD
@@ -2662,6 +2663,9 @@ function savesBody(){
   return '<div class="grow" style="overflow-y:auto;padding:18px 24px"><div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap"><button data-act="savenow" class="gbtn btn" style="font-size:15px;letter-spacing:.15em;padding:9px 22px">存于新简</button><div style="font-size:12px;color:var(--mut)">最多十二枚简册，存于此浏览器。</div></div>'+rows+dataBox+'</div>';
 }
 
+/* 归一人物名：去空白（含全角空格）、去掉尾部括注（如「张仪（纵横家）」→「张仪」），
+   使同一人的不同写法合并为同一节点，杜绝图谱里「同一人重复出现、只状态不同」。 */
+function npcKey(name){return String(name||'').replace(/[\s　]+/g,'').replace(/[（(【\[][^）)】\]]*[）)】\]]?\s*$/,'');}
 function npcStats(){
   var map={},order=[];
   S.history.forEach(function(h){
@@ -2670,8 +2674,12 @@ function npcStats(){
     if(!p||!p.npcs)return;
     p.npcs.forEach(function(np){
       if(!np||!np.name)return;
-      if(!map[np.name]){map[np.name]={name:np.name,n:0};order.push(np.name);}
-      var o=map[np.name];o.n++;
+      var disp=String(np.name).trim();var key=npcKey(disp)||disp;
+      if(!key)return;
+      if(!map[key]){map[key]={name:disp,n:0};order.push(key);}
+      var o=map[key];o.n++;
+      /* 展示名取更简洁（去括注）的那个 */
+      if(disp&&disp.length<o.name.length)o.name=disp;
       if(np.favor!=null)o.favor=np.favor;
       if(np.state)o.status=np.state;
       if(np.thought)o.thought=np.thought;
@@ -2683,12 +2691,22 @@ function npcStats(){
   });
   /* 老存档修复：早于本次更新开的局，存档里的开场面板仍是旧四字段。
      从当前开局定义(G.openings，代码内恒为新版八字段)按名补齐，无需重开局、无需AI。 */
-  var pre=presetNpcMeta();
+  var pre=presetNpcMeta();var preK={};Object.keys(pre).forEach(function(nm){preK[npcKey(nm)]=pre[nm];});
   var meta=S.npcMeta||{};
   return order.map(function(k){var o=map[k];
-    var pm=pre[k];if(pm){if(!o.role&&pm.role)o.role=pm.role;if(!o.place&&pm.place)o.place=pm.place;if(!o.age&&pm.age)o.age=pm.age;if(!o.sex&&pm.sex)o.sex=pm.sex;}
-    var mm=meta[k];if(mm){if(!o.role&&mm.role)o.role=mm.role;if(!o.place&&mm.place)o.place=mm.place;if(!o.age&&mm.age)o.age=mm.age;if(!o.sex&&mm.sex)o.sex=mm.sex;}
+    var pm=pre[o.name]||preK[k];if(pm){if(!o.role&&pm.role)o.role=pm.role;if(!o.place&&pm.place)o.place=pm.place;if(!o.age&&pm.age)o.age=pm.age;if(!o.sex&&pm.sex)o.sex=pm.sex;}
+    var mm=meta[o.name]||meta[k];if(mm){if(!o.role&&mm.role)o.role=mm.role;if(!o.place&&mm.place)o.place=mm.place;if(!o.age&&mm.age)o.age=mm.age;if(!o.sex&&mm.sex)o.sex=mm.sex;}
     return o;}).filter(function(o){return (S.graphHidden||[]).indexOf(o.name)<0;});
+}
+/* 好感度记忆：把曾登场每个人物的最近好感与近况汇成一段，注入系统提示——
+   人物暂时离场也不「健忘」，再登场须自此值续演，不得凭空重置或乱跳。 */
+function npcFavorDigest(){
+  var ns=npcStats();if(!ns.length)return '';
+  var rows=ns.filter(function(o){return o.name&&o.favor!=null;}).slice(-30).map(function(o){
+    var st=o.status||o.state||'';
+    return '· '+o.name+'：好感 '+o.favor+(st?('（近况：'+String(st).slice(0,24)+'）'):'');
+  });
+  return rows.length?rows.join('\n'):'';
 }
 /* 当前开局定义里的 NPC 资料（身份/所在/年龄/性别），按名索引——用于修复旧存档 */
 function presetNpcMeta(){
