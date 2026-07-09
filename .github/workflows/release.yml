@@ -44,7 +44,7 @@ jobs:
           mkdir -p "$PKG"
           cp zhouji.html "$PKG/index.html"
           cp -r core "$PKG/core"
-          cp README.md README_EN.md RELEASE_NOTES.md "$PKG/"
+          cp README.md docs/README_EN.md docs/RELEASE_NOTES.md "$PKG/"
           zip -r "${PKG}.zip" "$PKG"
 
       - name: Create GitHub release
@@ -53,7 +53,7 @@ jobs:
           tag_name: ${{ inputs.version || github.ref_name }}
           target_commitish: ${{ github.sha }}
           name: "周纪·千年天下 ${{ inputs.version || github.ref_name }}"
-          body_path: RELEASE_NOTES.md
+          body_path: docs/RELEASE_NOTES.md
           fail_on_unmatched_files: true
           files: |
             ZhouJi-QianNianTianXia-${{ inputs.version || github.ref_name }}.html

@@ -10,10 +10,10 @@
 
 *No download, no install — works on desktop & mobile; bring your own AI key and start*
 
-[简体中文](README.md) | [English](README_EN.md)
+[简体中文](../README.md) | [English](README_EN.md)
 
-[![Release](https://img.shields.io/github/v/release/ekibenya/RitusZhou?label=Latest&color=c9a063)](../../releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/ekibenya/RitusZhou/total?label=Downloads&color=a63b26)](../../releases)
+[![Release](https://img.shields.io/github/v/release/ekibenya/RitusZhou?label=Latest&color=c9a063)](../../../releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/ekibenya/RitusZhou/total?label=Downloads&color=a63b26)](../../../releases)
 
 </div>
 
@@ -29,7 +29,7 @@
 
 <div align="center">
 
-![2.0 overview](docs/shots/v2-story.png)
+![2.0 overview](shots/v2-story.png)
 
 *The 2.0 interface — floating 3D island, liquid glass, and the Historian's panel in one view*
 
@@ -55,7 +55,7 @@
 
 | | |
 |---|---|
-| ![Cover](docs/shots/v2-title.png) | ![Chat mode](docs/shots/v2-chat.png) |
+| ![Cover](shots/v2-title.png) | ![Chat mode](shots/v2-chat.png) |
 | *The 2.0 diffuse-glow cover* | *Chat mode with the Four Counsels* |
 
 ## ✦ Features
@@ -84,9 +84,9 @@
 
 | | |
 |---|---|
-| ![Builder](docs/shots/build.png) | ![Interior](docs/shots/interior.png) |
+| ![Builder](shots/build.png) | ![Interior](shots/interior.png) |
 | *Builder mode with the tray open* | *Roof-off interior furnishing* |
-| ![Wilderness](docs/shots/terrain.png) | ![Memory](docs/shots/memory.png) |
+| ![Wilderness](shots/terrain.png) | ![Memory](shots/memory.png) |
 | *Boundless wilderness & mountain ranges* | *Long-term memory scroll* |
 
 </div>
@@ -97,7 +97,7 @@
 
 **📥 Download & play offline**:
 
-1. From the [**Releases page**](../../releases/latest), download:
+1. From the [**Releases page**](../../../releases/latest), download:
    - `ZhouJi-QianNianTianXia-vX.X.X.zip` — **with background music**; unzip and open `index.html`
    - or `ZhouJi-QianNianTianXia-vX.X.X.html` — game only (no music, good for embedding in SillyTavern)
 2. Open in any modern browser (Chrome / Edge / Firefox / Safari, mobile included)
@@ -130,7 +130,7 @@ If you already run SillyTavern, load this HTML through the **Tavern Helper (JS-S
 
 ## ✦ Releases
 
-Distributed via [GitHub Releases](../../releases). Each release ships:
+Distributed via [GitHub Releases](../../../releases). Each release ships:
 
 - `ZhouJi-QianNianTianXia-vX.X.X.html` — the game itself (download & play)
 - `ZhouJi-QianNianTianXia-vX.X.X.zip` — game + documentation bundle
