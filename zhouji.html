@@ -2412,6 +2412,16 @@ function storyPane(){
     +'</div>';
   }
   window.__zjSceneIsleHtml=sceneIsleHtml; /* 供全屏内手术式开合三维复用（同一渲染闭包的最新版本） */
+  /* 手机端折叠灵动岛（滚动纪年·地点胶囊）：storyPane 与「非全屏手术式收起三维」共用 */
+  function miniIsleHtml(h3){
+    var bH2=S.zen?46:50;
+    var _mp=currentPanel(),_mcw=_mp?_mp.world:{};
+    var _mera=[_mcw['纪年'],_mcw['时地']].filter(Boolean).join(' · ')||(currentOpening()?currentOpening().era:'')||'展开天下画面';
+    return '<div id="zjMiniIsle" data-act="'+(h3!==false?'show3d':'svgfold')+'" class="btn zjHl" title="展开天下画面" style="position:absolute;top:'+(bH2-4)+'px;left:50%;margin-left:-140px;width:280px;height:27px;z-index:4;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px;padding:0 14px;overflow:hidden">'
+      +'<span style="flex:none;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
+      +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(_mera)+'</span><span aria-hidden="true">'+esc(_mera)+'</span></div></div></div>';
+  }
+  window.__zjMiniHtml=miniIsleHtml;
   var scene=sceneIsleHtml(m,mob,barH,sceneH);
   var MODES=[['say','曰 · 言语'],['do','行 · 举动'],['free','书 · 自由'],['world','控制游戏']];
   /* 模式/开关一律做成柔光金字（与封面、正文操作栏同款），去掉方框：选中/开启＝亮色发光，未选/关闭＝暗灰无光。 */
@@ -2482,15 +2492,7 @@ function storyPane(){
   if(S.zen&&!S.zenWorld){scene='';sceneH=0;}
   else if(!S.zen&&(hideScene||hide3d)){
     if(!mob){scene='';sceneH=0;} /* 电脑端：灵动岛已住进顶栏留白，正文直接上移 */
-    else{
-    /* 手机端折叠灵动岛：滚动显示纪年·地点，点它展开三维；位置上调贴近顶排、少占正文 */
-    var _mp=currentPanel(),_mcw=_mp?_mp.world:{};
-    var _mera=[_mcw['纪年'],_mcw['时地']].filter(Boolean).join(' · ')||(currentOpening()?currentOpening().era:'')||'展开天下画面';
-    scene='<div id="zjMiniIsle" data-act="'+(hide3d?'show3d':'svgfold')+'" class="btn zjHl" title="展开天下画面" style="position:absolute;top:'+(barH-4)+'px;left:50%;margin-left:-140px;width:280px;height:27px;z-index:4;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.9);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px;padding:0 14px;overflow:hidden">'
-      +'<span style="flex:none;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
-      +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(_mera)+'</span><span aria-hidden="true">'+esc(_mera)+'</span></div></div></div>';
-    sceneH=8;
-    }
+    else{scene=miniIsleHtml(hide3d);sceneH=8;}
   }
   /* 背景毛玻璃独立成非滚动层：backdrop-filter 一旦置于滚动容器(#zjStory)上，
      安卓 Chromium 合成器会漏绘/残影，导致正文缺字。此层不随内容滚动，规避该 bug。 */
@@ -2552,13 +2554,10 @@ function gameView(){
       +'<div style="position:relative;pointer-events:auto;height:56px;display:flex;align-items:center;gap:9px;padding:4px 12px 0">'
       +logo
       +'<div class="kai" style="font-size:16px;letter-spacing:.12em;color:var(--gold2);white-space:nowrap">周纪·千年天下</div>'
-      /* 三维折叠时，灵动岛（滚动纪年·地点胶囊）直接住进顶栏中间这块留白——作为弹性子项参与排版，永不与两侧按钮重叠 */
+      /* 三维折叠时，灵动岛（滚动纪年·地点胶囊）直接住进顶栏中间这块留白——作为弹性子项参与排版，永不与两侧按钮重叠。
+         中位容器有固定 id，供「非全屏手术式开合三维」直接换装内容而不整渲染。 */
       +(function(){var _h3=false;try{_h3=!window.__ZJ3D_OFF__&&localStorage.getItem('zj3d_hide')==='1';}catch(e){}
-        if(!_h3)return '<div class="grow"></div>';
-        return '<div class="grow" style="display:flex;justify-content:center;min-width:0;pointer-events:none;padding:0 10px">'
-          +'<div id="zjMiniIsle" data-act="show3d" class="btn zjHl" title="展开天下画面" style="pointer-events:auto;flex:1;max-width:300px;min-width:0;height:27px;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.62);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.4);display:flex;align-items:center;gap:8px;padding:0 14px;overflow:hidden">'
-          +'<span style="flex:none;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
-          +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(era||'展开天下画面')+'</span><span aria-hidden="true">'+esc(era||'展开天下画面')+'</span></div></div></div></div>';})()
+        return '<div id="zjTopMid" class="grow" style="display:flex;justify-content:center;min-width:0;pointer-events:none;padding:0 10px">'+(_h3?window.__zjTopIsleHtml():'')+'</div>';})()
       +devSeg+topBtns+'</div></div>';
   }
   var body;
@@ -3813,6 +3812,31 @@ window.ZJ3D_onExpand=function(){
       return;
     }
   }
+  /* 非全屏点 ×（引擎回调前刚写 zj3d_hide=1）：收缩动画→手术式撤岛+插回灵动岛，正文不重建不闪不推 */
+  if(!S.zen){
+    var hid2=false;try{hid2=localStorage.getItem('zj3d_hide')==='1';}catch(e){}
+    var isle2=document.getElementById('zjSceneIsle');var story3=document.getElementById('zjStory');
+    if(hid2&&isle2&&story3){
+      var mo2=isMobile(),bH2=mo2?50:58;
+      /* 目标点：手机=正文上方的灵动岛位；电脑=顶栏中位 */
+      var tgt;var tm2=document.getElementById('zjTopMid');
+      if(!mo2&&tm2){var tr2=tm2.getBoundingClientRect();tgt={x:tr2.left+tr2.width/2,y:tr2.top+tr2.height/2};}
+      else tgt={x:window.innerWidth/2,y:bH2-4+13};
+      var _done2=false;
+      var fin2=function(){if(_done2)return;_done2=true;
+        [].forEach.call(document.querySelectorAll('[id="zjSceneIsle"]'),function(el){if(el.parentNode)el.parentNode.removeChild(el);});
+        var st4=document.getElementById('zjStory');
+        if(st4){storyPadComp(st4,76);
+          if(mo2&&window.__zjMiniHtml)st4.insertAdjacentHTML('beforebegin',window.__zjMiniHtml(true));
+          else if(tm2&&window.__zjTopIsleHtml)tm2.innerHTML=window.__zjTopIsleHtml();
+        }};
+      if(isle2.animate&&!reducedMotion()){var ri2=isle2.getBoundingClientRect();
+        var an2=isle2.animate([{transform:'translateZ(0)',opacity:1},{transform:'translate('+(tgt.x-(ri2.left+ri2.width/2))+'px,'+(tgt.y-(ri2.top+ri2.height/2))+'px) scale('+Math.max(.05,280/ri2.width)+','+Math.max(.05,27/ri2.height)+')',opacity:.25}],{duration:330,easing:'cubic-bezier(.5,0,.7,.4)'});
+        an2.onfinish=fin2;setTimeout(fin2,700);
+      }else fin2();
+      return;
+    }
+  }
   render();
 };
 /* ---------------- 液态转场引擎 ---------------- */
@@ -4135,6 +4159,24 @@ root.addEventListener('change',function(e){
 });
 root.addEventListener('focusout',function(){if(softPend){softPend=false;setTimeout(function(){var ae=document.activeElement;if(!(ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='INPUT')))render();},120);}});
 root.addEventListener('keydown',function(e){if(e.target&&e.target.id==='zjInput'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();S.input=e.target.value;if(S.zen)S.zenInput=false;send();}});
+/* 桌面顶栏中位的灵动岛胶囊（滚动纪年·地点）：初始渲染与「非全屏手术式收起三维」共用 */
+window.__zjTopIsleHtml=function(){
+  var _p=currentPanel(),_w=_p?_p.world:{};
+  var _er=[_w['纪年'],_w['时地']].filter(Boolean).join(' · ')||(currentOpening()?currentOpening().era:'')||'展开天下画面';
+  return '<div id="zjMiniIsle" data-act="show3d" class="btn zjHl" title="展开天下画面" style="pointer-events:auto;flex:1;max-width:300px;min-width:0;height:27px;cursor:pointer;border-radius:99px;background:rgba(10,8,6,.62);border:1px solid rgba(224,190,130,.4);box-shadow:inset 0 1px 0 rgba(255,242,214,.2),0 4px 14px rgba(0,0,0,.4);display:flex;align-items:center;gap:8px;padding:0 14px;overflow:hidden">'
+    +'<span style="flex:none;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#ffdf9e,#c9a063);animation:zjIsleGlow 2.2s ease-in-out infinite"></span>'
+    +'<div style="flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)"><div class="zjMarq" style="font-size:11px;letter-spacing:.16em;color:var(--gold2);font-family:var(--kai)"><span>'+esc(_er)+'</span><span aria-hidden="true">'+esc(_er)+'</span></div></div></div>';
+};
+/* 正文 paddingTop 的滚动补偿式修改：正在读的行钉在原处；滚动余量不够的残余用 FLIP 平滑过渡。
+   全屏切换/三维开合（全屏内外）共用。 */
+function storyPadComp(story,newTop){
+  var w=story.querySelector('[data-zjzoom]');var oldY=w?w.getBoundingClientRect().top:null;
+  story.style.paddingTop=newTop+'px';
+  if(oldY==null||!w)return;
+  var dy=Math.round(oldY-w.getBoundingClientRect().top);
+  if(dy){var mx=Math.max(0,story.scrollHeight-story.clientHeight);story.scrollTop=Math.max(0,Math.min(mx,story.scrollTop-dy));}
+  if(!reducedMotion()&&story.animate){var d2=Math.round(oldY-w.getBoundingClientRect().top);if(Math.abs(d2)>2)story.animate([{transform:'translateY('+d2+'px)'},{transform:'none'}],{duration:320,easing:'cubic-bezier(.3,1,.35,1)'});}
+}
 /* 进/出全屏（zen）带滑动淡出动画——顶栏/场景/灵动岛上滑离场、输入框/切换框下滑离场；进时先动画再切、出时先切再回落。
    点正文与「退出全屏」按钮共用此函数，保证两种入口动画一致。 */
 function zenToggle(){
@@ -4463,14 +4505,7 @@ root.addEventListener('click',function(e){
         /* 全屏内且外围界面仍是手术式（zjTopBar 还藏在 DOM 里）→ 开合三维走手术路径：只插拔场景岛+改正文
            paddingTop（带滚动补偿），正文文字节点不销毁不刷新；动过之后清掉 _zenSurgPad，退出全屏走整渲染归位。 */
         var _zwSurg=S.zen&&!!document.getElementById('zjTopBar')&&!!document.getElementById('zjStory')&&window.__zjSceneIsleHtml;
-        function zwPad(story,newTop){ /* 滚动补偿式改 paddingTop：正在读的行钉在原处 */
-          var w=story.querySelector('[data-zjzoom]');var oldY=w?w.getBoundingClientRect().top:null;
-          story.style.paddingTop=newTop+'px';
-          if(oldY==null||!w)return;
-          var dy=Math.round(oldY-w.getBoundingClientRect().top);
-          if(dy){var mx=Math.max(0,story.scrollHeight-story.clientHeight);story.scrollTop=Math.max(0,Math.min(mx,story.scrollTop-dy));}
-          if(!reducedMotion()&&story.animate){var d2=Math.round(oldY-w.getBoundingClientRect().top);if(Math.abs(d2)>2)story.animate([{transform:'translateY('+d2+'px)'},{transform:'none'}],{duration:320,easing:'cubic-bezier(.3,1,.35,1)'});}
-        }
+        var zwPad=storyPadComp; /* 滚动补偿式改 paddingTop（全局共用实现） */
         function zwCollapse(){if(!S.zenWorld)return;
           var se0=document.getElementById('zjStory');var st0=se0?se0.scrollTop:0;
           S.zenWorld=false;S._noFade=true;render();
@@ -4571,7 +4606,16 @@ root.addEventListener('click',function(e){
           isl1.animate([{transform:'translate('+(mr1.left+mr1.width/2-(ir1.left+ir1.width/2))+'px,'+(mr1.top+mr1.height/2-(ir1.top+ir1.height/2))+'px) scale('+Math.max(.04,mr1.width/ir1.width)+','+Math.max(.04,mr1.height/ir1.height)+')',opacity:.35},{transform:'translateZ(0)',opacity:1}],{duration:460,easing:'cubic-bezier(.3,1.06,.32,1)'});}}
       else if(a==='show3d'||a==='isleGrow'){try{localStorage.removeItem('zj3d_hide');}catch(e){}
         var mi0=document.getElementById('zjMiniIsle');var mr0=mi0&&mi0.getBoundingClientRect();
-        render();
+        var st3=document.getElementById('zjStory');
+        if(st3&&window.__zjSceneIsleHtml&&!S.zen){ /* 手术式展开：正文不重建、paddingTop 滚动补偿，不再把字往下推 */
+          var mo4=isMobile(),bH4=mo4?50:58,m4=mood();
+          var sH4=(window.ZJ3D&&ZJ3D.owns())?ZJ3D.paneH(mo4):((window.__ZJ3D_OFF__&&SVGF)?34:(mo4?140:186));
+          if(mi0){var tm4=document.getElementById('zjTopMid');if(mi0.closest&&mi0.closest('#zjTopBar')&&tm4)tm4.innerHTML='';else if(mi0.parentNode)mi0.parentNode.removeChild(mi0);}
+          [].forEach.call(document.querySelectorAll('[id="zjSceneIsle"]'),function(el){if(el.parentNode)el.parentNode.removeChild(el);});
+          st3.insertAdjacentHTML('beforebegin',window.__zjSceneIsleHtml(m4,mo4,bH4,sH4));
+          storyPadComp(st3,bH4+sH4+18);
+          try{if(window.ZJ3D&&ZJ3D.owns())ZJ3D.onRender(playerLoc().name,m4.night);}catch(e5){}
+        }else{render();}
         var isl=document.getElementById('zjSceneIsle');
         if(mr0&&isl&&isl.animate&&!reducedMotion()){var ir0=isl.getBoundingClientRect();
           isl.animate([{transform:'translate('+(mr0.left+mr0.width/2-(ir0.left+ir0.width/2))+'px,'+(mr0.top+mr0.height/2-(ir0.top+ir0.height/2))+'px) scale('+Math.max(.04,mr0.width/ir0.width)+','+Math.max(.04,mr0.height/ir0.height)+')',opacity:.35},{transform:'translateZ(0)',opacity:1}],{duration:460,easing:'cubic-bezier(.3,1.06,.32,1)'});}}
