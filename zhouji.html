@@ -346,6 +346,12 @@ function applyUiStyle(st){
     localStorage.setItem('zhouji_wangframe',WANGFRAME?'1':'0');}catch(e){}
 }
 if(UISTYLE)applyUiStyle(UISTYLE); /* 已选过：开机按风格矫正子开关，防残留 */
+/* 尚未选过风格：开机空闲时就把两张演示图拉回本地。否则它们要等进正文那一刻才开始下载，
+   正好撞上三维引擎/场景资源的下载高峰，慢网手机上会「卡住出不来」。 */
+if(!UISTYLE){setTimeout(function(){try{
+  var _sfx0=window.innerWidth<920?'m':'d';
+  ['glass','minimal'].forEach(function(st){var im=new Image();im.decoding='async';im.src='core/res/uidemo_'+st+'_'+_sfx0+'.jpg?v=2';});
+}catch(e){}},1200);}
 /* 手机版底部「叙事/太史简」切换：默认灵动岛发光小球（无内框、只文字），滑到哪就在哪爆散融字点亮；设置·显可切回旧玻璃框 */
 var TABISLE=true;try{TABISLE=localStorage.getItem('zhouji_tabisle')!=='0';}catch(e){}
 /* 【实验】顶栏液态玻璃：默认开——顶部一整排（纪年地点/切换/全屏/设置…归）去掉各自方框，只在顶上铺一层液态玻璃渐变。
@@ -4261,7 +4267,9 @@ function stylePickHtml(){
     +'<div style="display:flex;gap:'+(m?'10px':'14px')+';align-items:stretch">'
     +opts.map(function(o){
       return '<div class="btn zjHl" data-act="setStyle" data-style="'+o[0]+'" style="'+anIn(190+110*(ci++))+'flex:1;min-width:0;cursor:pointer;border:1px solid rgba(224,190,130,.4);border-radius:'+(m?'13px':'16px')+';overflow:hidden;background:rgba(18,13,8,.72);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,242,214,.15)">'
-        +'<img src="core/res/uidemo_'+o[0]+'_'+sfx+'.jpg?v=2" style="width:100%;display:block;pointer-events:none;max-height:calc(100vh - 170px);max-height:calc(100dvh - 170px);object-fit:cover;object-position:top" alt="">'
+        +'<img src="core/res/uidemo_'+o[0]+'_'+sfx+'.jpg?v=2" fetchpriority="high" decoding="async" '
+        +'onerror="var s=this,r=(s.getAttribute(\'data-r\')|0);if(r<4){s.setAttribute(\'data-r\',r+1);setTimeout(function(){s.src=s.src.split(\'&r=\')[0]+\'&r=\'+(r+1);},700*(r+1));}" '
+        +'style="width:100%;display:block;pointer-events:none;aspect-ratio:'+(m?'824/1720':'3/2')+';background:rgba(255,244,220,.045);max-height:calc(100vh - 170px);max-height:calc(100dvh - 170px);object-fit:cover;object-position:top" alt="">'
         +'<div style="padding:'+(m?'9px 10px 11px':'12px 15px 14px')+'"><div class="kai" style="font-size:'+(m?'14.5px':'16.5px')+';color:var(--gold2);letter-spacing:.13em;white-space:nowrap">'+o[1]+'</div>'
         +'<div style="font-size:'+(m?'10px':'11.5px')+';color:#d9b988;letter-spacing:.02em;line-height:1.6;margin-top:4px">'+o[2].split('|').map(function(p){return '<span style="white-space:nowrap">'+p+'</span>';}).join(' · ')+'</div>'
         +(m?'':'<div style="font-size:12px;color:var(--mut2);line-height:1.75;margin-top:4px">'+o[3]+'</div>')
