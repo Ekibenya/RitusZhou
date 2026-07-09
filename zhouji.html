@@ -151,7 +151,9 @@ textarea,input{border-radius:10px}
 @keyframes zjCaretBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
 /* 输入框内的柔光光标：仅在「空且未聚焦」时显示（有字或聚焦时让位给系统原生光标） */
 .zjCaretHint{transition:opacity .12s}
-#zjInput:focus+.zjCaretHint,#zjInput:not(:placeholder-shown)+.zjCaretHint{opacity:0}
+/* animation:none 必须一并压掉：blink 关键帧动画在层叠里胜过普通 opacity 声明，
+   否则聚焦/有字时伪光标仍在首字符处闪烁发光，白白逐帧重绘输入区（打字手感变糊的元凶之一） */
+#zjInput:focus+.zjCaretHint,#zjInput:not(:placeholder-shown)+.zjCaretHint{opacity:0;animation:none!important}
 .fade{animation:fadeup .45s ease}
 .zjNoFade .fade{animation:none!important}
 .dot{display:inline-block;width:6px;height:6px;border-radius:50%}
@@ -428,14 +430,16 @@ function glInit(){
     (function loop(){
       requestAnimationFrame(loop);
       var nw9=Date.now();
+      /* 打字中：光雾降到 ~8 帧（与三维引擎同款取舍），把整条 GPU/合成通道让给键盘——打字要丝滑 */
+      var _ae9=document.activeElement,_typ9=!!(_ae9&&(_ae9.tagName==='TEXTAREA'||_ae9.tagName==='INPUT'));
       if(LOWFX){
         if(document.hidden)return;
         if(window.__ZJSCR==='game')return; /* 游戏内被正文全幅覆盖，白画 */
-        if(nw9-glLast<33)return; /* 锁30帧 */
+        if(nw9-glLast<(_typ9?125:33))return; /* 锁30帧，打字时8帧 */
       }
       /* 正常档：游戏页且背景近实（默认 0.9 透明度）时光雾被盖住九成以上，30 帧与 60 帧肉眼无别，
          省一半粒子更新与 GPU 提交——生成/打字期间手机不再被这层暗雾偷走主线程。背景调透明则照旧全速。 */
-      else if(window.__ZJSCR==='game'&&BGBLUR>=8&&nw9-glLast<33)return;
+      else{var _gp9=_typ9?125:((window.__ZJSCR==='game'&&BGBLUR>=8)?33:0);if(_gp9&&nw9-glLast<_gp9)return;}
       glLast=nw9;
       var fs=glPrev?Math.min(6,(nw9-glPrev)/16.7):1;glPrev=nw9; /* 按真实帧距推进：120Hz 屏不再飘两倍速，降帧也不变慢 */
       var dt=(nw9-t0)/1000;
@@ -526,6 +530,8 @@ function sc3Init(){
       requestAnimationFrame(loop);
       if(!cv.isConnected){scPrev=0;return;}
       var nw=Date.now();
+      var _aeS=document.activeElement;
+      if(_aeS&&(_aeS.tagName==='TEXTAREA'||_aeS.tagName==='INPUT')&&scPrev&&nw-scPrev<125)return; /* 打字时降到~8帧让键盘丝滑 */
       var fs=scPrev?Math.min(6,(nw-scPrev)/16.7):1;scPrev=nw; /* 浮尘按真实帧距推进，高刷屏不再双速 */
       var t=(nw-t0)/1000;
       lights.forEach(function(o,i){o.l.intensity=o.b+Math.sin(t*o.f*3+i*2.1)*.07+Math.sin(t*7.3+i)*.04;});
@@ -3845,8 +3851,20 @@ function fitStoryPad(){
   var need=Math.max(120,Math.round(sr.bottom-ir.top+26));
   st.style.paddingBottom=need+'px';
 }
-/* iMessage 式自增高输入框：随行数变高（到上限后内部滚动）。高度变了输入框变高，其毛玻璃（挂在输入框上、边缘固定像素淡出）也随之变高。 */
-function autoGrowInput(ta){ta=ta||document.getElementById('zjInput');if(!ta)return;var _ph=null;if(!ta.value){_ph=ta.getAttribute('placeholder');if(_ph!=null)ta.removeAttribute('placeholder');}var max=isMobile()?128:150;ta.style.height='auto';var h=ta.scrollHeight;ta.style.height=Math.min(h,max)+'px';ta.style.overflowY=(h>max)?'auto':'hidden';if(_ph!=null)ta.setAttribute('placeholder',_ph);}
+/* iMessage 式自增高输入框：随行数变高（到上限后内部滚动）。高度变了输入框变高，其毛玻璃（挂在输入框上、边缘固定像素淡出）也随之变高。
+   打字快路径：行数没变（scrollHeight 与上次一致且不是删字）就一个字节都不改——旧实现每个按键都
+   「height:auto→量→回写」强制两次重排，重页面手机上这就是打字延迟的 JS 大头。 */
+function autoGrowInput(ta){
+  ta=ta||document.getElementById('zjInput');if(!ta)return;
+  var sh0=ta.scrollHeight,vl=ta.value.length; /* 干读：布局不脏时不触发重排 */
+  if(ta._agSh===sh0&&ta._agVL!=null&&vl>=ta._agVL){ta._agVL=vl;return;}
+  var _ph=null;if(!ta.value){_ph=ta.getAttribute('placeholder');if(_ph!=null)ta.removeAttribute('placeholder');}
+  var max=isMobile()?128:150;
+  ta.style.height='auto';var h=ta.scrollHeight;ta.style.height=Math.min(h,max)+'px';
+  ta.style.overflowY=(h>max)?'auto':'hidden';
+  if(_ph!=null)ta.setAttribute('placeholder',_ph);
+  ta._agSh=ta.scrollHeight;ta._agVL=vl;
+}
 var _scrPrev;
 function render(){
   window.__ZJSCR=S.screen;
