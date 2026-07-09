@@ -680,6 +680,12 @@ function idbPrune(keep){idbOpen(function(db){if(!db)return;
   rq.onsuccess=function(){var ks=(rq.result||[]).slice().sort();
     if(ks.length>keep){var tx2=db.transaction('img','readwrite').objectStore('img');
       ks.slice(0,ks.length-keep).forEach(function(k){try{tx2['delete'](k);}catch(e2){}});}};}catch(e){}});}
+function idbDel(id,cb){idbOpen(function(db){if(!db)return cb&&cb(false);
+  try{var tx=db.transaction('img','readwrite');tx.objectStore('img')['delete'](id);
+  tx.oncomplete=function(){try{if(IMGC[id]){URL.revokeObjectURL(IMGC[id]);delete IMGC[id];}}catch(e2){}cb&&cb(true);};tx.onerror=function(){cb&&cb(false);};}catch(e){cb&&cb(false);}});}
+function idbClearAll(cb){idbOpen(function(db){if(!db)return cb&&cb(false);
+  try{var tx=db.transaction('img','readwrite');tx.objectStore('img').clear();
+  tx.oncomplete=function(){try{Object.keys(IMGC).forEach(function(k){try{URL.revokeObjectURL(IMGC[k]);}catch(e3){}});IMGC={};IMGQ=[];}catch(e2){}cb&&cb(true);};tx.onerror=function(){cb&&cb(false);};}catch(e){cb&&cb(false);}});}
 var IMGC={},IMGQ=[];
 function imgURL(id,cb){
   if(IMGC[id])return cb(IMGC[id]);
@@ -1717,9 +1723,9 @@ function rerollPanel(idx){
   var narr=stripMvu(h.text).replace(/\s+$/,'');
   var ask='（请仅据这一幕正文，重新输出【完整准确】的结尾状态栏 <mvu_panel>：<sec_char>含◆衣冠/持物/御体/观瞻/神格(0-100)/史笔；<sec_npc>每在场者一行◈名字|状态|好感(0-100)|心声|身份|所在|年龄|性别；<sec_world>含◇纪年/时地/天气/安稳(0-100)/大势/将临。只输出 <mvu_panel>…</mvu_panel> 本身，不要正文、不要解释、不要复述正文。）';
   var cont=msgs.concat([{role:'assistant',content:h.text},{role:'user',content:ask}]);
-  S.fixing=true;S._noFade=true;render();
+  S.fixing=true;S.fixingIdx=idx;S._noFade=true;render();
   callCustomAI(sys,cont).then(function(t2){
-    S.fixing=false;
+    S.fixing=false;S.fixingIdx=null;
     var s2=String(t2||'');
     var m=/<mvu_panel>[\s\S]*?<\/mvu_panel>/.exec(s2);
     var panelTxt=m?m[0]:(/<sec_(?:char|npc|world)>/.test(s2)?('<mvu_panel>\n'+s2.replace(/^[\s\S]*?(?=<sec_)/,'').replace(/<\/mvu_panel>[\s\S]*$/,'').trim()+'\n</mvu_panel>'):null);
@@ -1727,7 +1733,7 @@ function rerollPanel(idx){
       if(p&&p.world&&Object.keys(p.world).length&&p.char&&Object.keys(p.char).length){h.text=newText;h.panel=p;try{memSync();}catch(e){}savePref();}
     }
     S._noFade=true;render();
-  },function(){S.fixing=false;S._noFade=true;render();});
+  },function(){S.fixing=false;S.fixingIdx=null;S._noFade=true;render();});
 }
 function advanceLocal(base,text){
   var done=function(reply,live){
@@ -1782,20 +1788,25 @@ function advanceLocal(base,text){
     setTimeout(function(){done(demoReply(base.concat([{role:'user',text:text}]),text),false);},650);
   }
 }
-function reroll(){
+function reroll(idx){
   var h=S.history;
   if(S.thinking||h.length<2)return;
-  if(h[h.length-1].role!=='world')return;
-  if(TH.available){
+  if(idx==null){for(idx=h.length-1;idx>=0&&h[idx].role!=='world';idx--){}}
+  if(idx<1||!h[idx]||h[idx].role!=='world')return;
+  var isLast=(idx===h.length-1);
+  /* 旧幕重演会舍弃其后剧情——先确认 */
+  if(!isLast&&!confirm('重演此幕将舍弃其后的剧情，确定重新演绎这一幕吗？'))return;
+  if(isLast&&TH.available){
     if(TH.triggerSlash){S.thinking=true;render();try{TH.triggerSlash('/swipe');}catch(e){}setTimeout(pullHistory,1500);}
     return;
   }
   // local: need preceding user
-  if(h.length<3||h[h.length-2].role!=='user')return;
-  var user=h[h.length-2];var base=h.slice(0,h.length-2);
-  var oldW=h[h.length-1];
-  S._swipeFrom=(oldW.alts&&oldW.alts.length?oldW.alts.slice():[oldW.text]).slice(-7);
-  S.thinking=true;S.history=h.slice(0,-1);render();
+  if(h[idx-1].role!=='user')return;
+  var user=h[idx-1];var base=h.slice(0,idx-1);
+  var oldW=h[idx];
+  /* 仅最后一幕累积历稿；旧幕重演另起 */
+  S._swipeFrom=isLast?(oldW.alts&&oldW.alts.length?oldW.alts.slice():[oldW.text]).slice(-7):null;
+  S.thinking=true;S.history=h.slice(0,idx);render();
   advanceLocal(base,user.text);
 }
 
@@ -2214,17 +2225,19 @@ function storyPane(){
         +'<div class="btn obtn" data-act="swNext" title="'+(six>=h.alts.length-1?'再演新稿':'看下一稿')+'" style="font-size:12px;padding:6px 13px;line-height:1">'+chev(1)+(six>=h.alts.length-1?'<span style="vertical-align:1px">＋</span>':'')+'</div>';
     }
     var _rb='font-size:11px;letter-spacing:.04em;padding:5px 11px;white-space:nowrap;flex:none';
-    var retry=(isLast&&!S.thinking&&i>0&&!typing)?'<div style="display:flex;flex-wrap:nowrap;gap:6px;align-items:center;margin-top:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px">'+sw+'<div class="btn obtn" data-act="reroll" style="'+_rb+'">⟲ 重演此幕</div>'
-      +(S.chatOnly?'':(S.fixing?'<div style="font-size:11px;letter-spacing:.04em;color:var(--gold);white-space:nowrap;flex:none">补状态栏<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="rerollFmt" title="只重新生成本幕状态栏，正文不变（掉格式时用）" style="'+_rb+';'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">⟲ '+(panelComplete(h.text)?'重出状态栏':'补状态栏')+'</div>'))
-      +(imgReady()?(S.imgBusy===i?'<div style="font-size:11px;letter-spacing:.04em;color:var(--gold);white-space:nowrap;flex:none">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-act="drawScene" style="'+_rb+'">'+(h.img?'⟲ 重绘':'✦ 绘此幕')+'</div>'):'<div class="btn obtn" data-act="openImgSet" title="配置生图接口后即可为此幕绘制插画" style="'+_rb+';color:var(--gold3)">✦ 生图设置</div>')
-      +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="'+_rb+';color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停诵</div>':'<div class="btn obtn" data-act="ttsScene" style="'+_rb+'">♪ 诵此幕</div>'):'')
-      +(S.imgErr?'<div style="font-size:11px;color:#d9a06a;white-space:nowrap;flex:none">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="'+_rb+';color:var(--gold3)">⚙ 设置</div>':'')+'</div>':'';
-    var wtb='<div class="btn" data-mtool="'+(i+1)+'" title="修改、删去或由此幕重来" style="position:absolute;top:2px;right:2px;color:#cdbf9e;opacity:.75;padding:2px 10px;font-size:15px;letter-spacing:1px;z-index:2;background:rgba(30,22,14,.5);border:1px solid rgba(201,160,99,.3);border-radius:8px;line-height:1.5">⋯</div>';
+    /* 每一幕世界消息都常驻一排操作（旧消息也全有）：重演/重出状态栏/绘此幕/诵此幕；旧消息再多一个「回到此处」。nowrap 强制一排、可横滑。 */
+    var retry=(!S.thinking&&i>0&&!typing&&h.role==='world')?'<div style="display:flex;flex-wrap:nowrap;gap:6px;align-items:center;margin-top:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px">'
+      +(isLast?sw:'')
+      +'<div class="btn obtn" data-rr="'+i+'" style="'+_rb+'">⟲ 重演此幕</div>'
+      +(S.chatOnly?'':((S.fixing&&S.fixingIdx===i)?'<div style="font-size:11px;letter-spacing:.04em;color:var(--gold);white-space:nowrap;flex:none">补状态栏<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-rrfmt="'+i+'" title="只重新生成本幕状态栏，正文不变（掉格式时用）" style="'+_rb+';'+(panelComplete(h.text)?'':'color:var(--gold2);border-color:rgba(224,190,130,.6)')+'">⟲ '+(panelComplete(h.text)?'重出状态栏':'补状态栏')+'</div>'))
+      +(imgReady()?(S.imgBusy===i?'<div style="font-size:11px;letter-spacing:.04em;color:var(--gold);white-space:nowrap;flex:none">✦ 绘制中<span style="animation:blink 1.2s infinite">…</span></div>':'<div class="btn obtn" data-drawidx="'+i+'" style="'+_rb+'">'+(h.img?'⟲ 重绘':'✦ 绘此幕')+'</div>'):'<div class="btn obtn" data-act="openImgSet" title="配置生图接口后即可为此幕绘制插画" style="'+_rb+';color:var(--gold3)">✦ 生图设置</div>')
+      +(ttsAvailable()?(TTSP.playing&&TTSP.idx===i?'<div class="btn obtn" data-act="ttsStop" style="'+_rb+';color:var(--gold2);border-color:rgba(224,190,130,.6)">■ 停诵</div>':'<div class="btn obtn" data-tts="'+i+'" style="'+_rb+'">♪ 诵此幕</div>'):'')
+      +(!isLast?'<div class="btn obtn" data-backto="'+i+'" title="舍弃其后剧情，回到这一幕继续" style="'+_rb+';color:#d9a06a;border-color:rgba(217,160,106,.45)">'+chev(-1,11)+' 回到此处</div>':'')
+      +(S.imgErr&&isLast?'<div style="font-size:11px;color:#d9a06a;white-space:nowrap;flex:none">'+esc(S.imgErr)+'</div><div class="btn obtn" data-act="openImgSet" style="'+_rb+';color:var(--gold3)">⚙ 设置</div>':'')+'</div>':'';
+    var wtb='<div class="btn" data-mtool="'+(i+1)+'" title="修改或删去此幕" style="position:absolute;top:2px;right:2px;color:#cdbf9e;opacity:.75;padding:2px 10px;font-size:15px;letter-spacing:1px;z-index:2;background:rgba(30,22,14,.5);border:1px solid rgba(201,160,99,.3);border-radius:8px;line-height:1.5">⋯</div>';
     var wtools='<div class="zjMT" data-mt="'+i+'" style="display:'+((S.msgTools===i&&S.msgEdit!==i)?'flex':'none')+';gap:8px;flex-wrap:wrap;margin:2px 0 12px">'
       +'<div class="btn obtn" data-act="mEdit" style="font-size:12px;padding:5px 14px">✎ 修此幕</div>'
       +(i>0&&!S.thinking?'<div class="btn" data-act="mDel" style="cursor:pointer;font-size:12px;padding:5px 14px;background:transparent;border:1px solid rgba(166,59,38,.4);border-radius:9px;color:#b06a55">删此幕</div>':'')
-      +(i<S.history.length-1&&!S.thinking?'<div class="btn obtn" data-act="mRedo" style="font-size:12px;padding:5px 14px;color:#d9a06a;border-color:rgba(217,160,106,.4)">⟲ 由此幕重来</div>':'')
-      +(S.imgBusy===i?'<div style="font-size:12px;color:var(--gold);padding:5px 10px">✦ 绘制中…</div>':((imgReady()&&S.imgBusy==null)?'<div class="btn obtn" data-drawidx="'+i+'" style="font-size:12px;padding:5px 14px;color:var(--gold3)">'+(h.img?'⟲ 重绘插画':'✦ 绘此幕')+'</div>':''))
       +'</div>';
     if(S.msgEdit===i){
       paras='<div><textarea id="zjMsgEditBox" style="width:100%;min-height:170px;background:rgba(255,255,255,.03);border:1px solid rgba(224,190,130,.5);border-radius:12px;color:var(--ink);font-size:14px;line-height:1.8;padding:11px 14px;resize:vertical;font-family:inherit">'+esc(h.text)+'</textarea>'
@@ -3183,11 +3196,12 @@ function imgCachePane(){
     return '<div class="grow bambooV" style="overflow-y:auto;padding:22px"><div style="text-align:center;color:var(--mut);font-size:13px;letter-spacing:.2em;padding:34px 0">读取本机图片缓存…</div></div>';
   }
   var ks=S.imgCacheKeys,cols=isMobile()?4:6,gap=6;
-  var head='<div style="padding:18px 20px 4px"><div class="kai" style="font-size:18px;color:var(--gold2);letter-spacing:.14em">缓 · 图片缓存</div><div style="font-size:12px;color:var(--mut);line-height:1.7;margin-top:6px">本机现存、尚未被清理的生成图，共 <b style="color:var(--gold3)">'+ks.length+'</b> 张。点任意图全屏查看；图库存满时会自动清掉最旧的（可在「简·存档简册」备份或清除）。</div></div>';
+  var clr=ks.length?'<div style="margin-top:12px"><div class="btn" data-act="imgCacheClear" style="display:inline-block;cursor:pointer;font-size:12px;letter-spacing:.1em;padding:6px 15px;background:transparent;border:1px solid rgba(166,59,38,.45);border-radius:9px;color:#c07a63">'+(S.imgCacheClearArm?'确认清空全部？':'⌫ 一键删除全部')+'</div>'+(S.imgCacheClearArm?'<span class="btn" data-act="imgCacheClearNo" style="display:inline-block;cursor:pointer;font-size:12px;letter-spacing:.1em;padding:6px 13px;margin-left:8px;color:var(--mut)">取消</span>':'')+'</div>':'';
+  var head='<div style="padding:18px 20px 4px"><div class="kai" style="font-size:18px;color:var(--gold2);letter-spacing:.14em">缓 · 图片缓存</div><div style="font-size:12px;color:var(--mut);line-height:1.7;margin-top:6px">本机现存、尚未被清理的生成图，共 <b style="color:var(--gold3)">'+ks.length+'</b> 张。点任意图全屏查看，点右上角「×」单张删除；图库存满时会自动清掉最旧的（可在「简·存档简册」备份或清除）。</div>'+clr+'</div>';
   if(!ks.length)return '<div class="grow bambooV" style="overflow-y:auto">'+head+'<div style="text-align:center;color:var(--mut2);font-size:13px;letter-spacing:.25em;padding:48px 0">暂无缓存图片</div></div>';
   var basis='calc((100% - '+((cols-1)*gap)+'px) / '+cols+')';
   var grid='<div style="display:flex;flex-wrap:wrap;gap:'+gap+'px;padding:10px 16px calc(24px + env(safe-area-inset-bottom))">'
-    +ks.slice().reverse().map(function(id){return '<div style="flex:0 0 '+basis+';aspect-ratio:3/4;border:1px solid rgba(255,238,205,.14);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.03)"><div data-img="'+esc(id)+'" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><span style="font-size:9px;color:var(--mut);letter-spacing:.1em">…</span></div></div>';}).join('')
+    +ks.slice().reverse().map(function(id){return '<div style="position:relative;flex:0 0 '+basis+';aspect-ratio:3/4;border:1px solid rgba(255,238,205,.14);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.03)"><div data-img="'+esc(id)+'" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><span style="font-size:9px;color:var(--mut);letter-spacing:.1em">…</span></div><div class="btn" data-imgdel="'+esc(id)+'" title="删除这张缓存图" style="position:absolute;top:3px;right:3px;z-index:3;width:20px;height:20px;line-height:18px;text-align:center;font-size:14px;border-radius:50%;background:rgba(20,14,9,.72);border:1px solid rgba(255,238,205,.28);color:#e6c9a8;cursor:pointer">×</div></div>';}).join('')
     +'</div>';
   return '<div class="grow bambooV" style="overflow-y:auto">'+head+grid+'</div>';
 }
@@ -3714,6 +3728,17 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-imgnext')!=null&&t.getAttribute('data-imgnext')!==''){var _ni=parseInt(t.getAttribute('data-imgnext'),10);var _nh=S.history[_ni];var _nv=_nh&&imgVers(_nh);if(_nv&&_nv.length){var _cy=(_nh.verIx==null?_nv.length-1:_nh.verIx);if(_cy<_nv.length-1){_nh.verIx=_cy+1;_nh.img=(_nv[_nh.verIx]||[])[0]||_nh.img;savePref();illuSwap(_ni,_nh);}}return;}
       if(t.getAttribute('data-imgzoom')!=null&&t.getAttribute('data-imgzoom')!==''){var _zi=parseInt(t.getAttribute('data-imgzoom'),10);var _zh=S.history[_zi];if(_zh){var _zord=['lg','md','sm','mini'];var _zcur=_zh.dispSize||IMGCFG.disp||'lg';var _zk=_zord.indexOf(_zcur);if(_zk<0)_zk=0;var _zn=_zord[(_zk+1)%_zord.length];_zh.dispSize=_zn;var _zw=t.parentElement;if(_zw&&_zw.getAttribute('data-imgwrap'))_zw.style.maxWidth=imgDispW(_zn);savePref();}return;}
       if(t.getAttribute('data-drawidx')!=null&&t.getAttribute('data-drawidx')!==''){var _di=parseInt(t.getAttribute('data-drawidx'),10);if(S.imgBusy==null&&imgReady()&&S.history[_di]&&S.history[_di].role==='world')drawWorld(_di);return;}
+      if(t.getAttribute('data-rr')!=null&&t.getAttribute('data-rr')!==''){reroll(parseInt(t.getAttribute('data-rr'),10));return;}
+      if(t.getAttribute('data-rrfmt')!=null&&t.getAttribute('data-rrfmt')!==''){rerollPanel(parseInt(t.getAttribute('data-rrfmt'),10));return;}
+      if(t.getAttribute('data-tts')!=null&&t.getAttribute('data-tts')!==''){var _ti=parseInt(t.getAttribute('data-tts'),10);if(S.history[_ti]&&S.history[_ti].role==='world')ttsSpeak(_ti);return;}
+      if(t.getAttribute('data-backto')!=null&&t.getAttribute('data-backto')!==''){var _bi=parseInt(t.getAttribute('data-backto'),10);if(S.thinking)return;
+        if(_bi<S.history.length-1&&S.history[_bi]&&S.history[_bi].role==='world'){
+          if(!confirm('「回到此处」将舍弃这一幕之后的全部剧情，从此幕继续。不可复原，确定吗？'))return;
+          var _brj=worldOrdinal(_bi),_bkept=[],_bcw=0;
+          S.mem.forEach(function(me){if(me.manual){_bkept.push(me);return;}if(_bcw<=_brj)_bkept.push(me);_bcw++;});
+          S.mem=_bkept;S.history=S.history.slice(0,_bi+1);S.memN=_brj+1;
+          S.suggList=null;S.msgTools=null;S.msgEdit=null;savePref();render();}
+        return;}
       if(t.getAttribute('data-imgfull')&&t.getAttribute('src')){var _fu=t.getAttribute('src');var _ov=document.createElement('div');_ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.93);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:12px';var _im=document.createElement('img');_im.src=_fu;_im.style.cssText='max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6)';_ov.appendChild(_im);_ov.addEventListener('click',function(){_ov.remove();});document.body.appendChild(_ov);return;}
       if(t.getAttribute('data-start')){startOpening(parseInt(t.getAttribute('data-start'),10));return;}
       if(t.getAttribute('data-wz-era')!=null&&t.getAttribute('data-wz-era')!==''){S.wiz.era=parseInt(t.getAttribute('data-wz-era'),10);S._wizKeep=true;S._noFade=true;render();return;}
@@ -3769,7 +3794,7 @@ root.addEventListener('click',function(e){
         if(srow){var det=srow.querySelector('.npcDetail');var chv=srow.querySelector('.npcChv');if(det)det.style.gridTemplateRows=willOpen?'1fr':'0fr';if(chv)chv.textContent=willOpen?'▾':'▸';}
         return;}
       if(t.getAttribute('data-sugg')!=null&&t.getAttribute('data-sugg')!==''){if(S.thinking)return;var sgi=parseInt(t.getAttribute('data-sugg'),10);var sgt=(S.suggList||[])[sgi];if(sgt){S.suggList=null;sendText(S.dice?sgt+diceRoll():sgt);}return;}
-      if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;if(stb==='imgcache')S.imgCacheKeys=null;renderOverlay();pillFlip('zjSetPill',spr);return;}
+      if(t.getAttribute('data-settab')){var stb=t.getAttribute('data-settab');if(stb===S.setTab)return;var spo=document.getElementById('zjSetPill');var spr=spo&&spo.getBoundingClientRect();S.setTab=stb;if(stb==='imgcache'){S.imgCacheKeys=null;S.imgCacheClearArm=false;}renderOverlay();pillFlip('zjSetPill',spr);return;}
       if(t.getAttribute('data-imgstyle')){syncImgForm();var oldSt=IMGCFG.style,newSt=t.getAttribute('data-imgstyle');var od=imgDefaults(oldSt),nd=imgDefaults(newSt);IMGSAMPFIELDS.forEach(function(k){if(!IMGCFG[k]||IMGCFG[k]===od[k])IMGCFG[k]=nd[k];});IMGCFG.style=newSt;imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgmodel')){syncImgForm();IMGCFG.model=t.getAttribute('data-imgmodel');imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgcount')){syncImgForm();IMGCFG.count=Math.max(1,Math.min(6,parseInt(t.getAttribute('data-imgcount'),10)||1));imgCfgSave();renderOverlay();return;}
@@ -3777,6 +3802,7 @@ root.addEventListener('click',function(e){
       if(t.getAttribute('data-imgdisp')){var _dv=t.getAttribute('data-imgdisp');if(!imgSizeOK(_dv))return;syncImgForm();IMGCFG.disp=_dv;imgCfgSave();renderOverlay();return;}
       if(t.getAttribute('data-imgloretog')!=null&&t.getAttribute('data-imgloretog')!==''){syncImgForm();var it=+t.getAttribute('data-imgloretog');if(IMGLORE[it])IMGLORE[it].on=(IMGLORE[it].on===false);imgLoreSave();renderOverlay();return;}
       if(t.getAttribute('data-imgloredel')!=null&&t.getAttribute('data-imgloredel')!==''){syncImgForm();var idl=+t.getAttribute('data-imgloredel');IMGLORE.splice(idl,1);imgLoreSave();renderOverlay();return;}
+      if(t.getAttribute('data-imgdel')){var _idk=t.getAttribute('data-imgdel');idbDel(_idk,function(){if(S.imgCacheKeys)S.imgCacheKeys=S.imgCacheKeys.filter(function(k){return k!==_idk;});if(S.overlay==='set'&&S.setTab==='imgcache')renderOverlay();});return;}
       if(t.getAttribute('data-cat')){var ncat=t.getAttribute('data-cat');if(ncat===S.codexCat)return;var corder=[].map.call(document.querySelectorAll('[data-cat]'),function(x){return x.getAttribute('data-cat');});var cpo=document.getElementById('zjCatPill');var cpr=cpo&&cpo.getBoundingClientRect();var epo=document.getElementById('zjEntPill');var epr=epo&&epo.getBoundingClientRect();
         var elC3=document.getElementById('zjCatBar');var stCx3=elC3?elC3.scrollLeft:0,stCy3=elC3?elC3.scrollTop:0;
         vtRender(corder.indexOf(ncat)>corder.indexOf(S.codexCat)?'zjIn-f':'zjIn-b',function(){S.codexCat=ncat;S.codexIdx=0;renderOverlay();});
@@ -3858,6 +3884,8 @@ root.addEventListener('click',function(e){
       else if(a==='savenow'){saveNow();}
       else if(a==='editlore'){S.setTab='lore';S.overlay='set';renderOverlay();}
       else if(a==='openImgSet'){S.setTab='img';S.overlay='set';S.wipeArm=false;renderOverlay();return;}
+      else if(a==='imgCacheClearNo'){S.imgCacheClearArm=false;renderOverlay();return;}
+      else if(a==='imgCacheClear'){if(!S.imgCacheClearArm){S.imgCacheClearArm=true;renderOverlay();return;}S.imgCacheClearArm=false;idbClearAll(function(){S.imgCacheKeys=[];if(S.overlay==='set'&&S.setTab==='imgcache')renderOverlay();});return;}
       else if(a==='openDataSet'){S.setTab='font';S.overlay='set';S.wipeArm=false;renderOverlay();return;}
       else if(a==='zen'){
         var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1]];
