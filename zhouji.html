@@ -4361,8 +4361,11 @@ function stylePickHtml(){
         +(m?'':'<div style="font-size:12px;color:var(--mut2);line-height:1.75;margin-top:4px">'+o[3]+'</div>')
         +'</div></div>';}).join('')
     +'</div>'
-    +'<div style="'+anIn(420)+'display:flex;justify-content:center;margin-top:'+(m?'12px':'16px')+'">'
-      +'<div id="zjPickGo" class="btn" style="cursor:default;opacity:.38;font-family:var(--kai);font-size:'+(m?'15px':'16px')+';letter-spacing:.3em;color:#241806;background:linear-gradient(180deg,#e8c88a,#b8894e);border-radius:99px;padding:'+(m?'10px 34px':'11px 44px')+';box-shadow:0 4px 18px rgba(201,140,80,.35),inset 0 1px 0 rgba(255,244,214,.6);transition:opacity .25s,box-shadow .25s">确 认 进 入</div>'
+    +'<div style="'+anIn(420)+'display:flex;justify-content:center;margin-top:'+(m?'24px':'30px')+'">'
+      +'<div id="zjPickGo" class="btn" style="cursor:default;position:relative;overflow:hidden;border-radius:99px;padding:'+(m?'11px 36px':'12px 46px')+';background:linear-gradient(0deg,rgba(20,15,9,.13),rgba(20,15,9,.04));-webkit-backdrop-filter:blur(5px) saturate(150%);backdrop-filter:blur(5px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,242,214,.13),0 4px 16px rgba(0,0,0,.3);transition:box-shadow .3s">'
+        +'<div aria-hidden="true" style="position:absolute;inset:0;border-radius:99px;pointer-events:none;-webkit-backdrop-filter:url(#zjLiqRefract);backdrop-filter:url(#zjLiqRefract)"></div>'
+        +'<span id="zjPickGoTx" style="position:relative;z-index:1;font-family:var(--kai);font-size:'+(m?'15px':'16px')+';letter-spacing:.3em;color:var(--mut);text-shadow:0 0 8px rgba(255,228,166,.25),0 1px 2px rgba(0,0,0,.6);transition:color .3s,text-shadow .3s">确 认 进 入</span>'
+      +'</div>'
     +'</div></div></div>';
 }
 function showStylePick(){
@@ -4388,8 +4391,9 @@ function showStylePick(){
         c.style.opacity=on?'1':'.62';
         c.style.transform=on?'scale(1.015)':'none';
       });
-      var g=document.getElementById('zjPickGo');
-      if(g){g.style.opacity='1';g.style.cursor='pointer';g.style.boxShadow='0 4px 22px rgba(224,190,130,.55),inset 0 1px 0 rgba(255,244,214,.6)';}
+      var g=document.getElementById('zjPickGo'),gt=document.getElementById('zjPickGoTx');
+      if(g){g.style.cursor='pointer';g.style.boxShadow='inset 0 1px 0 rgba(255,242,214,.2),0 4px 20px rgba(0,0,0,.3),0 0 22px rgba(224,190,130,.28)';}
+      if(gt){gt.style.color='var(--gold2)';gt.style.textShadow='0 0 13px rgba(224,190,130,.85),0 0 5px rgba(255,232,180,.5),0 1px 2px rgba(0,0,0,.8)';}
       return;
     }
     if(go&&ov._sel){ /* 第二步：确认 → 应用并丝滑退场 */
