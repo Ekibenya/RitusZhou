@@ -4458,6 +4458,7 @@ function zenToggle(){
      兜底：若全屏期间发生过正常 render（外围元素已被重建掉），退出自动走整渲染老路径，不会坏。 */
   /* 防抖用时间戳自然过期（不靠定时器清标志——定时器被节流/冻结时会把开关卡死） */
   var _zn=Date.now();if(zenToggle._busy&&_zn-zenToggle._busy<430)return;zenToggle._busy=_zn;
+  S._zenClkGrd=_zn; /* 手术改布局后，同一手势的 click 会命中被顶上来的控件——450ms 内吞掉正文内 click */
   var zEls=[['zjTopBar',-1],['zjSceneIsle',-1],['zjMiniIsle',-1],['zjInWrap',1],['zjTabWrap',1],['zjBotScrim',1]];
   function zOff(el,dir){var r=el.getBoundingClientRect();return dir<0?-(r.bottom+26):(window.innerHeight-r.top+26);}
   function els(){var o=[];zEls.forEach(function(g){var el=document.getElementById(g[0]);if(el&&!(g[0]==='zjMiniIsle'&&el.closest&&el.closest('#zjTopBar')))o.push([el,g[1]]);});return o;}/* 岛住进顶栏时随栏一起动，不再单独滑 */
@@ -4590,6 +4591,7 @@ function zenToggle(){
 root.addEventListener('click',function(e){
   if(!BGM.started){BGM.started=true;if(!S.muted){if(S.screen==='title'){BGM.t0=0;bgmPlay(0);}else bgmPlay();}}
   var t=e.target;
+  if(S._zenClkGrd&&Date.now()-S._zenClkGrd<450){S._zenClkGrd=0;if(t&&t.closest&&t.closest('#zjStory'))return;}
   while(t&&t!==root){
     var a=t.getAttribute&&t.getAttribute('data-act');
     if(t.getAttribute){
