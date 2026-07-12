@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>周紀·千年天下 · 起居注界面</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+html,body{margin:0;padding:0;background:#0c0806;}
+#zj-root{font-family:'Noto Serif SC',serif;color:#eaddc2;}
+@keyframes zj-flick{0%,100%{opacity:.55;transform:scale(1)}25%{opacity:.8;transform:scale(1.04)}50%{opacity:.45;transform:scale(.98)}75%{opacity:.72;transform:scale(1.02)}}
+@keyframes zj-snow{0%{transform:translateY(-24px) translateX(0) rotate(0)}100%{transform:translateY(760px) translateX(46px) rotate(220deg)}}
+@keyframes zj-mote{0%{transform:translateY(0);opacity:0}12%{opacity:.85}88%{opacity:.5}100%{transform:translateY(-720px) translateX(28px);opacity:0}}
+@keyframes zj-fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes zj-blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes zj-breathe{0%,100%{opacity:.5}50%{opacity:.92}}
+#zj-root ::-webkit-scrollbar{width:9px;height:9px}
+#zj-root ::-webkit-scrollbar-thumb{background:linear-gradient(#7a5c28,#4a3718);border-radius:5px;border:2px solid #17100b}
+#zj-root ::-webkit-scrollbar-track{background:#150e09}
+.zj-frame{border:3px solid transparent;border-image:linear-gradient(150deg,#d8b163,#6b4f22 40%,#3a2a14 60%,#caa25a) 1;background:linear-gradient(160deg,rgba(42,30,20,.96),rgba(20,14,10,.98));box-shadow:inset 0 0 0 1px rgba(240,190,110,.12),inset 0 0 18px rgba(0,0,0,.55),0 2px 10px rgba(0,0,0,.45);}
+.zj-btn{border:2px solid transparent;border-image:linear-gradient(150deg,#caa25a,#5a3f18) 1;background:rgba(40,28,18,.72);color:#d9b877;cursor:pointer;font-family:'Noto Serif SC',serif;transition:all .16s;}
+.zj-btn:hover{color:#ffe4a6;filter:brightness(1.15);}
+.zj-chip{border:1px solid rgba(180,140,70,.4);background:rgba(52,38,22,.62);color:#d7bd8c;cursor:pointer;font-family:'Noto Serif SC',serif;transition:all .16s;}
+.zj-chip:hover{background:rgba(120,42,28,.5);color:#f4d9a4;border-color:#c0402e;}
+.zj-op:hover{filter:brightness(1.16);transform:translateY(-2px);box-shadow:0 7px 20px rgba(0,0,0,.5);}
+.zj-op:hover .zj-op-punch{color:#ffe4a6;}
+</style>
+</head>
+<body>
+<!-- ZJ_SHELL_MARK_V1 -->
+<div id="zj-root">
+  <div id="zj-screen" style="position:relative;width:100%;max-width:760px;min-height:220px;margin:0 auto;display:flex;flex-direction:column;background:radial-gradient(120% 90% at 50% 6%,#2a1c13 0%,#160e0a 46%,#0b0705 100%);border:1px solid rgba(150,110,50,.28);">
+
+    <!-- ambience -->
+    <div style="position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 180px 50px rgba(0,0,0,.72);z-index:2;"></div>
+    <div style="position:absolute;left:50%;top:-12%;width:72%;height:56%;transform:translateX(-50%);pointer-events:none;background:radial-gradient(closest-side,rgba(255,176,84,.16),rgba(255,150,60,0));animation:zj-flick 5.5s ease-in-out infinite;z-index:1;"></div>
+    <div id="zj-particles" style="position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden;"></div>
+
+    <!-- 择局 overlay -->
+    <div id="zj-chooser" style="position:relative;z-index:20;display:none;flex-direction:column;min-height:520px;background:radial-gradient(120% 92% at 50% 0%,#241710 0%,#130c08 58%,#080503 100%);">
+      <div style="position:absolute;left:50%;top:-8%;width:66%;height:44%;transform:translateX(-50%);pointer-events:none;background:radial-gradient(closest-side,rgba(255,176,84,.14),rgba(255,150,60,0));animation:zj-flick 6s ease-in-out infinite;"></div>
+      <div style="position:relative;flex:none;text-align:center;padding:22px 16px 13px;border-bottom:1px solid rgba(150,110,50,.28);">
+        <div style="font-family:'Ma Shan Zheng',serif;font-size:31px;color:#ecc879;letter-spacing:.2em;line-height:1;">擇 局</div>
+        <div style="font-size:11px;color:#9c7c46;letter-spacing:.28em;margin-top:7px;">周天子姬瑶 · 千年之身，择一世而入</div>
+      </div>
+      <div id="zj-chooser-list" style="position:relative;padding:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-content:start;"></div>
+    </div>
+
+    <!-- top bar -->
+    <div id="zj-topbar" style="position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 15px;border-bottom:1px solid rgba(150,110,50,.28);background:linear-gradient(180deg,rgba(30,20,13,.94),rgba(20,13,9,.5));flex:none;">
+      <div style="min-width:0;">
+        <div style="font-family:'Ma Shan Zheng',serif;font-size:21px;color:#ecc879;letter-spacing:.14em;line-height:1;">周紀 · 千年天下</div>
+        <div id="zj-era" style="font-size:10.5px;color:#9c7c46;letter-spacing:.12em;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+      </div>
+      <div style="display:flex;gap:7px;flex:none;">
+        <button id="zj-choose-btn" class="zj-btn" title="择局" style="font-size:12px;padding:0 10px;height:32px;letter-spacing:.06em;">择局</button>
+        <button id="zj-hud-toggle" class="zj-btn" title="起居注" style="font-size:12px;padding:0 10px;height:32px;letter-spacing:.06em;">起居注</button>
+        <button id="zj-bgm-toggle" class="zj-btn" title="乐" style="font-size:13px;padding:0 11px;height:32px;color:#7a6540;">♪̶</button>
+      </div>
+    </div>
+
+    <!-- body -->
+    <div id="zj-main" style="position:relative;z-index:5;display:flex;flex-direction:column;">
+
+      <!-- HUD (collapsible) -->
+      <div id="zj-hud-wrap" style="flex:none;max-height:0;overflow:hidden;transition:max-height .4s ease;background:linear-gradient(180deg,rgba(20,13,9,.7),rgba(20,13,9,.2));">
+        <div id="zj-hud" style="padding:12px 14px;display:flex;flex-direction:column;gap:12px;max-height:340px;overflow-y:auto;"></div>
+      </div>
+
+      <!-- narrative -->
+      <div style="position:relative;display:flex;flex-direction:column;">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:repeating-linear-gradient(180deg,#8a6a30 0 14px,#5f4620 14px 17px);opacity:.45;z-index:1;"></div>
+        <div id="zj-feed" style="min-height:180px;padding:22px 26px 18px 34px;"></div>
+      </div>
+
+      <!-- input dock -->
+      <div style="flex:none;padding:11px 18px 15px;border-top:1px solid rgba(150,110,50,.26);background:linear-gradient(180deg,rgba(24,16,10,0),rgba(24,16,10,.72));">
+        <div id="zj-choices" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px;"></div>
+        <div style="display:flex;gap:9px;align-items:stretch;">
+          <input id="zj-input" placeholder="以姬瑶之身，落笔此回……" style="flex:1;background:rgba(12,8,6,.72);border:1px solid rgba(150,110,50,.4);border-radius:4px;color:#f0e4cb;font-family:'Noto Serif SC',serif;font-size:15px;padding:10px 14px;outline:none;letter-spacing:.02em;" />
+          <button id="zj-send" class="zj-btn" style="font-weight:700;font-size:15px;padding:0 16px;letter-spacing:.24em;color:#f4dca0;background:linear-gradient(160deg,#7a2118,#521610);">落 筆</button>
+        </div>
+        <div id="zj-status" style="font-size:11px;color:#8a6f42;letter-spacing:.14em;margin-top:7px;height:14px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.OPENINGS = [{"id":1,"full":"开局一·前221年，咸阳宫：皇帝与活玉玺","era":"秦王政廿六年 · 前221年 · 冬","place":"夜 · 咸阳宫章台殿","shen":88,"an":30,"teaser":"六王毕，四海一。","narrative":"【开局一·前221年，咸阳宫：皇帝与活玉玺】\n\n六王毕，四海一。\n\n咸阳宫的灯火烧得像永远不会熄，殿柱上蟠着新刻的龙，漆色深得能吸走人影。玉工刚刚献上那方传国玉玺——和氏璧雕成，八个虫鸟篆字：「受命于天，既寿永昌」。\n\n而「受命于天」这门生意真正的持有者，是你。\n\n你——即位第二百九十八年的周天子姬瑶——今日被秦人极尽恭敬又不容拒绝地「请」到了这座大殿上。案上给你摆了蜜饯与温浆，规格挑不出错；殿门内外按剑而立的郎卫，也挑不出错。软禁的礼数做到这个份上，算是嬴政的诚意。\n\n御座之上，那个刚刚吞下了整个天下的男人俯视着你。他已经三天没有睡好——你这块心病，比六国加起来还沉。杀不得：动你一根手指，刚归一的天下会在一夜之间遍地是「为神复仇」的义军。供不得：卧榻之侧，岂容一位活了近三百年的神安睡。\n\n「朕只问你一件事。」始皇帝开口，声音磨着殿中的空气，一字一顿，「不死之法。方术、丹药、祭仪、禁咒——你从实说来，朕以半壁供奉换之。」\n\n李斯垂手立在阶下，目光钉着自己的靴尖。满殿郎卫的手指扣紧了戟杆。烛火哔剥一声，爆了个灯花。\n\n这个问题，他的使者问过你十几轮了。如今皇帝亲自上阵，眼底的血丝像要烧起来。\n\n殿内落针可闻。所有人都在等你——等神开口。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|周室玄端男装深衣·束发玉冠·白玉大圭\n◆持物|案上秦人备下的蜜饯与温浆（未动）\n◆御体|永生之躯如常；跪坐已两刻，膝下渐麻\n◆观瞻|旒影灯光之间，秦人不敢与你对视超过三息\n◆神格|88\n◆史笔|廿六年冬，秦王政并六国，召王于咸阳，问长生。殿中鸦雀无声。\n</sec_char>\n<sec_npc>\n◈嬴政|御座俯视，眼底血丝未消|55|杀不得，供不得——朕偏要问出来\n◈李斯|阶下垂手，目光钉着靴尖|20|陛下与神较劲，臣等如履薄冰\n◈阿枣|被拦在殿外，急得转圈|92|王上单独面对那位，可千万别顺嘴吐槽啊\n</sec_npc>\n<sec_world>\n◇纪年|秦王政廿六年 · 前221年 · 冬\n◇时地|夜 · 咸阳宫章台殿\n◇天气|朔风卷雪，殿外灯火如豆\n◇安稳|30\n◇大势|秦：六国初并，锋镝未销｜楚地人心未服｜齐不战而降，临淄市井如常\n◇将临|来年——议帝号，称皇帝；废分封，行郡县；收天下兵，铸金人十二\n</sec_world>\n</mvu_panel>"},{"id":2,"full":"开局二·前212年，咸阳宫偏殿：今天皇帝要煮了你","era":"始皇三十五年 · 前212年 · 冬","place":"夜 · 咸阳宫偏殿","shen":88,"an":15,"teaser":"殿中支着一口鼎。","narrative":"【开局二·前212年，咸阳宫偏殿：今天皇帝要煮了你】\n\n殿中支着一口鼎。\n\n不是礼器那种摆着好看的鼎——是实打实架在炭火上的大鼎，汤已经滚了，白汽一浪一浪地翻上殿顶，把新漆的椽子熏出水珠。几个方士垂手立在鼎侧，眼观鼻鼻观心，活像几根成了精的蓍草。\n\n你被「请」到了鼎前三步远的席上。\n\n御座上，始皇帝的脸色比鼎底的炭还要黑。方士的进言就摊在他案头，你隔着白汽都能猜到写的什么：不死之人，血肉即药，烹而饵之，可得长生。荒谬绝伦——他未必信，但求仙求了十几年，海上的神山虚无缥缈，眼前的「不死」却活生生坐在这里，像一根扎在帝国心口的刺。\n\n「周主。」皇帝一字一顿，「最后一次问你。长生之法。」\n\n汤声咕嘟。方士卢生的冷汗顺着下巴滴进衣领。殿角的漏刻不紧不慢地滴水，仿佛在替谁数着什么。\n\n三百年了，你被威胁过很多次，用兵、用礼、用天下大义——用一口炖肉的鼎，倒真是头一回。\n\n皇帝在等。鼎也在等。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|周室玄端男装深衣·束发玉冠\n◆持物|空手（随身之物皆被秦人「代为保管」）\n◆御体|永生之躯如常；鼎汽扑面，微热\n◆观瞻|鼎前三步，白汽缭绕——满殿的人看你的眼神像在看一场渎天的豪赌\n◆神格|88\n◆史笔|三十五年冬，方士言不死之人可入药。秦人陈鼎于殿，汤沸。王至。\n</sec_char>\n<sec_npc>\n◈嬴政|御座俯视，指节抵案|48|海上无仙山，眼前有活神——朕偏不信问不出\n◈方士卢生|鼎侧垂手，冷汗入领|12|若真煮不死，进言的我等便是死路\n</sec_npc>\n<sec_world>\n◇纪年|始皇三十五年 · 前212年 · 冬\n◇时地|夜 · 咸阳宫偏殿\n◇天气|殿外风急，殿内汤沸如雷\n◇安稳|15\n◇大势|帝国鼎盛而民力已竭：长城、驰道、骊山、阿房并举｜焚书令行天下第二年\n◇将临|方士诽谤亡去，坑术士之祸将起；五年内，始皇崩于沙丘\n</sec_world>\n</mvu_panel>"},{"id":3,"full":"开局三·前519年，洛邑王城：新王即位之夜","era":"周王元年 · 前519年 · 冬","place":"夜半 · 洛邑王城明堂","shen":5,"an":25,"teaser":"洛邑的冬夜，血腥气还没有散干净。","narrative":"【开局三·前519年，洛邑王城：新王即位之夜】\n\n洛邑的冬夜，血腥气还没有散干净。\n\n王子朝之乱打了整整一年，悼王死了，城头的旗换了三轮。今夜，晋国的大军驻在城外，殿里的老臣们终于把新的天子推上了王座——先王之子，王子匄。\n\n只有你自己、单穆公、刘文公，和一个吓破了胆的小侍女知道：真正的王子匄，你的孪生弟弟，三个月前已经染疫死了。灵前跪着的两位老臣商量出的办法荒唐得像市井段子——公主瑶，跟弟弟长着一模一样的眉眼。从今夜起，你就是「王」。\n\n「撑过三年。」单穆公白着头发对你叩首时这么说，「三年后，从宗室里择一子过继，老臣以死谢罪。」\n\n大典散了。明堂的灯火撤了大半，十二旒的玉藻垂在你眼前，把空旷的大殿切成一条一条。冕沉得压脖子，为弟弟裁的冕服肩线宽出一截，大圭凉得像一块冰。跪坐了两个时辰，你的腿——那种滋味不必史官记录你也忘不了。\n\n殿外传来极轻的脚步声。\n\n进来的是枣氏的小侍女，才十二三岁，抱着一盏新剪了芯的灯，走到丹墀下就跪住了，头埋得低低的，肩膀一抖一抖——她是那个「知道的人」，而她显然还没想明白，知道这种事的小侍女一般能活多久。\n\n灯花哔剥响了一声。她把灯举过头顶，声音细得像蚊子：\n\n「王、王上……灯。」\n\n空旷的明堂里，此刻只有你，和这个抖成一团的小小同谋。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|十二章纹冕服（为阿弟裁的，肩线宽出一截）\n◆持物|白玉大圭，凉得像冰\n◆御体|凡人之躯（永生未至）；跪坐两个时辰，双腿麻透\n◆观瞻|旒珠遮面，殿中无人看得清新王的脸——幸好\n◆神格|5\n◆史笔|元年冬，王即位于明堂。乱后洛邑，夜有霜。殿中唯王与一灯。\n</sec_char>\n<sec_npc>\n◈小枣|丹墀下举灯跪着，肩膀发抖|70|知道这种事的小侍女……能活多久啊\n◈单穆公|殿外远候，白发如霜|55|女公子受苦了。此事，老臣带进棺椁\n</sec_npc>\n<sec_world>\n◇纪年|周王元年 · 前519年 · 冬\n◇时地|夜半 · 洛邑王城明堂\n◇天气|朔风穿殿，庭燎明灭\n◇安稳|25\n◇大势|王子朝之乱方平未平，余党犹在｜晋师驻于城外，诸侯观望\n◇将临|王子朝之乱将再起波澜，三年后其人携周室典籍奔楚\n</sec_world>\n</mvu_panel>"},{"id":4,"full":"开局四·前517年，洛邑守藏室外：问礼的人来了","era":"周王三年 · 前517年 · 秋","place":"午后 · 洛邑守藏室外杏树下","shen":12,"an":70,"teaser":"「王上，鲁国来的那位士人，已在守藏室外候了半日。」礼官通禀的时候，特意补了一句，「就是前月递简来问礼、辞令恭敬得让人牙酸的那位——孔丘。偕弟子自曲阜而来，说要『观先王之制，考礼乐之源』。老聃已陪他看了半日藏书。」","narrative":"【开局四·前517年，洛邑守藏室外：问礼的人来了】\n\n「王上，鲁国来的那位士人，已在守藏室外候了半日。」礼官通禀的时候，特意补了一句，「就是前月递简来问礼、辞令恭敬得让人牙酸的那位——孔丘。偕弟子自曲阜而来，说要『观先王之制，考礼乐之源』。老聃已陪他看了半日藏书。」\n\n于是这一日，洛邑守藏室外的杏树下，摆开了一场小小的席面。\n\n你即位两年了。两年间见过的士人不少，大多是来讨官做的，辞令华美，眼神发飘。今天这位不太一样：三十四岁的鲁国人端坐下首，腰背挺得像一杆礼器，手心紧张得沁汗，行礼的每一个角度都精确得近乎虔诚——但抬起眼时，那里面有火。\n\n守藏室之史老聃坐在侧席，眼皮半垂，像睡着，又像什么都看见。\n\n「外臣孔丘，斗胆请问王上。」鲁国人俯身，声音因为用力而微微发紧，「今礼坏乐崩，诸侯僭越，陪臣执国命。欲复文武周公之治——当自何始？」\n\n杏叶落下来一片，正正停在他面前的案上。他没有动，只是抬着头，等你。\n\n老聃的眼皮，抬起了一条缝。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|玄端深衣·束发玉冠（今日会客，从简）\n◆持物|一枚把玩的玉圭\n◆御体|凡人之躯（永生未至）；杏树下席地，风正好\n◆观瞻|鲁国来客行礼行得一丝不苟，看你的眼神虔诚里带着掂量\n◆神格|12\n◆史笔|三年秋，鲁人孔丘来问礼。守藏史陪坐，似寐。杏叶落于宾案。\n</sec_char>\n<sec_npc>\n◈孔丘|端坐下首，腰背笔直，掌心沁汗|30|王上年少，然此问不可不问——愿闻其详\n◈老聃|侧席半垂眼皮，似睡非睡|40|一个藏不住的，一个问不完的。有意思。\n</sec_npc>\n<sec_world>\n◇纪年|周王三年 · 前517年 · 秋\n◇时地|午后 · 洛邑守藏室外杏树下\n◇天气|秋阳澄澈，杏叶初黄\n◇安稳|70\n◇大势|鲁国季氏僭越，昭公将奔齐｜晋国六卿势大，公室渐虚｜楚与吴衅隙日深\n◇将临|明岁鲁昭公奔齐；数年后王子朝败亡奔楚，周室典籍散于楚地\n</sec_world>\n</mvu_panel>"},{"id":5,"full":"开局五·前499年，洛邑：二十年，一张没有变过的脸","era":"周王廿一年 · 前499年 · 春","place":"夜 · 洛邑王城内殿","shen":35,"an":60,"teaser":"流言是从什么时候开始的，已经说不清了。","narrative":"【开局五·前499年，洛邑：二十年，一张没有变过的脸】\n\n流言是从什么时候开始的，已经说不清了。\n\n也许是去年的冬至郊祀——白发苍苍的卫侯拄着杖看清你的脸，浑身一颤，喃喃说了句「与寡人弱冠来朝时所见，无异」。也许是更早，老一辈的礼官告老，新一辈的礼官接任，父子俩对着同一张面孔交割职务：父亲看了二十年，儿子即将再看二十年。\n\n你即位二十年了。铜镜里的脸，还是那个在明堂里揉膝盖的少女。\n\n洛邑的市井里，流言像发酵的酒。有说王服了昆仑的仙草；有说王夜夜以童子血沐浴；还有说那根本不是人，是上天派来的——说到这里，声音就压低了，说的人自己先跪下去。诸侯的使节来朝，行礼时头压得一年比一年低，抬眼窥探御容的目光却一年比一年多。晋国的使者上月「失手」打翻了灯，就为看清你在火光骤亮时的脸。\n\n单穆公葬下已经三年。知道全部秘密的人，如今只剩病榻上的刘文公，和枣氏。\n\n今夜，阿枣——当年那个抱灯的小侍女，如今已是三十多岁的妇人——替你散了发，收拾铜镜的手停了停，终于还是开了口：\n\n「王上。刘公今日遣人来问……流言的事，要不要设法压一压。」她顿了顿，声音放得很轻，「还有一句话，来人不敢说，是刘公亲笔：『老臣去后，王将奈何？』」\n\n铜镜扣在案上，铜的背面朝天，映不出任何人。\n\n雨点开始敲瓦。阿枣跪坐在灯影里，等你的话。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|玄端深衣，长发新散（夜间私殿）\n◆持物|一面磨得极亮的铜镜，镜背扣在案上\n◆御体|永生之躯（第十二年）；容颜与二十年前分毫不差\n◆观瞻|烛影里那张脸美得不似生人——阿枣看惯了，来送炭的小寺人差点打翻火盆\n◆神格|35\n◆史笔|廿一年春，卫侯见王而颤，曰与弱冠所见无异。流言起于列国。\n</sec_char>\n<sec_npc>\n◈阿枣|收着铜镜，欲言又止|88|王上还是那个王上。旁人怕什么，我不懂\n◈刘文公|告病在府，遣人问安|62|老臣去后，谁替王上圆这一切……\n</sec_npc>\n<sec_world>\n◇纪年|周王廿一年 · 前499年 · 春\n◇时地|夜 · 洛邑王城内殿\n◇天气|春夜微雨，滴在瓦上\n◇安稳|60\n◇大势|「天子不老」之说悄行于列国朝堂｜晋六卿内斗加剧｜孔丘将仕鲁，齐鲁将会于夹谷\n◇将临|流言将由窃议变成公论；十年之内，诸侯朝觐的目光会彻底变味\n</sec_world>\n</mvu_panel>"},{"id":6,"full":"开局六·前415年，洛邑明堂：真神","era":"周王百〇五年 · 前415年 · 夏","place":"午后 · 洛邑王城明堂","shen":78,"an":65,"teaser":"使者是韩氏派来的，年轻，第一次入洛邑。","narrative":"【开局六·前415年，洛邑明堂：真神】\n\n使者是韩氏派来的，年轻，第一次入洛邑。\n\n他在明堂外的丹墀下跪了整整一个时辰——不是被要求的，是他自己腿软。旁边成周本地的礼官见怪不怪，好心地扶了他一把：「贵使，第一次都这样，起来吧，王上不喜欢人跪太久。」\n\n「王上……当真、当真已经……」\n\n「即位一百零四年了。」礼官的语气平常得像在报今天的菜价，「老朽的祖父入仕时，王上是这个样子。老朽告老之前，王上还会是这个样子。」\n\n如今的天下早就换了人间——晋国被韩赵魏撕成了三块，齐国的姜姓公室朝不保夕，列国的城头一年三换旗。可洛邑不变，你不变。当年的恐慌早就熬过去了；人心是很奇妙的东西：一张二十年不变的脸让人毛骨悚然，一张一百年不变的脸——那就不是「人」的事了，那是「天」的事。既然是天的事，那就不需要害怕，只需要跪下。\n\n「天子」这两个字，从来没有像现在这样被天下人按字面意思理解过。\n\n此刻，明堂之内，你的案上摆着公输班亲手做的那只老木鸢——榫卯松了，扑一下，歇三下。殿外，礼官的通禀拖着长长的调子：\n\n「韩——氏——使——者——觐——见——」\n\n年轻的使者膝行入殿，伏在地上，捧着国书的手抖得像风里的旗。你甚至还没开口，他先把额头贴在了地砖上。\n\n阿枣在帷后小声嘀咕，赌一枚蚁鼻钱，又是来求名分递话的。\n\n使者伏在地上，等着神明允许他抬头。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|玄端深衣，冠微歪（方才还在逗木鸢）\n◆持物|公输班亲手做的老木鸢（榫卯已松，扑一下歇三下）\n◆御体|永生之躯（第九十六年）；万事如常\n◆观瞻|你还没开口，使者已经把额头贴上了地砖\n◆神格|78\n◆史笔|百〇五年夏，韩氏使者觐见，拜于殿中，股栗，不能成辞。\n</sec_char>\n<sec_npc>\n◈韩氏使者|伏地捧着国书，抖如风中之旗|12|百年不变……祖父说的竟是真的，那真的是神\n◈阿枣|帷后收着六博棋盘|85|赌一枚蚁鼻钱，又是求名分递话的\n</sec_npc>\n<sec_world>\n◇纪年|周王百〇五年 · 前415年 · 夏\n◇时地|午后 · 洛邑王城明堂\n◇天气|蝉声撼树，热\n◇安稳|65\n◇大势|晋名存实亡，韩赵魏三家各遣使通洛｜齐国田氏专权｜越霸已衰\n◇将临|十二年后，三家将正式请命为诸侯——史家会把那一年记作一个时代的开端\n</sec_world>\n</mvu_panel>"},{"id":7,"full":"开局七·前409年，洛邑：诸侯的祭典与发抖的新侍女","era":"周王百十一年 · 前409年 · 冬","place":"入夜 · 洛邑王城内殿","shen":85,"an":75,"teaser":"诸侯们给你上了「尊号」，办了一场旷古未有的祭典。","narrative":"【开局七·前409年，洛邑：诸侯的祭典与发抖的新侍女】\n\n诸侯们给你上了「尊号」，办了一场旷古未有的祭典。\n\n赵氏、韩氏、魏氏、齐、楚、燕、秦——平日里打得头破血流的一群，破天荒地凑齐了使节，抬着牺牲玉帛涌进洛邑，在圜丘边上另筑了一座坛。祭的不是天，是你。钟磬齐鸣，牲血涂坛，颂辞写得天花乱坠，中心思想就一句：您是真神，求罩。\n\n你在坛上跪坐着受了一天的礼。给活人设祭坛——他们想得出来，你坐在那儿受着，像给自己当牌位。如今祭典散了，重礼服卸到一半，脖颈酸得像是背了一天的鼎。\n\n殿里当值的是新来的小侍女——枣氏这一代的孩子，今年才十五，昨日刚接替告老的上一代阿枣。\n\n小侍女的手一直在抖。\n\n替你解玉佩，抖；奉水，抖；被你看一眼，抖得差点跪下去。在她从小听到大的故事里，眼前这位是活了一百一十年的真神，是能让诸侯筑坛跪拜的存在，是祖母临终前反复叮嘱「万万不可失礼」的那个名字。\n\n然后——啪嗒。\n\n玉佩从她指间滑脱，磕在地砖上，声音在安静的殿里清脆得像惊雷。小侍女整个人扑跪下去，额头抵地，声音抖得不成调：\n\n「婢、婢子死罪——！」\n\n玉佩躺在地上，其实一点没磕坏。烛火安安静静地烧着。上一代阿枣入宫头一年也摔过东西——那都是九十年前的事了。\n\n殿里只有你，和这个把「死罪」两个字当真的小小孩子。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|祭典重礼服卸到一半，玄端常服搭在肩上\n◆持物|方才从祭坛顺下来的一串蜜枣\n◆御体|永生之躯（第一百〇二年）；受了一天的礼，脖颈酸沉\n◆观瞻|新侍女不敢看你——在她眼里你是祖母口中的真神\n◆神格|85\n◆史笔|百十一年冬，诸侯合祭王于坛。王受之终日。夜，新御婢坠玉，伏地请死。\n</sec_char>\n<sec_npc>\n◈小阿枣|扑跪于地，额头抵砖，抖得不成调|35|死罪死罪死罪——祖母救我\n◈大祧|坛下收拾祭器，满面红光|70|尊神祭典成矣！天子之教，自今日始！\n</sec_npc>\n<sec_world>\n◇纪年|周王百十一年 · 前409年 · 冬\n◇时地|入夜 · 洛邑王城内殿\n◇天气|祭典的烟火气还未散尽\n◇安稳|75\n◇大势|七雄雏形已具，诸侯竞相尊神以自重｜秦初行「初租禾」，暗自积力\n◇将临|六年后三晋请命为诸侯；「守祧」一署将借今日祭典坐大成教团\n</sec_world>\n</mvu_panel>"},{"id":8,"full":"开局八·前247年，洛邑书库：如何终结这个战国","era":"周亡后九年 · 前247年 · 冬","place":"夜 · 洛邑王城书库大堂","shen":92,"an":45,"teaser":"长平的血渗进土里已经十几年了，天下还在流血。","narrative":"【开局八·前247年，洛邑书库：如何终结这个战国】\n\n长平的血渗进土里已经十几年了，天下还在流血。\n\n周室的政权早在九年前名存实亡——秦军开进王畿，土地归了秦的三川郡，九鼎被拖走，一座沉进泗水。可圣域还在：王城城垣之内，秦吏止步，你如故。政治上的周朝死了，神还活着。\n\n于是天下的读书人做了一个心照不宣的选择：稷下散了，列国的庙堂容不下坐而论道，那就来洛邑，来圣域，来你面前，把最后的问题摊开。\n\n这一夜，是你下的帖。王城书库的大堂里灯火通明：儒家来的是荀卿的门人，袖中简册写满驳论；法家的年轻人揣着刚抄的《商君书》；墨家钜子的代理人一进门就开始检查房梁结构（职业病）；阴阳家的学者带来邹衍新补的五德图；名家的士人刚在门口跟虎贲论证完「入门非入库」，意犹未尽。\n\n案上摊着一卷天下舆图，七国疆界用朱墨涂改了一层又一层，像一块反复结痂的伤口。\n\n题目是你出的：这个打了两百多年的天下，怎么收场。\n\n结果开场不到半个时辰，堂上已经吵翻了。儒生说以德服人，法家的年轻人冷笑「德能当甲兵乎」；墨者说非攻兼爱，阴阳家说德运有数急不得；名家士人试图先定义什么叫「收场」，被所有人齐声喝止。\n\n吵到僵处，荀门弟子忽然起身，整了整衣冠，朝你长揖到底。满堂骤然安静。\n\n「臣等争了半夜，皆是纸上之言。」他直起身，目光灼灼，「敢问王上——您看了两百年，从孔子看到臣等。您以为，此局当如何收？」\n\n满堂的灯火，一齐照着你。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|玄端深衣·束发玉冠\n◆持物|一卷朱墨涂改了一层又一层的天下舆图\n◆御体|永生之躯（第二百六十四年）；雪夜书库，炭盆正暖\n◆观瞻|荀门弟子长揖不起，满堂灯火与目光一齐照着你\n◆神格|92\n◆史笔|亡周后九年冬，诸子会于王城书库，争至夜半。荀氏弟子起而问王。雪。\n</sec_char>\n<sec_npc>\n◈荀门弟子|长揖到底，目光灼灼|18|您看了两百年——纸上之言，臣等不要了\n◈墨者代理|端坐如钟，方查完房梁|25|王城梁架两百年不腐，善哉\n◈阴阳家士|捧着新补的五德图|15|圣德不入五运……邹子的补丁今日要当面验证了\n</sec_npc>\n<sec_world>\n◇纪年|周亡后九年 · 前247年 · 冬\n◇时地|夜 · 洛邑王城书库大堂\n◇天气|大雪封城，堂内灯火通明\n◇安稳|45\n◇大势|秦已取三川、上党，天下半入其彀｜信陵君合纵新败秦军于河外，回光返照\n◇将临|今岁秦庄襄王薨，太子政立，年十三，吕不韦为相——三十年内，天下将定于一\n</sec_world>\n</mvu_panel>"},{"id":9,"full":"开局九·前203年，洛阳：两家抢一个章","era":"汉王四年 · 前203年 · 秋","place":"清晨 · 洛阳王城洛水高台","shen":93,"an":35,"teaser":"楚汉相争，打到第三年，天下人都快忘了安稳觉是什么滋味。","narrative":"【开局九·前203年，洛阳：两家抢一个章】\n\n楚汉相争，打到第三年，天下人都快忘了安稳觉是什么滋味。\n\n荥阳在拉锯，成皋在换手，韩信在北边一路平推。而洛阳城——如今天下人嘴里的「圣域」——城门外的官道上，出现了战国以来最热闹的景象：\n\n汉王的使者和西楚的使者，前后脚到，在关前市的传舍里住成了斜对门。\n\n两边憋着同一件事。项王那边，弑义帝的名声臭了天下，急需一味比义帝更硬的药——若能求得你一句话，哪怕半句，「弑主」的污名就能洗掉大半。汉王那边打的算盘一模一样，还更鸡贼：刘邦的檄文里早就把「奉周天子之灵」写上了，写完才琢磨着来补个手续。\n\n此刻，你正在洛水边的高台上喂鱼。晨风清劲，鱼抢食抢得水花乱溅。\n\n礼官小跑上台，满头是汗，手里的谒简捏出了指印：\n\n「王上，两家使者都递了谒！都说奉主上之命，务必、务必先觐见——汉使陆贾与楚使武涉，此刻都堵在宫门外，谁也不肯让谁先进。再拖下去，只怕要在您门口吵起来了！」\n\n他喘了口气，压低声音补上最要命的一句：「先见谁……天下人就会说，天意在谁。王上，如何接？」\n\n阿枣捧着大氅追上台来，一脸「风口喂鱼您也是几百岁的人了」的谴责。\n\n河风猎猎。礼官躬着身，汗珠子挂在下巴上，等你示下。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|玄端深衣，广袖被河风吹得猎猎\n◆持物|半块掰剩的黍饼（鱼的）\n◆御体|永生之躯（第三百一十七年）；晨风微凉\n◆观瞻|礼官躬身候命，汗珠挂在下巴上不敢擦\n◆神格|93\n◆史笔|汉王四年秋，楚汉之使俱至洛阳，争先谒王，相持于宫门。王方饲鱼。\n</sec_char>\n<sec_npc>\n◈礼官|捧谒简躬身候命，满头是汗|60|先见谁就是天意向谁——这题下官接不住啊\n◈汉使陆贾|宫门外与楚使对峙|22|周主喜直言恶浮辞……主上那些市井话，或许反而对路？\n◈楚使武涉|宫门外与汉使对峙|18|霸王只要一句话。一句就够\n◈阿枣|捧着大氅追上高台|90|风口喂鱼，几百岁的人了，着凉了谁管\n</sec_npc>\n<sec_world>\n◇纪年|汉王四年 · 前203年 · 秋\n◇时地|清晨 · 洛阳王城洛水高台\n◇天气|河风清劲，水面粼粼\n◇安稳|35\n◇大势|楚汉相持于荥阳成皋｜韩信已下齐地，自请假王｜天下粮尽兵疲\n◇将临|鸿沟之约将成而旋破；来岁垓下四面楚歌，乌江之畔，霸王末路\n</sec_world>\n</mvu_panel>"},{"id":10,"full":"开局十·开元十八年（730年），洛阳圣域：入关一步，退千年","era":"唐开元十八年 · 730年 · 春","place":"巳时 · 洛阳圣域王城宫苑","shen":100,"an":95,"teaser":"又是春天了。你即位的第一千二百四十九年。","narrative":"【开局十·开元十八年（730年），洛阳圣域：入关一步，退千年】\n\n又是春天了。你即位的第一千二百四十九年。\n\n城外的世界叫「大唐」，正是它最好的年月：长安百万人烟，西市驼铃，曲江边新科进士的宴席能摆到天黑。而四关之内，你的洛阳依旧是那个洛阳——夯土的城台压着千年前的天际线，行人深衣佩玉，孩童诵着《诗》三百，市集日中而聚。外面的人管这里叫圣域，管过函谷关叫「入关一步，退千年」。\n\n此刻，宫苑的池边，公输门第四十代传人新贡的机关木鸢正躺在你手边——翅膀卡住了，第三次。祖师爷的手艺传到第四十代，榫头的灵性丢了三成，这只木鸢飞不过池面就一头栽进柳絮里。\n\n「王上。」大祧玄的声音从廊下传来，带着他惯有的、欲谏又止的尾音，「今日有谒圣者入城——核验过谱牒的旧姓子弟，习礼三日，衣冠都换好了。此刻……已候在苑外。」\n\n获准入圣域的外客，一年也没有几个。上一个还是秋天的事。\n\n来人被引进宫苑，一身崭新的周式深衣，浆得笔挺，走路却还带着长安人的步子——迈得太大，玉佩撞得叮当乱响。他显然背了一路的礼数，走到池边十步外，深深俯下身去，双手交叠，行了一个标准得近乎僵硬的稽首礼：\n\n「外、外臣拜见天子——」\n\n声音年轻，紧张得劈了个叉。他保持着俯身的姿势不敢动，风把长安的气味从他袖口送过来——尘土、马汗，还有一丝若有若无的、绝对属于违禁品的胡饼香气。\n\n阿枣远远站在廊下，已经放弃了管教的表情。\n\n木鸢躺在你手边。长安来的人俯在十步外。今天的时间，很多。","panel":"<mvu_panel>\n<sec_char>\n◆衣冠|玄端深衣·束发（千年不变的老三样）\n◆持物|公输门第四十代新贡的机关木鸢（翅膀卡住，第三次）\n◆御体|永生之躯（第一千二百四十九年）；春日晒得人发懒\n◆观瞻|长安来客俯身十步外不敢动，玉佩还在轻轻打颤\n◆神格|100\n◆史笔|唐开元十八年春，木鸢又败。有谒圣者自长安来，稽首于池畔，袖有胡饼气。\n</sec_char>\n<sec_npc>\n◈谒圣者|保持稽首姿势，紧张到声音劈叉|10|背了三天的礼数千万别错——胡饼应该没被闻出来吧\n◈阿枣|廊下远观，已放弃管教|86|王上逮住外客又要问到人家告饶，取些浆水备着吧\n◈大祧玄|廊下欲谏又止|65|天子蹲于池畔见客……罢了，《玄圣论》里这叫「和光同尘」\n</sec_npc>\n<sec_world>\n◇纪年|唐开元十八年 · 730年 · 春\n◇时地|巳时 · 洛阳圣域王城宫苑\n◇天气|春和景明，柳絮过墙\n◇安稳|95\n◇大势|开元盛世，长安百万人烟，万国来朝｜圣域之内，周制如恒，恍如隔世\n◇将临|数年后李林甫将入相；盛极之世，正翻向下一页\n</sec_world>\n</mvu_panel>"}];
+</script>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ---------------- height self-report (for 酒馆助手 iframe auto-resize) ---------------- */
+  function poke(){
+    try{ window.dispatchEvent(new Event('resize')); }catch(e){}
+    try{ if(typeof parentIFrame!=='undefined' && parentIFrame && parentIFrame.size) parentIFrame.size(); }catch(e){}
+  }
+
+  /* ---------------- host adapter (酒馆助手 or browser mock) ---------------- */
+  var HOST = (typeof window.SillyTavern !== 'undefined') &&
+             (typeof window.eventOn === 'function');
+
+  function chatArray(){
+    try { return window.SillyTavern.getContext().chat || []; } catch(e){ return []; }
+  }
+  function lastCharText(){
+    if(HOST){
+      var c = chatArray();
+      for(var i=c.length-1;i>=0;i--){
+        if(c[i].is_user) continue;
+        var t = c[i].mes || '';
+        if(t.indexOf('ZJ_SHELL_MARK_V1')>=0) continue; /* 跳过界面外壳消息本身 */
+        return t;
+      }
+      return '';
+    }
+    return MOCK.cur;
+  }
+  function lastUserText(){
+    if(HOST){
+      var c = chatArray();
+      for(var i=c.length-1;i>=0;i--){ if(c[i].is_user) return c[i].mes || ''; }
+      return '';
+    }
+    return MOCK.lastUser;
+  }
+  function sendToAI(text){
+    setStatus('太史筆懸 · 候天意……');
+    if(HOST){
+      try {
+        Promise.resolve(window.triggerSlash('/send ' + text.replace(/[|\n]/g,' ')))
+          .then(function(){ return window.triggerSlash('/trigger'); })
+          .catch(function(e){ console.error(e); setStatus('发送失败：' + e); });
+      } catch(e){ setStatus('发送失败：' + e); }
+    } else {
+      MOCK.reply(text);
+    }
+  }
+
+  /* ---------------- parsing ---------------- */
+  function grab(text, re){ var m = text.match(re); return m ? m[1].trim() : ''; }
+  function parsePanel(text){
+    var clabels=['衣冠','持物','御体','观瞻'];
+    var charr = clabels.map(function(l){ return {label:l, val:grab(text, new RegExp('◆'+l+'\\|([^\\n]+)'))}; })
+                       .filter(function(r){ return r.val; });
+    var shen = +(grab(text, /◆神格\|([0-9]+)/) || 0);
+    var chronicle = grab(text, /◆史笔\|([^\n]+)/);
+    var npc=[], re=/◈([^|\n]+)\|([^|\n]+)\|([0-9]+)\|([^\n]+)/g, m;
+    while((m=re.exec(text))){ npc.push({name:m[1].trim(), state:m[2].trim(), favor:+m[3], thought:m[4].trim()}); }
+    var wlabels=['纪年','时地','天气','大势'];
+    var world = wlabels.map(function(l){ return {label:l, val:grab(text, new RegExp('◇'+l+'\\|([^\\n]+)'))}; })
+                       .filter(function(r){ return r.val; });
+    var an = +(grab(text, /◇安稳\|([0-9]+)/) || 0);
+    var foreshadow = grab(text, /◇将临\|([^\n]+)/);
+    var era = grab(text, /◇纪年\|([^\n]+)/);
+    return {char:charr, shen:shen, chronicle:chronicle, npc:npc, world:world, an:an, foreshadow:foreshadow, era:era};
+  }
+  function parseChoices(text){
+    var out=[], re=/▶\s*([^\n]+)/g, m;
+    while((m=re.exec(text))){ out.push(m[1].trim()); }
+    return out;
+  }
+  function extractNarrative(text){
+    var t = text.replace(/<\/?mvu_panel>/g,'')
+                .replace(/<\/?sec_[a-z]+>/g,'')
+                .replace(/^[ \t]*[◆◈◇▶].*$/gm,'')
+                .replace(/\n{3,}/g,'\n\n');
+    return t.trim();
+  }
+
+  /* ---------------- color ---------------- */
+  function hx(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+  function mix(a,b,t){ a=hx(a); b=hx(b); return 'rgb('+a.map(function(x,i){return Math.round(x+(b[i]-x)*t);}).join(',')+')'; }
+  function gcol(v,kind){
+    var t=Math.max(0,Math.min(1,v/100));
+    if(kind==='shen') return mix('#9a3324','#f0d17f',t);
+    if(kind==='an')   return mix('#c0402e','#79a88f',t);
+    return mix('#6a5836','#e6bb5e',t);
+  }
+  function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  /* ---------------- HUD render ---------------- */
+  function bar(label,val,kind,labelColor){
+    var c=gcol(val,kind), w=Math.max(3,val);
+    var track = kind==='shen' ? '#8f2a1e' : (kind==='an' ? '#c0402e' : '#5a4a2c');
+    return '<div style="display:flex;align-items:center;gap:10px;margin-top:10px;">'
+      +'<span style="flex:none;width:38px;font-size:13px;color:'+labelColor+';font-weight:600;letter-spacing:.06em;">'+label+'</span>'
+      +'<div style="flex:1;height:11px;background:rgba(0,0,0,.45);border-radius:6px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.7);">'
+        +'<div style="height:100%;width:'+w+'%;background:linear-gradient(90deg,'+track+','+c+');border-radius:6px;transition:width 1.05s cubic-bezier(.2,.8,.25,1),background .8s;box-shadow:0 0 8px '+c+';"></div>'
+      +'</div>'
+      +'<span style="flex:none;width:30px;text-align:right;font-size:15px;font-weight:700;color:'+c+';">'+val+'</span>'
+    +'</div>';
+  }
+  function kvRows(rows){
+    return rows.map(function(r){
+      return '<div style="display:flex;gap:10px;font-size:13px;line-height:1.6;padding:3px 0;border-bottom:1px dashed rgba(140,105,55,.16);">'
+        +'<span style="flex:none;width:40px;color:#b48f52;letter-spacing:.1em;">'+esc(r.label)+'</span>'
+        +'<span style="flex:1;color:#ded0b3;">'+esc(r.val)+'</span></div>';
+    }).join('');
+  }
+  function sectionHead(t){
+    return '<div style="display:flex;align-items:center;gap:10px;margin:2px 0 6px;">'
+      +'<span style="font-family:\'Ma Shan Zheng\',serif;font-size:18px;color:#e7b45a;letter-spacing:.1em;">'+t+'</span>'
+      +'<div style="flex:1;height:1px;background:linear-gradient(90deg,rgba(180,140,70,.5),rgba(180,140,70,0));"></div></div>';
+  }
+  function renderHud(p){
+    if(!p){ $('zj-hud').innerHTML=''; return; }
+    var html='';
+    // 王·起居
+    html+='<div class="zj-frame" style="padding:10px 14px 14px;animation:zj-fadeup .5s ease both;">';
+    html+=sectionHead('王 · 起居');
+    html+=kvRows(p.char);
+    html+=bar('神格',p.shen,'shen','#c0402e');
+    if(p.chronicle){
+      html+='<div style="margin-top:12px;position:relative;background:repeating-linear-gradient(90deg,#c19a56 0 22px,#b58c48 22px 24px);border-radius:3px;padding:8px 12px 8px 38px;box-shadow:inset 0 0 0 1px rgba(90,60,20,.5),0 2px 6px rgba(0,0,0,.4);">'
+        +'<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#b23a2b,#7a1d13);color:#f4dca0;font-family:\'Ma Shan Zheng\',serif;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px rgba(240,190,110,.5);">史</span>'
+        +'<div style="font-size:12.5px;line-height:1.6;color:#3a2410;font-weight:500;">'+esc(p.chronicle)+'</div></div>';
+    }
+    html+='</div>';
+    // 在场之人
+    if(p.npc.length){
+      html+='<div class="zj-frame" style="padding:10px 14px 14px;animation:zj-fadeup .5s ease both;animation-delay:.06s;">';
+      html+=sectionHead('在場之人');
+      html+='<div style="display:flex;flex-direction:column;gap:8px;">';
+      p.npc.forEach(function(n){
+        var c=gcol(n.favor,'favor'), w=Math.max(3,n.favor);
+        html+='<div style="border:1px solid rgba(150,110,55,.28);border-radius:5px;background:rgba(30,21,14,.6);padding:7px 10px;">'
+          +'<div style="display:flex;align-items:center;gap:9px;">'
+            +'<span style="font-weight:700;font-size:14px;color:#f0dcae;flex:none;">'+esc(n.name)+'</span>'
+            +'<div style="flex:1;height:7px;background:rgba(0,0,0,.4);border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.6);">'
+              +'<div style="height:100%;width:'+w+'%;background:linear-gradient(90deg,#5a4a2c,'+c+');border-radius:4px;transition:width 1s cubic-bezier(.2,.8,.25,1),background .8s;"></div></div>'
+            +'<span style="flex:none;font-size:12px;color:'+c+';font-weight:700;width:24px;text-align:right;">'+n.favor+'</span>'
+          +'</div>'
+          +'<div style="font-size:12px;color:#ad9c7e;margin-top:4px;line-height:1.5;">'+esc(n.state)+'</div>'
+          +'<div style="font-size:11.5px;color:#8fae9c;font-style:italic;margin-top:3px;line-height:1.5;">「'+esc(n.thought)+'」</div>'
+        +'</div>';
+      });
+      html+='</div></div>';
+    }
+    // 岁月·天下
+    html+='<div class="zj-frame" style="padding:10px 14px 14px;animation:zj-fadeup .5s ease both;animation-delay:.12s;">';
+    html+=sectionHead('歲月 · 天下');
+    html+=kvRows(p.world);
+    html+=bar('安稳',p.an,'an','#79a88f');
+    if(p.foreshadow){
+      html+='<div style="margin-top:12px;border:1px dashed rgba(192,64,46,.5);border-radius:4px;padding:8px 11px;background:rgba(60,20,14,.22);position:relative;">'
+        +'<span style="position:absolute;top:-9px;left:11px;background:#2a1610;font-size:10px;letter-spacing:.24em;color:#d07a4a;padding:0 6px;">將 臨 · 天機</span>'
+        +'<div style="font-size:12px;line-height:1.6;color:#c6a98f;margin-top:3px;">'+esc(p.foreshadow)+'</div></div>';
+    }
+    html+='</div>';
+    $('zj-hud').innerHTML=html;
+  }
+
+  /* ---------------- narrative typewriter ---------------- */
+  var typer=null;
+  function renderNarrative(text, animate){
+    clearInterval(typer);
+    var feed=$('zj-feed');
+    var user=lastUserText();
+    var head='';
+    if(user && animate){
+      head='<div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;margin-bottom:18px;animation:zj-fadeup .4s ease both;">'
+        +'<div style="max-width:82%;background:linear-gradient(160deg,rgba(120,40,28,.24),rgba(80,26,18,.16));border-right:3px solid #b23a2b;padding:8px 13px;border-radius:3px 8px 8px 3px;">'
+          +'<div style="font-size:10px;color:#d98a6a;letter-spacing:.24em;margin-bottom:3px;">姬 瑶</div>'
+          +'<div style="font-size:15px;line-height:1.8;color:#eecdb6;font-style:italic;">'+esc(user)+'</div></div>'
+        +'<span style="font-family:\'Ma Shan Zheng\',serif;font-size:15px;color:#f4dca0;background:radial-gradient(circle at 40% 35%,#7a2118,#4a130c);width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex:none;">瑶</span>'
+      +'</div>';
+    }
+    function paint(t){
+      var paras=t.split(/\n+/).map(function(x){return x.trim();}).filter(Boolean);
+      var caret = (animate && t.length<text.length) ? '<span style="display:inline-block;width:9px;height:19px;background:#e7b45a;vertical-align:-3px;animation:zj-blink 1s step-end infinite;margin-left:2px;"></span>' : '';
+      feed.innerHTML = head + '<div style="animation:zj-fadeup .45s ease both;">'
+        + paras.map(function(p,i){
+            var last=i===paras.length-1;
+            return '<p style="margin:0 0 14px;font-size:16.5px;line-height:2.02;color:#eaddc2;text-wrap:pretty;letter-spacing:.01em;">'+esc(p)+(last?caret:'')+'</p>';
+          }).join('')
+        + '</div>';
+      poke();
+    }
+    if(!animate){ paint(text); return; }
+    var n=0;
+    paint('');
+    typer=setInterval(function(){
+      n=Math.min(text.length, n+3);
+      paint(text.slice(0,n));
+      if(n>=text.length){ clearInterval(typer); }
+    },20);
+  }
+
+  /* ---------------- choices ---------------- */
+  function renderChoices(list){
+    var box=$('zj-choices');
+    box.innerHTML='';
+    (list||[]).forEach(function(label){
+      var b=document.createElement('button');
+      b.className='zj-chip';
+      b.style.cssText='font-size:12.5px;padding:5px 12px;border-radius:20px;letter-spacing:.04em;';
+      b.textContent=label;
+      b.onclick=function(){ act(label); };
+      box.appendChild(b);
+    });
+  }
+
+  /* ---------------- main refresh ---------------- */
+  var lastSeen='';
+  function refresh(animate){
+    var text=lastCharText();
+    if(!text){ setStatus('尚无天子之言 · 请先开局'); return; }
+    if(text===lastSeen && animate!==true) return;
+    lastSeen=text;
+    var panel=parsePanel(text);
+    if(panel.era) $('zj-era').textContent=panel.era;
+    renderHud(panel);
+    renderNarrative(extractNarrative(text), animate!==false);
+    renderChoices(parseChoices(text));
+    setStatus('');
+    $('zj-feed').scrollTop=0;
+    poke();
+  }
+  function setStatus(s){ $('zj-status').textContent=s||''; }
+
+  function act(text){
+    text=(text||'').trim();
+    if(!text) return;
+    $('zj-input').value='';
+    MOCK.lastUser=text;
+    sendToAI(text);
+  }
+
+  /* ---------------- BGM (WebAudio drone) ---------------- */
+  var ac=null, mg=null;
+  function startBgm(){
+    try{
+      var AC=window.AudioContext||window.webkitAudioContext; ac=new AC();
+      var g=ac.createGain(); g.gain.value=0; g.connect(ac.destination); mg=g;
+      var lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=560; lp.Q.value=.6; lp.connect(g);
+      [[110,'sine',.5],[164.81,'sine',.4],[220,'triangle',.22]].forEach(function(cfg){
+        var o=ac.createOscillator(); o.type=cfg[1]; o.frequency.value=cfg[0]; o.detune.value=(Math.random()*8-4);
+        var og=ac.createGain(); og.gain.value=cfg[2]; o.connect(og); og.connect(lp); o.start();
+      });
+      var lfo=ac.createOscillator(); lfo.frequency.value=.07; var lg=ac.createGain(); lg.gain.value=.028;
+      lfo.connect(lg); lg.connect(g.gain); lfo.start();
+      g.gain.setTargetAtTime(.06, ac.currentTime, 1.6);
+    }catch(e){}
+  }
+  function stopBgm(){ if(ac){ try{ mg.gain.setTargetAtTime(0,ac.currentTime,.4); var a=ac; setTimeout(function(){try{a.close();}catch(e){}},700);}catch(e){} ac=null; } }
+
+  /* ---------------- particles ---------------- */
+  function buildParticles(){
+    var layer=$('zj-particles'); layer.innerHTML='';
+    var era=$('zj-era').textContent||'';
+    var winter=/冬/.test(era), spring=/春/.test(era);
+    for(var i=0;i<14;i++){
+      var d=document.createElement('div');
+      var left=Math.round(Math.random()*100);
+      var dur=(winter?9+Math.random()*8:12+Math.random()*10);
+      var delay=(-Math.random()*dur).toFixed(1);
+      if(winter){
+        var sz=(2+Math.random()*3).toFixed(1);
+        d.style.cssText='position:absolute;top:-2%;left:'+left+'%;width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:radial-gradient(circle,#fff,rgba(255,255,255,0));opacity:'+(.35+Math.random()*.4).toFixed(2)+';filter:blur(.4px);animation:zj-snow '+dur.toFixed(1)+'s linear '+delay+'s infinite;';
+      }else{
+        var s2=(1.6+Math.random()*2.6).toFixed(1);
+        var bg=spring?'radial-gradient(circle,#bfe0c8,rgba(150,200,150,0))':'radial-gradient(circle,#ffcf87,rgba(255,170,80,0))';
+        d.style.cssText='position:absolute;top:'+(20+Math.random()*70).toFixed(0)+'%;left:'+left+'%;width:'+s2+'px;height:'+s2+'px;border-radius:50%;background:'+bg+';opacity:'+(.3+Math.random()*.45).toFixed(2)+';filter:blur(.4px);animation:zj-mote '+dur.toFixed(1)+'s ease-in-out '+delay+'s infinite;';
+      }
+      layer.appendChild(d);
+    }
+  }
+
+  /* ---------------- controls ---------------- */
+  var hudOpen=false;
+  $('zj-hud-toggle').onclick=function(){
+    hudOpen=!hudOpen;
+    $('zj-hud-wrap').style.maxHeight=hudOpen?'340px':'0';
+    this.style.color=hudOpen?'#ffe4a6':'#d9b877';
+    setTimeout(poke,420);
+  };
+  var bgmOn=false;
+  $('zj-bgm-toggle').onclick=function(){
+    bgmOn=!bgmOn;
+    if(bgmOn){ startBgm(); this.textContent='♪'; this.style.color='#f0c877'; }
+    else { stopBgm(); this.textContent='♪̶'; this.style.color='#7a6540'; }
+  };
+  $('zj-send').onclick=function(){ act($('zj-input').value); };
+  $('zj-input').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); act(this.value); } });
+
+  /* ---------------- events ---------------- */
+  if(HOST){
+    try{
+      window.eventOn(window.tavern_events.MESSAGE_RECEIVED, function(){ setTimeout(function(){ refresh(true); buildParticles(); },60); });
+      window.eventOn(window.tavern_events.MESSAGE_UPDATED,  function(){ refresh(true); });
+      window.eventOn(window.tavern_events.CHAT_CHANGED,     function(){ lastSeen=''; refresh(false); buildParticles(); });
+      if(window.tavern_events.GENERATION_STARTED) window.eventOn(window.tavern_events.GENERATION_STARTED, function(){ setStatus('太史筆懸 · 候天意……'); });
+    }catch(e){ console.error(e); }
+  }
+
+  /* ---------------- browser mock (for preview only) ---------------- */
+  var MOCK={
+    lastUser:'',
+    cur:'【开局一·前221年，咸阳宫：皇帝与活玉玺】\n\n六王毕，四海一。\n\n咸阳宫的灯火烧得像永远不会熄，殿柱上蟠着新刻的龙。玉工刚献上那方传国玉玺——和氏璧雕成，八个虫鸟篆字：「受命于天，既寿永昌」。而「受命于天」这门生意真正的持有者，是你。\n\n你——即位第二百九十八年的周天子姬瑶——今日被秦人极尽恭敬又不容拒绝地「请」到了这座大殿上。御座之上，那个刚吞下整个天下的男人俯视着你，已三天没睡好。\n\n「朕只问你一件事。」始皇帝开口，一字一顿，「不死之法。你从实说来，朕以半壁供奉换之。」\n\n殿内落针可闻。所有人都在等你——等神开口。\n<mvu_panel>\n<sec_char>\n◆衣冠|周室玄端男装深衣·束发玉冠·白玉大圭\n◆持物|案上秦人备下的蜜饯与温浆（未动）\n◆御体|永生之躯如常；跪坐已两刻，膝下渐麻\n◆观瞻|旒影灯光之间，秦人不敢与你对视超过三息\n◆神格|88\n◆史笔|廿六年冬，秦王政并六国，召王于咸阳，问长生。殿中鸦雀无声。\n</sec_char>\n<sec_npc>\n◈嬴政|御座俯视，眼底血丝未消|55|杀不得，供不得——朕偏要问出来\n◈李斯|阶下垂手，目光钉着靴尖|20|陛下与神较劲，臣等如履薄冰\n◈阿枣|被拦在殿外，急得转圈|92|王上千万别顺嘴吐槽啊\n</sec_npc>\n<sec_world>\n◇纪年|秦王政廿六年 · 前221年 · 冬\n◇时地|夜 · 咸阳宫章台殿\n◇天气|朔风卷雪，殿外灯火如豆\n◇安稳|30\n◇大势|秦：六国初并，锋镝未销｜楚地人心未服｜齐不战而降\n◇将临|来年——议帝号，称皇帝；废分封，行郡县；收天下兵，铸金人十二\n</sec_world>\n</mvu_panel>\n<sec_choice>\n▶把旒往上一推，静静看着嬴政\n▶「不知道。」——就这三个字\n▶悠悠反问：卿当真想长生？\n</sec_choice>',
+    reply:function(text){
+      var self=this;
+      setTimeout(function(){
+        self.cur='始皇帝的指节在御案上叩了一记，又一记。他没能从你脸上读出任何东西——那张脸太静了，静得像神像。\n\n「……朕，静候周主明示。」他一字一顿，血丝爬满的眼睛没有离开你半寸。李斯的额角沁出薄汗，殿外的朔风卷着雪拍打窗棂。\n\n（你方才：'+text+'）\n<mvu_panel>\n<sec_char>\n◆衣冠|周室玄端男装深衣·束发玉冠·白玉大圭\n◆持物|案上蜜饯温浆（仍未动）\n◆御体|永生之躯如常\n◆观瞻|满殿屏息，无人敢先动\n◆神格|89\n◆史笔|王不答，秦王愈疑。殿中寒。\n</sec_char>\n<sec_npc>\n◈嬴政|眼底血丝更盛，指节抵案|53|这张脸……朕竟读不出半分\n◈李斯|额角沁汗，不敢抬头|23|殿中气氛，臣几乎窒息\n◈阿枣|殿外急得直转|91|王上稳住！\n</sec_npc>\n<sec_world>\n◇纪年|秦王政廿六年 · 前221年 · 冬\n◇时地|夜 · 咸阳宫章台殿\n◇天气|雪势渐大\n◇安稳|28\n◇大势|秦锋未销｜楚人心浮动\n◇将临|嬴政的耐心正在见底——他会换一种方式\n</sec_world>\n</mvu_panel>\n<sec_choice>\n▶继续沉默，看他能撑多久\n▶「长生非药，乃念。」\n▶忽然笑了：「你怕死。」\n</sec_choice>';
+        refresh(true); buildParticles();
+      }, 600);
+    }
+  };
+
+  /* ---------------- 择局 chooser ---------------- */
+  function pushCharMessage(text){
+    try{
+      var ctx=window.SillyTavern.getContext();
+      var msg={name:ctx.name2||'旁白',is_user:false,is_system:false,send_date:Date.now(),mes:text,extra:{},swipe_id:0,swipes:[text]};
+      ctx.chat.push(msg);
+      ctx.addOneMessage(msg);
+      if(typeof ctx.saveChat==='function') ctx.saveChat();
+      return true;
+    }catch(e){ console.error('pushCharMessage',e); return false; }
+  }
+  function buildChooser(){
+    var wrap=$('zj-chooser-list'); if(!wrap) return;
+    var ops=window.OPENINGS||[];
+    if(!ops.length){ wrap.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#9c7c46;font-size:13px;padding:30px;">未载入开局数据。</div>'; return; }
+    wrap.innerHTML=ops.map(function(op){
+      var parts=String(op.full||'').split('：');
+      var punch=parts.length>1?parts.slice(1).join('：'):(op.full||'');
+      var kick=parts.length>1?parts[0]:'';
+      return '<button class="zj-op" data-id="'+op.id+'" style="text-align:left;position:relative;padding:14px 15px 13px 54px;background:linear-gradient(160deg,rgba(42,30,20,.92),rgba(20,14,10,.97));border:2px solid transparent;border-image:linear-gradient(150deg,#caa25a,#5a3f18) 1;cursor:pointer;color:#eaddc2;font-family:inherit;transition:all .16s;">'
+        +'<span style="position:absolute;left:12px;top:14px;width:30px;height:30px;border-radius:5px;background:radial-gradient(circle at 40% 35%,#b23a2b,#7a1d13);color:#f4dca0;font-family:\'Ma Shan Zheng\',serif;font-size:17px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px rgba(240,190,110,.5);">'+op.id+'</span>'
+        +(kick?'<div style="font-size:10px;color:#9c7c46;letter-spacing:.06em;margin-bottom:3px;">'+esc(kick)+'</div>':'')
+        +'<div class="zj-op-punch" style="font-size:14.5px;font-weight:700;color:#f0dcae;line-height:1.35;transition:color .16s;">'+esc(punch)+'</div>'
+        +'<div style="font-size:10.5px;color:#b48f52;letter-spacing:.06em;margin:5px 0 6px;">'+esc(op.era||'')+'</div>'
+        +'<div style="font-size:12px;color:#c6b58f;font-style:italic;line-height:1.5;">'+esc(op.teaser||'')+'</div>'
+        +'<div style="display:flex;gap:14px;margin-top:9px;font-size:10.5px;letter-spacing:.08em;">'
+          +'<span style="color:#c0402e;">神格 '+(op.shen!=null?op.shen:'—')+'</span>'
+          +'<span style="color:#79a88f;">安稳 '+(op.an!=null?op.an:'—')+'</span></div>'
+      +'</button>';
+    }).join('');
+    wrap.querySelectorAll('.zj-op').forEach(function(b){
+      b.onclick=function(){
+        var id=b.getAttribute('data-id');
+        var op=ops.filter(function(o){return String(o.id)===String(id);})[0];
+        pickOpening(op);
+      };
+    });
+  }
+  function openChooser(){
+    var c=$('zj-chooser'); if(!c) return;
+    var tb=$('zj-topbar'), mn=$('zj-main');
+    if(tb) tb.style.display='none';
+    if(mn) mn.style.display='none';
+    c.style.display='flex';
+    buildChooser();
+    poke();
+  }
+  function closeChooser(){
+    var c=$('zj-chooser'); if(c) c.style.display='none';
+    var tb=$('zj-topbar'), mn=$('zj-main');
+    if(tb) tb.style.display='flex';
+    if(mn) mn.style.display='flex';
+  }
+  function pickOpening(op){
+    if(!op) return;
+    closeChooser();
+    if(op.era) $('zj-era').textContent=op.era;
+    var full=(op.narrative||'')+'\n'+(op.panel||'');
+    lastSeen='';
+    MOCK.lastUser='';
+    if(HOST){
+      pushCharMessage(full);
+      setTimeout(function(){ refresh(true); buildParticles(); },60);
+    }else{
+      MOCK.cur=full;
+      refresh(true); buildParticles();
+    }
+  }
+  $('zj-choose-btn').onclick=openChooser;
+
+  /* ---------------- boot ---------------- */
+  if(HOST){
+    if(lastCharText()){ refresh(false); }
+    else { openChooser(); }
+  }else{
+    openChooser();
+    setStatus('· 预览模式（未检测到酒馆助手，使用内置示例）·');
+  }
+  buildParticles();
+  setInterval(poke,700);
+})();
+</script>
+</body>
+</html>

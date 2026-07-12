@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/core/vendor/three/examples/jsm/renderers/webgl/nodes/materials/manager/88cf8466815b.html"
+      "destination": "/core/vendor/three/build/chunks/9d717bc0/658d009400d1.html"
     },
     {
       "source": "/deploy",
