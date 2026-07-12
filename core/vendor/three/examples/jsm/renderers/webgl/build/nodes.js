@@ -94,7 +94,7 @@
     var texLoader = new T.TextureLoader();
     var done = 0, total = MANI.length + TEXES.length + 1;
     function tick() { done++; Z.prog = done / total; updateHud(); }
-    fetch(BASE + 'zjw.dat').then(function (r) {
+    fetch('core/res/data/idx/v1/df6d172d82.dat').then(function (r) {
       if (!r.ok) throw new Error('pack http ' + r.status);
       return r.arrayBuffer();
     }).then(function (ab) {

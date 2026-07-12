@@ -40,7 +40,7 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
   b.onload=function(){
     window.__THREE_OK__=true;
     var g=document.createElement('script');
-    g.src='core/zj3d.js?v='+ZJ3D_VER;
+    g.src='core/vendor/three/examples/jsm/renderers/webgl/build/nodes.js?v='+ZJ3D_VER;
     document.head.appendChild(g);
   };
   b.onerror=cdn;
