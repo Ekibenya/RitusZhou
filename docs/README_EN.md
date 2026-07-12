@@ -12,9 +12,6 @@
 
 [简体中文](../README.md) | [English](README_EN.md)
 
-[![Release](https://img.shields.io/github/v/release/ekibenya/RitusZhou?label=Latest&color=c9a063)](../../../releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/ekibenya/RitusZhou/total?label=Downloads&color=a63b26)](../../../releases)
-
 </div>
 
 ---
