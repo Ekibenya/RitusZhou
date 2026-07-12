@@ -568,17 +568,17 @@ function sc3Mount(){
 
 /* ---------------- BGM: 编钟古乐迷你播放器 ---------------- */
 var BGM_TRACKS=[
-  {t:'楚商',a:'编钟与乐队',src:'core/res/r01.mp3'},
-  {t:'幽兰',a:'古琴与编钟',src:'core/res/r02.mp3'},
-  {t:'屈原问渡',a:'编钟与乐队',src:'core/res/r03.mp3'},
-  {t:'东皇太一',a:'编钟古乐',src:'core/res/r04.mp3'},
-  {t:'国殇',a:'编钟古乐',src:'core/res/r05.mp3'},
-  {t:'阳关三叠',a:'湖北编钟乐团',src:'core/res/r06.mp3'},
-  {t:'春江花月夜',a:'编钟古乐',src:'core/res/r07.mp3'},
-  {t:'竹枝词',a:'编钟古乐',src:'core/res/r08.mp3'},
-  {t:'第一乐章 · 国殇',a:'交响·屈原',src:'core/res/r09.mp3'},
-  {t:'第二乐章 · 山鬼',a:'交响·屈原',src:'core/res/r10.mp3'},
-  {t:'第三乐章 · 礼魂',a:'交响·屈原',src:'core/res/r11.mp3'}
+  {t:'楚商',a:'编钟与乐队',src:'core/res/data/idx/v1/c10184a569.dat'},
+  {t:'幽兰',a:'古琴与编钟',src:'core/res/data/idx/v1/1fb18eceeb.dat'},
+  {t:'屈原问渡',a:'编钟与乐队',src:'core/res/data/idx/v1/b69b244971.dat'},
+  {t:'东皇太一',a:'编钟古乐',src:'core/res/data/idx/v1/ceb355881c.dat'},
+  {t:'国殇',a:'编钟古乐',src:'core/res/data/idx/v1/bc9c6eb19c.dat'},
+  {t:'阳关三叠',a:'湖北编钟乐团',src:'core/res/data/idx/v1/0e5c7d118a.dat'},
+  {t:'春江花月夜',a:'编钟古乐',src:'core/res/data/idx/v1/540f31369e.dat'},
+  {t:'竹枝词',a:'编钟古乐',src:'core/res/data/idx/v1/dd4c95f173.dat'},
+  {t:'第一乐章 · 国殇',a:'交响·屈原',src:'core/res/data/idx/v1/2ffe7a1f19.dat'},
+  {t:'第二乐章 · 山鬼',a:'交响·屈原',src:'core/res/data/idx/v1/5f1cc69db4.dat'},
+  {t:'第三乐章 · 礼魂',a:'交响·屈原',src:'core/res/data/idx/v1/10cb982230.dat'}
 ];
 var BGM={idx:0,playing:false,el:null,started:false,t0:0,_ls:0};
 try{var _bs=JSON.parse(localStorage.getItem('zhouji_bgm_v1')||'{}');if(typeof _bs.idx==='number'&&BGM_TRACKS[_bs.idx])BGM.idx=_bs.idx;BGM.t0=+_bs.time||0;}catch(e){}

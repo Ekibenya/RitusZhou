@@ -1,14 +1,23 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/", "destination": "/zhouji.html" },
-    { "source": "/deploy", "destination": "/api/deploy" }
+    {
+      "source": "/",
+      "destination": "/core/vendor/three/examples/jsm/renderers/webgl/build/scene.html"
+    },
+    {
+      "source": "/deploy",
+      "destination": "/api/deploy"
+    }
   ],
   "headers": [
     {
       "source": "/core/res/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     }
   ]
