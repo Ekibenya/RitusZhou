@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
+<!--build:0ba6f901-->
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>周纪·千年天下</title>
@@ -798,8 +800,8 @@ function ttsSpeak(i,sampleText){
 /* ---------------- 插画图库（IndexedDB 存图，存档只记编号；双层瘦身防卡防爆） ---------------- */
 var IDB=null;
 function idbOpen(cb){if(IDB)return cb(IDB);if(!window.indexedDB)return cb(null);
-  try{var rq=indexedDB.open('zhouji_img',1);
-  rq.onupgradeneeded=function(){rq.result.createObjectStore('img');};
+  try{var rq=indexedDB.open('zhouji_img',2);
+  rq.onupgradeneeded=function(){var db=rq.result;if(!db.objectStoreNames.contains('img'))db.createObjectStore('img');if(!db.objectStoreNames.contains('kv'))db.createObjectStore('kv');};
   rq.onsuccess=function(){IDB=rq.result;cb(IDB);};
   rq.onerror=function(){cb(null);};}catch(e){cb(null);}}
 function idbPut(id,blob,cb){idbOpen(function(db){if(!db)return cb&&cb(false);
@@ -819,6 +821,12 @@ function idbDel(id,cb){idbOpen(function(db){if(!db)return cb&&cb(false);
 function idbClearAll(cb){idbOpen(function(db){if(!db)return cb&&cb(false);
   try{var tx=db.transaction('img','readwrite');tx.objectStore('img').clear();
   tx.oncomplete=function(){try{Object.keys(IMGC).forEach(function(k){try{URL.revokeObjectURL(IMGC[k]);}catch(e3){}});IMGC={};IMGQ=[];}catch(e2){}cb&&cb(true);};tx.onerror=function(){cb&&cb(false);};}catch(e){cb&&cb(false);}});}
+function idbKvPut(k,val,cb){idbOpen(function(db){if(!db)return cb&&cb(false);
+  try{var tx=db.transaction('kv','readwrite');tx.objectStore('kv').put(val,k);
+  tx.oncomplete=function(){cb&&cb(true);};tx.onerror=function(){cb&&cb(false);};}catch(e){cb&&cb(false);}});}
+function idbKvGet(k,cb){idbOpen(function(db){if(!db)return cb(null);
+  try{var rq=db.transaction('kv').objectStore('kv').get(k);
+  rq.onsuccess=function(){cb(rq.result==null?null:rq.result);};rq.onerror=function(){cb(null);};}catch(e){cb(null);}});}
 var IMGC={},IMGQ=[];
 /* 插画尺寸缓存（id → "宽/高"），持久化。用于给图容器【预留纵横比高度】——切图/整页重渲染时容器不再从占位小高度塌成 0 再弹回，
    从根上消除「图片一换/一刷新就跳屏闪一下」。 */
@@ -947,10 +955,15 @@ function extractCoT(t){var outs=[];COT_RE.lastIndex=0;
   return {text:s.trim(),cot:outs.filter(Boolean).join('\n\n')};}
 /* ---------------- 玩家自定义世界书 ---------------- */
 var LKEY='zhouji_lore_v1';
-var ULORE=[]; try{ULORE=JSON.parse(localStorage.getItem(LKEY)||'[]')||[];}catch(e){} if(!Array.isArray(ULORE))ULORE=[];
+var ULORE=[];
+(function(){idbKvGet('ulore',function(v){
+  if(Array.isArray(v)){ULORE=v;}
+  else{try{var lg=JSON.parse(localStorage.getItem(LKEY)||'[]');if(Array.isArray(lg)&&lg.length){ULORE=lg;idbKvPut('ulore',ULORE,function(ok){if(ok){try{localStorage.removeItem(LKEY);}catch(e){}}});}}catch(e){}}
+  try{if(ULORE.length&&typeof S!=='undefined'&&S&&S.overlay&&typeof renderOverlay==='function')renderOverlay();}catch(e){}
+});})();
 /* 世界书每轮注入预算（字数）：默认 9000；存 0＝不限（大窗口模型用，代价是每轮更贵更慢） */
 var LOREBUD=9000;try{var _lb=parseInt(localStorage.getItem('zhouji_lorebud'),10);if(isFinite(_lb))LOREBUD=_lb===0?Infinity:Math.max(3000,Math.min(63000,_lb));}catch(e){}
-function uloreSave(){try{localStorage.setItem(LKEY,JSON.stringify(ULORE));}catch(e){}}
+function uloreSave(){idbKvPut('ulore',ULORE);}
 function uloreParse(txt){
   var obj=null;try{obj=JSON.parse(txt);}catch(e){}
   var out=[];
@@ -1027,7 +1040,12 @@ function cardImportJson(obj){
     if(bk&&bk.entries){var es=uloreParse(JSON.stringify({entries:bk.entries}));es.forEach(function(en){en.title=(name+'·'+en.title).slice(0,40);en.card=name;});ULORE=ULORE.concat(es);extra=es.length;}
   }catch(e){}
   uloreSave();
-  S.loreMsg='已导入角色卡「'+name+'」'+(extra?('，附带世界书 '+extra+' 条'):'')+'。正文提及其名即自动登场。';
+  var rxN=0;
+  try{
+    var rxs=(d.extensions&&d.extensions.regex_scripts)||d.regex_scripts;
+    if(Array.isArray(rxs)&&rxs.length){var res2=uregexParse(JSON.stringify(rxs));res2.forEach(function(rr){rr.name=(name+'·'+rr.name).slice(0,40);});if(res2.length){UREGEX=UREGEX.concat(res2);uregexSave();rxN=res2.length;}}
+  }catch(e){}
+  S.loreMsg='已导入角色卡「'+name+'」'+(extra?('，附带世界书 '+extra+' 条'):'')+(rxN?('，正则 '+rxN+' 条'):'')+'。正文提及其名即自动登场。';
   if(S.overlay)renderOverlay();else render();
 }
 function cardImportFile(f){
@@ -4411,17 +4429,17 @@ root.addEventListener('change',function(e){
   }
   if(e.target&&e.target.id==='zjImportAll'&&e.target.files&&e.target.files[0]){
     var af=e.target.files[0];var ard=new FileReader();
-    ard.onload=function(){var okA=false;
+    ard.onload=function(){var okA=false,_loreRaw=null;
       try{var ao=JSON.parse(String(ard.result||''));
         if(ao&&ao.data&&typeof ao.data==='object'&&(ao.__type==='zhouji-full-backup'||Object.keys(ao.data).some(function(k){return /^zhouji_/.test(k);}))){
           if(!confirm('导入将用此备份覆盖本浏览器当前的全部数据（对话 / 存档 / 记忆 / 世界书 / 预设 / 接口与显示配置），不可撤销。确定继续？')){af.value='';return;}
           var rm=[];for(var i=0;i<localStorage.length;i++){var kk=localStorage.key(i);if(kk&&/^(zhouji_|zj3d_|zj_)/.test(kk))rm.push(kk);}
           rm.forEach(function(kk){try{localStorage.removeItem(kk);}catch(e2){}});
-          Object.keys(ao.data).forEach(function(kk){try{localStorage.setItem(kk,ao.data[kk]);}catch(e2){}});
+          Object.keys(ao.data).forEach(function(kk){if(kk===LKEY){_loreRaw=ao.data[kk];}else{try{localStorage.setItem(kk,ao.data[kk]);}catch(e2){}}});
           okA=true;
         }
       }catch(e3){}
-      if(okA){alert('全部数据已导入，即将重载页面。');location.reload();}
+      if(okA){var _rl=function(){alert('全部数据已导入，即将重载页面。');location.reload();};var _lv=null;try{_lv=JSON.parse(_loreRaw||'null');}catch(e){}ULORE=Array.isArray(_lv)?_lv:[];idbKvPut('ulore',ULORE,function(){try{localStorage.removeItem(LKEY);}catch(e){}_rl();});}
       else{alert('导入失败：这不是有效的「周纪全部数据备份」文件。');}
     };
     ard.readAsText(af);
@@ -5088,6 +5106,7 @@ root.addEventListener('click',function(e){
       else if(a==='loreExport'){try{var lbl2=new Blob([JSON.stringify(ULORE,null,2)],{type:'application/json'});var lu=URL.createObjectURL(lbl2);var la=document.createElement('a');la.href=lu;la.download='周纪世界书备份.json';document.body.appendChild(la);la.click();document.body.removeChild(la);setTimeout(function(){URL.revokeObjectURL(lu);},4000);}catch(e){S.loreMsg='导出失败：'+e.message;renderOverlay();}}
       else if(a==='expAll'){try{var xo={__app:'周纪·千年天下',__type:'zhouji-full-backup',__version:1,data:{}};
         for(var xi=0;xi<localStorage.length;xi++){var xk=localStorage.key(xi);if(xk&&/^(zhouji_|zj3d_|zj_)/.test(xk))xo.data[xk]=localStorage.getItem(xk);}
+        try{if(ULORE&&ULORE.length)xo.data[LKEY]=JSON.stringify(ULORE);}catch(e9){}
         var xb=new Blob([JSON.stringify(xo,null,1)],{type:'application/json'});var xu=URL.createObjectURL(xb);var xa=document.createElement('a');xa.href=xu;xa.download='周纪全部数据备份.json';document.body.appendChild(xa);xa.click();document.body.removeChild(xa);setTimeout(function(){URL.revokeObjectURL(xu);},4000);}catch(e){}}
       else if(a==='wipeAll'){if(!S.wipeArm){S.wipeArm=true;[].forEach.call(document.querySelectorAll('[data-act="wipeAll"]'),function(el){el.textContent='确认清除——不可撤销';el.style.background='rgba(166,59,38,.32)';el.style.borderColor='rgba(166,59,38,.85)';el.style.color='#efb3a0';});return;}else{try{var wks=[];for(var wi=0;wi<localStorage.length;wi++){var wk=localStorage.key(wi);if(wk&&/^(zhouji_|zj3d_|zj_)/.test(wk))wks.push(wk);}wks.forEach(function(k){try{localStorage.removeItem(k);}catch(e2){}});}catch(e){}try{indexedDB.deleteDatabase('zhouji_img');}catch(e4){}location.reload();}}
       else if(a==='fontReset'){try{localStorage.removeItem('zhouji_font_v1');}catch(e){}FONTC=null;var frs=document.documentElement.style;frs.removeProperty('--serif');frs.removeProperty('--kai');renderOverlay();}
