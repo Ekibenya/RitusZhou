@@ -2,7 +2,7 @@
    策略：网络优先（拿到最新版就用最新版，用户更新代码无需重新添加桌面图标），
    离线时回退到缓存。只处理【同源 GET】——AI 接口、NovelAI 中转、生图等跨域请求
    一律不拦截、原样直连，绝不影响生成管线。 */
-const CACHE = 'zhouji-v1';
+const CACHE = 'zhouji-v2';
 const SHELL = ['/', '/zhouji.html'];
 
 self.addEventListener('install', function (e) {
