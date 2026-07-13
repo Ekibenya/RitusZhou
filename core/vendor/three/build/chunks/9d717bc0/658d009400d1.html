@@ -3493,8 +3493,10 @@ function storeMeter(){
   return '<div style="margin-top:14px;padding:13px 16px;border:1px solid rgba(42,69,104,.2);border-radius:12px;background:rgba(255,255,255,.02)"><div style="font-size:12.5px;color:var(--gold2);letter-spacing:.12em">本机存储用量</div>'+lsRow+idbRow+'</div>';
 }
 function backupPane(){
-  return '<div class="grow" style="overflow-y:auto;padding:24px 28px"><div style="max-width:640px">'
-   +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin-bottom:8px">数据备份</div>'
+  return '<div class="grow" style="overflow-y:auto;padding:24px 28px"><div style="max-width:640px">'+backupBody()+'</div></div>';
+}
+function backupBody(){
+  return '<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 8px">数据备份</div>'
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键导出此浏览器里的全部游戏数据为一个 JSON 文件：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体与接口配置、三维营造记录。换设备或清数据前先备份。</div>'
    +storeMeter()
    +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px">'
@@ -3509,8 +3511,7 @@ function backupPane(){
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键抹掉此浏览器里的全部游戏数据：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体、AI 接口配置、三维天下营造记录与全部缓存。不可恢复，清除后页面自动重载如初见。</div>'
    +(S.wipeArm
      ?'<button data-act="wipeAll" class="btn" style="margin-top:12px;cursor:pointer;font-size:14px;letter-spacing:.18em;padding:10px 26px;border-radius:10px;background:rgba(166,59,38,.32);border:1px solid rgba(166,59,38,.85);color:#efb3a0">确认清除——此操作不可撤销</button>'
-     :'<button data-act="wipeAll" class="btn" style="margin-top:12px;cursor:pointer;font-size:14px;letter-spacing:.18em;padding:10px 26px;border-radius:10px;background:transparent;border:1px solid rgba(166,59,38,.45);color:#b06a55">一键清除所有数据…</button>')
-   +'</div></div>';
+     :'<button data-act="wipeAll" class="btn" style="margin-top:12px;cursor:pointer;font-size:14px;letter-spacing:.18em;padding:10px 26px;border-radius:10px;background:transparent;border:1px solid rgba(166,59,38,.45);color:#b06a55">一键清除所有数据…</button>');
 }
 function fontPane(){
   var pct=Math.round(FS*100);
@@ -3553,6 +3554,7 @@ function fontPane(){
    +[['#9fc0d8','青蓝'],['#a9cbb8','竹青'],['#e0be82','鎏金'],['#d8a8c8','藕荷'],['#e8e6da','月白'],['off','不着色']].map(function(sw){var on=DLGC===sw[0];return '<div class="btn" data-dlgc="'+sw[0]+'" style="cursor:pointer;display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:99px;border:1px solid '+(on?'rgba(224,190,130,.7)':'rgba(201,160,99,.25)')+';color:'+(on?'var(--gold2)':'var(--mut2)')+';font-size:12.5px">'+(sw[0]!=='off'?'<span style="width:12px;height:12px;border-radius:50%;background:'+sw[0]+';display:inline-block"></span>':'')+sw[1]+'</div>';}).join('')
    +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mut2);cursor:pointer">自选<input id="zjDlgPick" type="color" value="'+(DLGC==='off'?'#e0be82':DLGC)+'" style="width:36px;height:27px;border:none;background:transparent;padding:0;cursor:pointer"></label>'
    +'</div>'
+   +backupBody()
    +'</div></div>';
 }
 function lorePane(){
