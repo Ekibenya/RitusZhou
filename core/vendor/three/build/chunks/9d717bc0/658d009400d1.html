@@ -3477,6 +3477,21 @@ function bookHtml(cb){
     });
   });
 }
+var STOREST=null;
+function fmtB(b){b=+b||0;return b<1024?b+' B':b<1048576?(b/1024).toFixed(0)+' KB':b<1073741824?(b/1048576).toFixed(1)+' MB':(b/1073741824).toFixed(2)+' GB';}
+function lsBytes(){var n=0;try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i)||'';n+=k.length+(localStorage.getItem(k)||'').length;}}catch(e){}return n*2;}
+function storeMeter(){
+  var lsu=lsBytes(),lsMax=5242880,lsp=Math.min(100,Math.round(lsu/lsMax*100));
+  if(STOREST===null&&navigator.storage&&navigator.storage.estimate){STOREST={f:1};navigator.storage.estimate().then(function(e){STOREST={usage:e.usage||0,quota:e.quota||0};if(S.overlay)renderOverlay();}).catch(function(){STOREST={err:1};});}
+  function bar(pct,warn){return '<div style="height:6px;border-radius:4px;background:rgba(42,69,104,.14);margin-top:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(warn?'linear-gradient(90deg,#c8863a,#a02a40)':'linear-gradient(90deg,#4a72a2,#274468)')+';border-radius:4px"></div></div>';}
+  function row(label,used,total,pct,note,warn){return '<div style="margin-top:11px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--mut2)"><span>'+label+'</span><span>'+used+' / '+total+'</span></div>'+bar(pct,warn)+(note?'<div style="font-size:10.5px;color:var(--mut);margin-top:3px">'+note+'</div>':'')+'</div>';}
+  var lsRow=row('文本 · localStorage',fmtB(lsu),'≈ 5 MB',lsp,'存档、太史长卷、预设、正则、设置与接口配置',lsp>=85);
+  var idbRow;
+  if(STOREST&&STOREST.quota)idbRow=row('图片·世界书 · IndexedDB',fmtB(STOREST.usage),fmtB(STOREST.quota),Math.min(100,Math.round(STOREST.usage/(STOREST.quota||1)*100)),'生成图片与世界书数据，上限随本机硬盘（GB 级）',false);
+  else if(STOREST&&STOREST.err)idbRow='<div style="margin-top:11px;font-size:12px;color:var(--mut)">图片·世界书 · IndexedDB：此浏览器不支持用量统计</div>';
+  else idbRow='<div style="margin-top:11px;font-size:12px;color:var(--mut)">图片·世界书 · IndexedDB：统计中…</div>';
+  return '<div style="margin-top:14px;padding:13px 16px;border:1px solid rgba(42,69,104,.2);border-radius:12px;background:rgba(255,255,255,.02)"><div style="font-size:12.5px;color:var(--gold2);letter-spacing:.12em">本机存储用量</div>'+lsRow+idbRow+'</div>';
+}
 function fontPane(){
   var pct=Math.round(FS*100);
   var fname=FONTC&&FONTC.name?FONTC.name:'';
@@ -3520,6 +3535,7 @@ function fontPane(){
    +'</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:34px 0 10px">数据备份</div>'
    +'<div style="font-size:12.5px;color:var(--mut);line-height:1.9">一键导出此浏览器里的全部游戏数据为一个 JSON 文件：对话与存档、太史长卷记忆、自定义预设与世界书、字号字体与接口配置、三维营造记录。换设备或清数据前先备份。</div>'
+   +storeMeter()
    +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px">'
    +'<button data-act="expChat" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px">导出聊天记录</button>'
    +'<button data-act="bookExport" class="obtn btn" style="font-size:12.5px;letter-spacing:.1em;padding:8px 16px;color:var(--gold2)">成书导出</button>'
