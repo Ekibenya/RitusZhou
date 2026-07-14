@@ -2334,6 +2334,7 @@ function startSharedOpening(){
   S.screen='game';S.cmdHint=null;render();savePref();
 }
 function selectView(){
+  var mob=isMobile();
   var NUM=['一','二','三','四','五','六','七','八','九','十','十一','十二','十三','十四','十五','十六','十七','十八'];
   function yearOf(era){var m=/前(\d+)年/.exec(era);if(m)return -parseInt(m[1],10);var m2=/(\d+)年/.exec(era);return m2?parseInt(m2[1],10):0;}
   var cards=G.openings.map(function(o){
@@ -2343,7 +2344,7 @@ function selectView(){
   }).sort(function(a,b){return a._y-b._y;});
   cards.forEach(function(c,i){c.num=NUM[i]||String(i+1);}); // 按年代排序后重新编号，一二三…顺次不乱
   var grid=cards.map(function(c){
-    return '<div class="btn glass glassHover" data-start="'+c.o.id+'" style="cursor:pointer;padding:18px 20px 14px;display:flex;flex-direction:column;gap:11px">'
+    return '<div class="btn glass glassHover" data-start="'+c.o.id+'" style="cursor:pointer;padding:18px 20px 14px;display:flex;flex-direction:column;gap:11px'+(mob?';-webkit-backdrop-filter:none;backdrop-filter:none':'')+'">'
       +'<div style="display:flex;align-items:center;gap:11px">'
       +'<div style="flex:none;width:34px;height:34px;background:var(--red);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--kai);font-size:'+(c.num.length>1?'12.5px':'19px')+';letter-spacing:0;white-space:nowrap;color:#f2e0c0;box-shadow:inset 0 0 0 2px rgba(240,220,180,.22)">'+c.num+'</div>'
       +'<div style="flex:1;min-width:0"><div style="font-size:12px;letter-spacing:.15em;color:var(--gold)">'+esc(c.year)+'</div><div style="font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.place)+'</div></div>'
@@ -2369,8 +2370,8 @@ function selectView(){
     +'<button data-act="opImport" class="obtn btn" style="flex:none;font-size:13px;letter-spacing:.15em;padding:9px 18px">导 入</button>'
     +(S.opMsg?'<div style="width:100%;font-size:12px;color:var(--gold3)">'+esc(S.opMsg)+'</div>':'')+'</div>';
   return '<div class="col">'
-    +'<div class="grow" style="overflow-y:auto">'
-    +'<div style="position:sticky;top:0;z-index:6;pointer-events:none;margin-bottom:-26px;padding-bottom:26px">'+'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,.95) 0%,rgba(12,8,5,.76) 56%,rgba(12,8,5,0) 100%);-webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%);-webkit-mask-image:linear-gradient(180deg,#000 54%,transparent);mask-image:linear-gradient(180deg,#000 54%,transparent)"></div>'+'<div style="position:relative;pointer-events:auto;display:flex;align-items:baseline;gap:16px;padding:18px 28px 10px;flex-wrap:wrap">'
+    +'<div class="grow" style="overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain">'
+    +'<div style="position:sticky;top:0;z-index:6;pointer-events:none;margin-bottom:-26px;padding-bottom:26px">'+'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,'+(mob?'.99':'.95')+') 0%,rgba(12,8,5,'+(mob?'.93':'.76')+') 56%,rgba(12,8,5,0) 100%);'+(mob?'':'-webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%);')+'-webkit-mask-image:linear-gradient(180deg,#000 54%,transparent);mask-image:linear-gradient(180deg,#000 54%,transparent)"></div>'+'<div style="position:relative;pointer-events:auto;display:flex;align-items:baseline;gap:16px;padding:18px 28px 10px;flex-wrap:wrap">'
     +'<button data-act="totitle" class="obtn btn" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">〈 题名</button>'
     +'<div class="kai" style="font-size:26px;letter-spacing:.14em;color:var(--gold2)">择一开局 · 千年之间</div></div></div>'
     +'<div style="padding:22px 28px 60px"><div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:16px">'+zero+mine+imp+grid+'</div></div>'
