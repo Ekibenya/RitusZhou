@@ -2374,7 +2374,7 @@ function selectView(){
     +'<div style="position:sticky;top:0;z-index:6;pointer-events:none;margin-bottom:-26px;padding-bottom:26px">'+'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,8,5,'+(mob?'.99':'.95')+') 0%,rgba(12,8,5,'+(mob?'.93':'.76')+') 56%,rgba(12,8,5,0) 100%);'+(mob?'':'-webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%);')+'-webkit-mask-image:linear-gradient(180deg,#000 54%,transparent);mask-image:linear-gradient(180deg,#000 54%,transparent)"></div>'+'<div style="position:relative;pointer-events:auto;display:flex;align-items:baseline;gap:16px;padding:18px 28px 10px;flex-wrap:wrap">'
     +'<button data-act="totitle" class="obtn btn" style="font-size:12px;letter-spacing:.2em;padding:6px 14px">〈 题名</button>'
     +'<div class="kai" style="font-size:26px;letter-spacing:.14em;color:var(--gold2)">择一开局 · 千年之间</div></div></div>'
-    +'<div style="padding:22px 28px 60px"><div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:16px">'+zero+mine+imp+grid+'</div></div>'
+    +'<div style="padding:22px 28px 60px"><div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:16px">'+zero+imp+grid+'</div></div>'
     +'</div></div>';
 }
 
@@ -3420,7 +3420,7 @@ function memScrollBody(){
 }
 var FS=1;try{FS=Math.max(.85,Math.min(1.6,parseFloat(localStorage.getItem('zhouji_fs'))||1));}catch(e){}
 var BGBLUR=9;try{var _bb=parseInt(localStorage.getItem('zhouji_bgblur'),10);if(isFinite(_bb))BGBLUR=Math.max(0,Math.min(24,_bb));}catch(e){}
-function applyBgBlur(){try{if(document.documentElement){var r=document.documentElement.style;r.setProperty('--zjblur',BGBLUR+'px');r.setProperty('--zjbga',String(Math.min(.9,BGBLUR*.1).toFixed(2)));}}catch(e){}}
+function applyBgBlur(){try{if(document.documentElement){var r=document.documentElement.style;r.setProperty('--zjblur',BGBLUR+'px');r.setProperty('--zjbga',String(Math.min(1,BGBLUR*.1).toFixed(2)));}}catch(e){}}
 /* 拉条同时驱动模糊强度与底色浓度：0=完全透明（无模糊无底色），9=默认观感(.9)，再往上只加模糊 */
 applyBgBlur();
 var FONTC=null;try{FONTC=JSON.parse(localStorage.getItem('zhouji_font_v1')||'null');}catch(e){}
@@ -3526,7 +3526,7 @@ function fontPane(){
    +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">拖动即时生效，作用于正文、太史简与典的正文。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:32px 0 14px">背景模糊</div>'
    +'<div style="display:flex;align-items:center;gap:14px"><input id="zjBlurRange" type="range" min="0" max="24" step="1" value="'+BGBLUR+'" style="flex:1;accent-color:#c9a063;border:none;background:transparent;padding:0"><div id="zjBlurVal" style="width:56px;text-align:right;font-size:15px;color:var(--gold3)">'+(BGBLUR===0?'透明':BGBLUR+'px')+'</div></div>'
-   +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">拖动即时生效：同时调节正文与太史简的背景模糊与底色浓度——拉到最左＝完全透明（无模糊无底色，直接看穿到后面的水墨/三维），默认 9px 为初见效果；开低配模式时模糊被关闭。</div>'
+   +'<div style="font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.8">拖动即时生效：同时调节正文与太史简的背景模糊与底色浓度——拉到最左＝完全透明（无模糊无底色，直接看穿到后面的水墨/三维），拉到最右＝完全不透明（纯色纸底、彻底看不穿）；开低配模式时模糊被关闭。</div>'
    +'<div class="kai" style="font-size:19px;color:var(--gold2);letter-spacing:.15em;margin:32px 0 14px">字体</div>'
    +'<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">'
    +'<label class="btn glass" style="padding:10px 24px;cursor:pointer;color:var(--gold2);font-size:14px;letter-spacing:.1em">选择字体文件<input id="zjFontFile" type="file" accept=".ttf,.otf,.woff,.woff2" style="display:none"></label>'
