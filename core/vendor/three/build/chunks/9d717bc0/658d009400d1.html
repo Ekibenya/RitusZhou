@@ -1625,21 +1625,23 @@ function readApiForm(){
   var gs=document.getElementById('zjGenStream');if(gs)API.gen.stream=gs.checked?'':'0';
   var ga=document.getElementById('zjGenAutofix');if(ga)API.gen.autofix=ga.checked?'':'0';
 }
+/* 手机上接口面板很长：提示信息离「拉取模型」隔着数屏，报错若不滚入视野就像没反应 */
+function apiMsgShow(){var el=document.getElementById('zjApiMsg');if(!el||!el.scrollIntoView)return;try{el.scrollIntoView({block:'nearest'});}catch(e){el.scrollIntoView(false);}}
 function apiTestRun(){
   readApiForm();saveApi();var up=function(){if(S.overlay)renderOverlay();else render();};
-  if(!apiReady()){S.apiMsg={t:'请先填写 API 密钥与模型名。',c:'var(--red2)'};up();return;}
-  S.apiMsg={t:'正在试通接口……',c:'var(--mut2)'};up();
+  if(!apiReady()){S.apiMsg={t:'请先填写 API 密钥与模型名。',c:'var(--red2)'};up();apiMsgShow();return;}
+  S.apiMsg={t:'正在试通接口……',c:'var(--mut2)'};up();apiMsgShow();
   callCustomAI('你是接口连通性测试助手，只回复一句话。',[{role:'user',content:'请回复：链已通。'}])
-    .then(function(tx){S.apiMsg={t:'✓ 接口畅通，模型回复：'+String(tx).trim().slice(0,80),c:'var(--grn2)'};up();})
-    .catch(function(e2){S.apiMsg={t:'✕ '+(e2&&e2.message||e2),c:'var(--red2)'};up();});
+    .then(function(tx){S.apiMsg={t:'✓ 接口畅通，模型回复：'+String(tx).trim().slice(0,80),c:'var(--grn2)'};up();apiMsgShow();})
+    .catch(function(e2){S.apiMsg={t:'✕ '+(e2&&e2.message||e2),c:'var(--red2)'};up();apiMsgShow();});
 }
 function apiModelsRun(){
   readApiForm();saveApi();var up=function(){if(S.overlay)renderOverlay();else render();};
-  if(!apiCur().key){S.apiMsg={t:'请先填写 API 密钥。',c:'var(--red2)'};up();return;}
+  if(!apiCur().key){S.apiMsg={t:'请先填写 API 密钥。',c:'var(--red2)'};up();apiMsgShow();return;}
   S.apiMsg={t:'正在拉取可用模型……',c:'var(--mut2)'};up();
   fetchModels()
     .then(function(list){S.apiModels=list;S.apiMsg={t:'共 '+list.length+' 个模型，点击下方任一即可选用。',c:'var(--grn2)'};up();})
-    .catch(function(e2){S.apiModels=null;S.apiMsg={t:'✕ '+(e2&&e2.message||e2),c:'var(--red2)'};up();});
+    .catch(function(e2){S.apiModels=null;S.apiMsg={t:'✕ '+(e2&&e2.message||e2),c:'var(--red2)'};up();apiMsgShow();});
 }
 
 var LSK='zhouji_tavern_v1';
@@ -3770,7 +3772,7 @@ function apiBody(){
   if(S.apiModels&&S.apiModels.length){
     models='<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;max-height:150px;overflow-y:auto">'+S.apiModels.map(function(m){var on=m===c.model;return '<span class="btn" data-setmodel="'+esc(m)+'" style="cursor:pointer;font-size:12px;padding:4px 10px;border:1px solid '+(on?'rgba(224,190,130,.7)':'rgba(201,160,99,.25)')+';color:'+(on?'var(--gold2)':'var(--mut2)')+';background:'+(on?'rgba(201,160,99,.12)':'transparent')+'">'+esc(m)+'</span>';}).join('')+'</div>';
   }
-  var msg=S.apiMsg?'<div style="margin-top:16px;font-size:13px;line-height:1.7;color:'+S.apiMsg.c+'">'+esc(S.apiMsg.t)+'</div>':'';
+  var msg=S.apiMsg?'<div id="zjApiMsg" style="margin-top:16px;font-size:13px;line-height:1.7;color:'+S.apiMsg.c+'">'+esc(S.apiMsg.t)+'</div>':'';
   var st=apiReady()?'<span style="color:var(--grn2)">当前状态：已就绪，正文将由「'+esc(def.name)+' · '+esc(c.model)+'」生成。</span>':'<span style="color:var(--mut2)">当前状态：未就绪，游戏将以演示占位回应运行。</span>';
   return '<div class="grow bambooV" style="overflow-y:auto;padding:22px 28px">'
     +'<div style="font-size:13px;line-height:1.9;color:var(--ink2)">本游戏不自带 AI——请接入<b style="color:var(--gold2)">你自己的 AI 接口</b>后游玩。密钥只保存在你这台设备的浏览器里（localStorage），除了发给你所填的接口地址外，不会上传到任何地方。</div>'
