@@ -186,6 +186,22 @@ def load_lore():
 
 
 def main():
+    # --lore-only：只校验世界书。开局正在被别的工序改写时用，
+    # 免得因为半成品的开局报错而挡住世界书这边的自查。
+    if '--lore-only' in sys.argv:
+        lore = load_lore()
+        for w in warns:
+            print('警告  %s' % w)
+        if errors:
+            for e in errors:
+                print('错误  %s' % e)
+            print('\n世界书校验失败，共 %d 处错误。' % len(errors))
+            return 1
+        print('世界书校验通过  %d 条，正文合计 %d 字，常驻 %d 条'
+              % (len(lore), sum(len(e['content']) for e in lore),
+                 sum(1 for e in lore if e.get('constant'))))
+        return 0
+
     meta = load_meta()
     openings = load_openings()
     lore = load_lore()
